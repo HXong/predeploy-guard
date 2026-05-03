@@ -1,0 +1,17 @@
+service:
+  name: booking-service
+  image: nginx:latest
+  port: 80
+  healthPath: /
+
+checks:
+  smoke:
+    - name: homepage check
+      method: GET
+      path: /
+      expectedStatus: 200
+
+settings:
+  namespacePrefix: predeploy
+  cleanup: true
+  timeoutSeconds: 60
