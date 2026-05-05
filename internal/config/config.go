@@ -8,9 +8,14 @@ import (
 )
 
 type Config struct {
+	Runtime  RuntimeConfig  `yaml:"runtime"`
 	Service  ServiceConfig  `yaml:"service"`
 	Checks   ChecksConfig   `yaml:"checks"`
 	Settings SettingsConfig `yaml:"settings"`
+}
+
+type RuntimeConfig struct {
+	Type string `yaml:"type"`
 }
 
 type ServiceConfig struct {
@@ -57,6 +62,13 @@ func Load(path string) (*Config, error) {
 }
 
 func (c *Config) Validate() error {
+	if c.Runtime.Type == "" {
+		c.Runtime.Type = "docker-compose"
+	}
+
+	if c.Runtime.Type != "docker-compose" {
+		return fmt.Errorf("unsupported runtime.type: %s", c.Runtime.Type)
+	}
 	if c.Service.Name == "" {
 		return fmt.Errorf("service.name is required")
 	}

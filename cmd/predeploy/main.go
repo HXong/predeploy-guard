@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/HXong/predeploy-guard/internal/config"
+	"github.com/HXong/predeploy-guard/internal/runner"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +33,7 @@ func main() {
 			fmt.Printf("Port: %d\n", cfg.Service.Port)
 			fmt.Printf("Health path: %s\n", cfg.Service.HealthPath)
 
-			return nil
+			return runner.Run(cfg)
 		},
 	}
 

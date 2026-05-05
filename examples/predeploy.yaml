@@ -1,3 +1,6 @@
+runtime:
+  type: docker-compose
+
 service:
   name: booking-service
   image: nginx:latest
@@ -12,6 +15,5 @@ checks:
       expectedStatus: 200
 
 settings:
-  namespacePrefix: predeploy
   cleanup: true
   timeoutSeconds: 60
