@@ -7,6 +7,19 @@ service:
   port: 80
   healthPath: /
 
+dependencies:
+  postgres:
+    image: postgres:16
+    port: 5432
+    env:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: testdb
+
+  redis:
+    image: redis:7
+    port: 6379
+
 checks:
   smoke:
     - name: homepage check

@@ -8,10 +8,11 @@ import (
 )
 
 type Config struct {
-	Runtime  RuntimeConfig  `yaml:"runtime"`
-	Service  ServiceConfig  `yaml:"service"`
-	Checks   ChecksConfig   `yaml:"checks"`
-	Settings SettingsConfig `yaml:"settings"`
+	Runtime      RuntimeConfig               `yaml:"runtime"`
+	Service      ServiceConfig               `yaml:"service"`
+	Dependencies map[string]DependencyConfig `yaml:"dependencies"`
+	Checks       ChecksConfig                `yaml:"checks"`
+	Settings     SettingsConfig              `yaml:"settings"`
 }
 
 type RuntimeConfig struct {
@@ -24,6 +25,12 @@ type ServiceConfig struct {
 	Port       int32             `yaml:"port"`
 	HealthPath string            `yaml:"healthPath"`
 	Env        map[string]string `yaml:"env"`
+}
+
+type DependencyConfig struct {
+	Image string            `yaml:"image"`
+	Port  int               `yaml:"port"`
+	Env   map[string]string `yaml:"env"`
 }
 
 type ChecksConfig struct {
@@ -80,6 +87,19 @@ func (c *Config) Validate() error {
 	}
 	if c.Service.HealthPath == "" {
 		c.Service.HealthPath = "/health"
+	}
+	for name, dependency := range c.Dependencies {
+		if name == "" {
+			return fmt.Errorf("dependency name cannot be empty")
+		}
+
+		if dependency.Image == "" {
+			return fmt.Errorf("dependencies.%s.image is required", name)
+		}
+
+		if dependency.Port < 0 {
+			return fmt.Errorf("dependencies.%s.port cannot be negative", name)
+		}
 	}
 	if c.Settings.NamespacePrefix == "" {
 		c.Settings.NamespacePrefix = "predeploy"
