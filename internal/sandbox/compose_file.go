@@ -29,6 +29,7 @@ func (s *ComposeSandbox) writeComposeFile(cfg *config.Config) error {
 func writeTargetService(builder *bytes.Buffer, s *ComposeSandbox, cfg *config.Config) {
 	fmt.Fprintf(builder, "  %s:\n", s.ServiceName)
 	fmt.Fprintf(builder, "    image: %s\n", cfg.Service.Image)
+	fmt.Fprintf(builder, "    pull_policy: never\n")
 	fmt.Fprintf(builder, "    container_name: predeploy-%s\n", s.ServiceName)
 	fmt.Fprintf(builder, "    ports:\n")
 	fmt.Fprintf(builder, "      - \"%d:%d\"\n", s.HostPort, cfg.Service.Port)

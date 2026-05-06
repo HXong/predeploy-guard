@@ -3,9 +3,13 @@ runtime:
 
 service:
   name: booking-service
-  image: nginx:latest
-  port: 80
-  healthPath: /
+  image: predeploy-sample-service:latest
+  port: 8080
+  healthPath: /health
+  env:
+    PORT: "8080"
+    DATABASE_URL: postgres://test:test@postgres:5432/testdb
+    REDIS_URL: redis://redis:6379
 
 dependencies:
   postgres:
@@ -24,15 +28,20 @@ dependencies:
     image: redis:7
     port: 6379
     readiness:
-      shell: "redis-cli wrong-command | grep PONG"
+      shell: "redis-cli ping | grep PONG"
       intervalSeconds: 2
       timeoutSeconds: 30
 
 checks:
   smoke:
-    - name: homepage check
+    - name: health check
       method: GET
-      path: /
+      path: /health
+      expectedStatus: 200
+
+    - name: list bookings
+      method: GET
+      path: /api/bookings
       expectedStatus: 200
 
 settings:
