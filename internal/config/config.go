@@ -36,6 +36,7 @@ type DependencyConfig struct {
 
 type ReadinessConfig struct {
 	Command         []string `yaml:"command"`
+	Shell           string   `yaml:"shell"`
 	IntervalSeconds int      `yaml:"intervalSeconds"`
 	TimeoutSeconds  int      `yaml:"timeoutSeconds"`
 }
@@ -107,7 +108,15 @@ func (c *Config) Validate() error {
 		if dependency.Port < 0 {
 			return fmt.Errorf("dependencies.%s.port cannot be negative", name)
 		}
-		if len(dependency.Readiness.Command) > 0 {
+
+		hasCommand := len(dependency.Readiness.Command) > 0
+		hasShell := dependency.Readiness.Shell != ""
+
+		if hasCommand && hasShell {
+			return fmt.Errorf("dependencies.%s.readiness cannot define both command and shell", name)
+		}
+
+		if hasCommand || hasShell {
 			if dependency.Readiness.IntervalSeconds <= 0 {
 				dependency.Readiness.IntervalSeconds = 2
 			}

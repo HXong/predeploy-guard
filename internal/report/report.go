@@ -11,15 +11,23 @@ import (
 )
 
 type ReportData struct {
-	ServiceName string
-	Image       string
-	Runtime     string
-	BaseURL     string
-	StartedAt   time.Time
-	FinishedAt  time.Time
-	Results     []checker.SmokeResult
-	Passed      bool
-	Logs        string
+	ServiceName      string
+	Image            string
+	Runtime          string
+	BaseURL          string
+	StartedAt        time.Time
+	FinishedAt       time.Time
+	ReadinessResults []ReadinessResult
+	Results          []checker.SmokeResult
+	Passed           bool
+	Logs             string
+}
+
+type ReadinessResult struct {
+	Name   string
+	Target string
+	Passed bool
+	Error  string
 }
 
 func WriteMarkdown(cfg *config.Config, data ReportData) (string, error) {

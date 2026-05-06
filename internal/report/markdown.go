@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/HXong/predeploy-guard/internal/checker"
 	"github.com/HXong/predeploy-guard/internal/config"
 )
 
@@ -16,38 +17,114 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 		status = "PASS"
 	}
 
-	total := len(data.Results)
-	passed := 0
-	failed := 0
+	totalSmoke := len(data.Results)
+	passedSmoke := 0
+	failedSmoke := 0
 
 	for _, result := range data.Results {
 		if result.Passed {
-			passed++
+			passedSmoke++
 		} else {
-			failed++
+			failedSmoke++
+		}
+	}
+
+	totalReadiness := len(data.ReadinessResults)
+	passedReadiness := 0
+	failedReadiness := 0
+
+	for _, result := range data.ReadinessResults {
+		if result.Passed {
+			passedReadiness++
+		} else {
+			failedReadiness++
 		}
 	}
 
 	duration := data.FinishedAt.Sub(data.StartedAt)
 
-	builder.WriteString("# Predeploy Guard Report\n\n")
+	fmt.Fprintf(&builder, "# PreDeploy Guard Report\n\n")
 
-	builder.WriteString("## Summary\n\n")
-	builder.WriteString(fmt.Sprintf("- **Service:** %s\n", data.ServiceName))
-	builder.WriteString(fmt.Sprintf("- **Image:** `%s`\n", data.Image))
-	builder.WriteString(fmt.Sprintf("- **Runtime:** %s\n", data.Runtime))
-	builder.WriteString(fmt.Sprintf("- **Base URL:** %s\n", data.BaseURL))
-	builder.WriteString(fmt.Sprintf("- **Result:** **%s**\n", status))
-	builder.WriteString(fmt.Sprintf("- **Started At:** %s\n", data.StartedAt.Format(time.RFC3339)))
-	builder.WriteString(fmt.Sprintf("- **Finished At:** %s\n", data.FinishedAt.Format(time.RFC3339)))
-	builder.WriteString(fmt.Sprintf("- **Total Duration:** %s\n", duration.Round(time.Millisecond)))
-	builder.WriteString("\n")
+	fmt.Fprintf(&builder, "## Summary\n\n")
+	fmt.Fprintf(&builder, "- **Service:** %s\n", data.ServiceName)
+	fmt.Fprintf(&builder, "- **Image:** `%s`\n", data.Image)
+	fmt.Fprintf(&builder, "- **Runtime:** %s\n", data.Runtime)
+	fmt.Fprintf(&builder, "- **Base URL:** %s\n", data.BaseURL)
+	fmt.Fprintf(&builder, "- **Result:** **%s**\n", status)
+	fmt.Fprintf(&builder, "- **Started At:** %s\n", data.StartedAt.Format(time.RFC3339))
+	fmt.Fprintf(&builder, "- **Finished At:** %s\n", data.FinishedAt.Format(time.RFC3339))
+	fmt.Fprintf(&builder, "- **Total Duration:** %s\n", duration.Round(time.Millisecond))
+	fmt.Fprintf(&builder, "\n")
 
-	builder.WriteString("## Smoke Checks\n\n")
-	builder.WriteString("| Check | Method | URL | Expected | Actual | Duration | Result | Error |\n")
-	builder.WriteString("|---|---|---|---:|---:|---:|---|---|\n")
+	writeReadinessSection(&builder, data.ReadinessResults)
+	writeSmokeSection(&builder, data.Results)
 
-	for _, result := range data.Results {
+	fmt.Fprintf(&builder, "## Check Summary\n\n")
+	fmt.Fprintf(&builder, "- Readiness checks: %d total, %d passed, %d failed\n", totalReadiness, passedReadiness, failedReadiness)
+	fmt.Fprintf(&builder, "- Smoke checks: %d total, %d passed, %d failed\n", totalSmoke, passedSmoke, failedSmoke)
+	fmt.Fprintf(&builder, "\n")
+
+	fmt.Fprintf(&builder, "## Configuration\n\n")
+	fmt.Fprintf(&builder, "- Cleanup enabled: `%t`\n", cfg.Settings.Cleanup)
+	fmt.Fprintf(&builder, "- Timeout seconds: `%d`\n", cfg.Settings.TimeoutSeconds)
+	fmt.Fprintf(&builder, "- Health path: `%s`\n", cfg.Service.HealthPath)
+	fmt.Fprintf(&builder, "\n")
+
+	if data.Logs != "" {
+		fmt.Fprintf(&builder, "## Container Logs\n\n")
+		fmt.Fprintf(&builder, "```txt\n")
+		fmt.Fprintf(&builder, "%s", data.Logs)
+		fmt.Fprintf(&builder, "\n```\n\n")
+	}
+
+	return builder.String()
+}
+
+func writeReadinessSection(builder *strings.Builder, results []ReadinessResult) {
+	fmt.Fprintf(builder, "## Readiness Checks\n\n")
+
+	if len(results) == 0 {
+		fmt.Fprintf(builder, "No readiness checks were recorded.\n\n")
+		return
+	}
+
+	fmt.Fprintf(builder, "| Check | Target | Result | Error |\n")
+	fmt.Fprintf(builder, "|---|---|---|---|\n")
+
+	for _, result := range results {
+		status := "FAIL"
+		if result.Passed {
+			status = "PASS"
+		}
+
+		errorText := result.Error
+		if errorText == "" {
+			errorText = "-"
+		}
+
+		fmt.Fprintf(builder, "| %s | %s | %s | %s |\n",
+			escapeMarkdownTable(result.Name),
+			escapeMarkdownTable(result.Target),
+			status,
+			escapeMarkdownTable(errorText),
+		)
+	}
+
+	fmt.Fprintf(builder, "\n")
+}
+
+func writeSmokeSection(builder *strings.Builder, results []checker.SmokeResult) {
+	fmt.Fprintf(builder, "## Smoke Checks\n\n")
+
+	if len(results) == 0 {
+		fmt.Fprintf(builder, "No smoke checks were executed.\n\n")
+		return
+	}
+
+	fmt.Fprintf(builder, "| Check | Method | URL | Expected | Actual | Duration | Result | Error |\n")
+	fmt.Fprintf(builder, "|---|---|---|---:|---:|---:|---|---|\n")
+
+	for _, result := range results {
 		checkStatus := "FAIL"
 		if result.Passed {
 			checkStatus = "PASS"
@@ -58,42 +135,19 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 			errorText = "-"
 		}
 
-		builder.WriteString(
-			fmt.Sprintf(
-				"| %s | %s | %s | %d | %d | %s | %s | %s |\n",
-				escapeMarkdownTable(result.Name),
-				result.Method,
-				result.URL,
-				result.ExpectedStatus,
-				result.ActualStatus,
-				result.Duration.Round(time.Millisecond),
-				checkStatus,
-				escapeMarkdownTable(errorText),
-			))
+		fmt.Fprintf(builder, "| %s | %s | %s | %d | %d | %s | %s | %s |\n",
+			escapeMarkdownTable(result.Name),
+			result.Method,
+			result.URL,
+			result.ExpectedStatus,
+			result.ActualStatus,
+			result.Duration.Round(time.Millisecond),
+			checkStatus,
+			escapeMarkdownTable(errorText),
+		)
 	}
 
-	builder.WriteString("\n")
-
-	builder.WriteString("## Check Summary\n\n")
-	builder.WriteString(fmt.Sprintf("- Total checks: %d\n", total))
-	builder.WriteString(fmt.Sprintf("- Passed: %d\n", passed))
-	builder.WriteString(fmt.Sprintf("- Failed: %d\n", failed))
-	builder.WriteString("\n")
-
-	builder.WriteString("## Configuration\n\n")
-	builder.WriteString(fmt.Sprintf("- Cleanup enabled: `%t`\n", cfg.Settings.Cleanup))
-	builder.WriteString(fmt.Sprintf("- Timeout seconds: `%d`\n", cfg.Settings.TimeoutSeconds))
-	builder.WriteString(fmt.Sprintf("- Health path: `%s`\n", cfg.Service.HealthPath))
-	builder.WriteString("\n")
-
-	if data.Logs != "" {
-		builder.WriteString("## Container Logs\n\n")
-		builder.WriteString("```txt\n")
-		builder.WriteString(data.Logs)
-		builder.WriteString("\n```\n\n")
-	}
-
-	return builder.String()
+	fmt.Fprintf(builder, "\n")
 }
 
 func buildReportFilename(serviceName string, timestamp time.Time) string {

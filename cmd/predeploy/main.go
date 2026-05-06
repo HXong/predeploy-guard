@@ -40,7 +40,7 @@ func main() {
 	rootCmd.AddCommand(runCmd)
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Printf("Error:", err)
+		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
 }

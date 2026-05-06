@@ -9,16 +9,32 @@ import (
 	"github.com/HXong/predeploy-guard/internal/config"
 )
 
-func (s *ComposeSandbox) WaitForDependencies(cfg *config.Config) error {
+type DependencyReadinessResult struct {
+	Name    string
+	Passed  bool
+	Skipped bool
+	Error   string
+}
+
+func (s *ComposeSandbox) WaitForDependencies(cfg *config.Config) ([]DependencyReadinessResult, error) {
+	results := make([]DependencyReadinessResult, 0, len(cfg.Dependencies))
+
 	for _, name := range sortedDependencyNames(cfg.Dependencies) {
 		dependency := cfg.Dependencies[name]
+		serviceName := sanitizeServiceName(name)
 
-		if len(dependency.Readiness.Command) == 0 {
+		result := DependencyReadinessResult{
+			Name: serviceName,
+		}
+
+		if !dependencyHasReadiness(dependency.Readiness) {
 			fmt.Printf("Skipping dependency readiness: %s has no readiness command\n", name)
+			result.Passed = true
+			result.Skipped = true
+			results = append(results, result)
 			continue
 		}
 
-		serviceName := sanitizeServiceName(name)
 		containerName := fmt.Sprintf("predeploy-%s", serviceName)
 
 		fmt.Printf("Waiting for dependency readiness: %s\n", serviceName)
@@ -27,13 +43,19 @@ func (s *ComposeSandbox) WaitForDependencies(cfg *config.Config) error {
 			containerName,
 			dependency.Readiness.TimeoutSeconds,
 		); err != nil {
-			return err
+			result.Passed = false
+			result.Error = err.Error()
+			results = append(results, result)
+			return results, err
 		}
+
+		result.Passed = true
+		results = append(results, result)
 
 		fmt.Printf("Dependency ready: %s\n", serviceName)
 	}
 
-	return nil
+	return results, nil
 }
 
 func waitForContainerHealthy(containerName string, timeoutSeconds int) error {

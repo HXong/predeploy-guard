@@ -24,7 +24,7 @@ dependencies:
     image: redis:7
     port: 6379
     readiness:
-      command: ["redis-cli", "ping"]
+      shell: "redis-cli wrong-command | grep PONG"
       intervalSeconds: 2
       timeoutSeconds: 30
 
