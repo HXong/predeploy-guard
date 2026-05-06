@@ -15,10 +15,18 @@ dependencies:
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
       POSTGRES_DB: testdb
+    readiness:
+      command: ["pg_isready", "-U", "test", "-d", "testdb"]
+      intervalSeconds: 2
+      timeoutSeconds: 30
 
   redis:
     image: redis:7
     port: 6379
+    readiness:
+      command: ["redis-cli", "ping"]
+      intervalSeconds: 2
+      timeoutSeconds: 30
 
 checks:
   smoke:

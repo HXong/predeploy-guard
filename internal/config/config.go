@@ -28,9 +28,16 @@ type ServiceConfig struct {
 }
 
 type DependencyConfig struct {
-	Image string            `yaml:"image"`
-	Port  int               `yaml:"port"`
-	Env   map[string]string `yaml:"env"`
+	Image     string            `yaml:"image"`
+	Port      int               `yaml:"port"`
+	Env       map[string]string `yaml:"env"`
+	Readiness ReadinessConfig   `yaml:"readiness"`
+}
+
+type ReadinessConfig struct {
+	Command         []string `yaml:"command"`
+	IntervalSeconds int      `yaml:"intervalSeconds"`
+	TimeoutSeconds  int      `yaml:"timeoutSeconds"`
 }
 
 type ChecksConfig struct {
@@ -99,6 +106,17 @@ func (c *Config) Validate() error {
 
 		if dependency.Port < 0 {
 			return fmt.Errorf("dependencies.%s.port cannot be negative", name)
+		}
+		if len(dependency.Readiness.Command) > 0 {
+			if dependency.Readiness.IntervalSeconds <= 0 {
+				dependency.Readiness.IntervalSeconds = 2
+			}
+
+			if dependency.Readiness.TimeoutSeconds <= 0 {
+				dependency.Readiness.TimeoutSeconds = 30
+			}
+
+			c.Dependencies[name] = dependency
 		}
 	}
 	if c.Settings.NamespacePrefix == "" {

@@ -54,41 +54,46 @@ func Run(cfg *config.Config) error {
 
 	fmt.Printf("Service base URL: %s\n", sb.BaseURL())
 
-	fmt.Println("Waiting for service readiness...")
+	dependencyErr := error(nil)
 
-	readinessErr := checker.WaitUntilReady(
-		sb.BaseURL(),
-		cfg.Service.HealthPath,
-		cfg.Settings.TimeoutSeconds,
-	)
+	if len(cfg.Dependencies) > 0 {
+		fmt.Println("Waiting for dependency readiness...")
+		dependencyErr = sb.WaitForDependencies(cfg)
+	}
 
 	var results []checker.SmokeResult
 	passed := false
+	readinessErr := error(nil)
 
-	if readinessErr != nil {
-		fmt.Printf("Readiness check failed: %v\n", readinessErr)
+	if dependencyErr != nil {
+		fmt.Printf("Dependency readiness failed: %v\n", dependencyErr)
 	} else {
-		fmt.Println("Running smoke checks...")
+		fmt.Println("Waiting for service readiness...")
 
-		results = checker.RunSmokeChecks(sb.BaseURL(), cfg.Checks.Smoke)
+		readinessErr = checker.WaitUntilReady(
+			sb.BaseURL(),
+			cfg.Service.HealthPath,
+			cfg.Settings.TimeoutSeconds,
+		)
 
-		for _, result := range results {
-			printSmokeResult(result)
+		if readinessErr != nil {
+			fmt.Printf("Readiness check failed: %v\n", readinessErr)
+		} else {
+			fmt.Println("Running smoke checks...")
+
+			results = checker.RunSmokeChecks(sb.BaseURL(), cfg.Checks.Smoke)
+
+			for _, result := range results {
+				printSmokeResult(result)
+			}
+
+			passed = checker.AllPassed(results)
 		}
-
-		passed = checker.AllPassed(results)
 	}
 
 	logs := ""
-	if readinessErr != nil || !passed {
-		fmt.Println("Collecting container logs...")
-
-		collectedLogs, logErr := sb.Logs()
-		if logErr != nil {
-			logs = fmt.Sprintf("Failed to collect logs: %v\n\nPartial output:\n%s", logErr, collectedLogs)
-		} else {
-			logs = collectedLogs
-		}
+	if dependencyErr != nil || readinessErr != nil || !passed {
+		logs = collectLogsSafely(sb)
 	}
 
 	finishedAt := time.Now()
@@ -107,6 +112,12 @@ func Run(cfg *config.Config) error {
 
 	if reportErr != nil {
 		return reportErr
+	}
+
+	if dependencyErr != nil {
+		fmt.Println("Result: FAIL")
+		fmt.Printf("Report written to: %s\n", reportPath)
+		return dependencyErr
 	}
 
 	if readinessErr != nil {

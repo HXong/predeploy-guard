@@ -37,7 +37,16 @@ func writeTargetService(builder *bytes.Buffer, s *ComposeSandbox, cfg *config.Co
 		builder.WriteString("    depends_on:\n")
 
 		for _, name := range sortedDependencyNames(cfg.Dependencies) {
-			builder.WriteString(fmt.Sprintf("      - %s\n", sanitizeServiceName(name)))
+			dependency := cfg.Dependencies[name]
+			serviceName := sanitizeServiceName(name)
+
+			builder.WriteString(fmt.Sprintf("      %s:\n", serviceName))
+
+			if len(dependency.Readiness.Command) > 0 {
+				builder.WriteString("        condition: service_healthy\n")
+			} else {
+				builder.WriteString("        condition: service_started\n")
+			}
 		}
 	}
 
@@ -59,6 +68,7 @@ func writeDependencyServices(builder *bytes.Buffer, cfg *config.Config) {
 		}
 
 		writeEnvBlock(builder, dependency.Env)
+		writeHealthcheckBlock(builder, dependency.Readiness)
 	}
 }
 
@@ -78,6 +88,31 @@ func writeEnvBlock(builder *bytes.Buffer, env map[string]string) {
 	for _, key := range keys {
 		builder.WriteString(fmt.Sprintf("      %s: %q\n", key, env[key]))
 	}
+}
+
+func writeHealthcheckBlock(builder *bytes.Buffer, readiness config.ReadinessConfig) {
+	if len(readiness.Command) == 0 {
+		return
+	}
+
+	builder.WriteString("    healthcheck:\n")
+	builder.WriteString("      test: [\"CMD\"")
+
+	for _, part := range readiness.Command {
+		builder.WriteString(fmt.Sprintf(", %q", part))
+	}
+
+	builder.WriteString("]\n")
+	builder.WriteString(fmt.Sprintf("      interval: %ds\n", readiness.IntervalSeconds))
+	builder.WriteString("      timeout: 3s\n")
+
+	retries := readiness.TimeoutSeconds / readiness.IntervalSeconds
+	if retries <= 0 {
+		retries = 1
+	}
+
+	builder.WriteString(fmt.Sprintf("      retries: %d\n", retries))
+	builder.WriteString("      start_period: 3s\n")
 }
 
 func sortedDependencyNames(dependencies map[string]config.DependencyConfig) []string {
