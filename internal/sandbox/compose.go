@@ -1,12 +1,10 @@
 package sandbox
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/HXong/predeploy-guard/internal/config"
 )
@@ -65,6 +63,18 @@ func (s *ComposeSandbox) Stop() error {
 	return nil
 }
 
+func (s *ComposeSandbox) Logs() (string, error) {
+	cmd := exec.Command("docker", "compose", "-f", s.ComposeFile, "logs", "--no-color")
+	cmd.Dir = s.WorkDir
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return string(output), fmt.Errorf("docker compose logs failed: %w", err)
+	}
+
+	return string(output), nil
+}
+
 func (s *ComposeSandbox) RemoveFiles() error {
 	if s.WorkDir == "" {
 		return nil
@@ -75,53 +85,4 @@ func (s *ComposeSandbox) RemoveFiles() error {
 
 func (s *ComposeSandbox) BaseURL() string {
 	return fmt.Sprintf("http://localhost:%d", s.HostPort)
-}
-
-func (s *ComposeSandbox) writeComposeFile(cfg *config.Config) error {
-	var envBlock bytes.Buffer
-
-	for key, value := range cfg.Service.Env {
-		envBlock.WriteString(fmt.Sprintf("      %s: %q\n", key, value))
-	}
-
-	environmentSection := ""
-	if len(cfg.Service.Env) > 0 {
-		environmentSection = fmt.Sprintf("    environment:\n%s", envBlock.String())
-	}
-
-	content := fmt.Sprintf(`services:
-  %s:
-    image: %s
-    container_name: predeploy-%s
-    ports:
-      - "%d:%d"
-%s
-`, s.ServiceName, cfg.Service.Image, s.ServiceName, s.HostPort, cfg.Service.Port, environmentSection)
-
-	if err := os.WriteFile(s.ComposeFile, []byte(content), 0644); err != nil {
-		return fmt.Errorf("write docker-compose.yml: %w", err)
-	}
-
-	return nil
-}
-
-func sanitizeServiceName(name string) string {
-	name = strings.ToLower(name)
-	name = strings.ReplaceAll(name, "_", "-")
-	name = strings.ReplaceAll(name, " ", "-")
-
-	var builder strings.Builder
-
-	for _, r := range name {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '-' {
-			builder.WriteRune(r)
-		}
-	}
-
-	result := builder.String()
-	if result == "" {
-		return "service"
-	}
-
-	return result
 }

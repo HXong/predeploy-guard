@@ -56,48 +56,41 @@ func Run(cfg *config.Config) error {
 
 	fmt.Println("Waiting for service readiness...")
 
-	if err := checker.WaitUntilReady(
+	readinessErr := checker.WaitUntilReady(
 		sb.BaseURL(),
 		cfg.Service.HealthPath,
 		cfg.Settings.TimeoutSeconds,
-	); err != nil {
-		return err
-	}
+	)
 
-	fmt.Println("Running smoke checks...")
+	var results []checker.SmokeResult
+	passed := false
 
-	results := checker.RunSmokeChecks(sb.BaseURL(), cfg.Checks.Smoke)
+	if readinessErr != nil {
+		fmt.Printf("Readiness check failed: %v\n", readinessErr)
+	} else {
+		fmt.Println("Running smoke checks...")
 
-	for _, result := range results {
-		status := "FAIL"
-		if result.Passed {
-			status = "PASS"
+		results = checker.RunSmokeChecks(sb.BaseURL(), cfg.Checks.Smoke)
+
+		for _, result := range results {
+			printSmokeResult(result)
 		}
 
-		if result.Error != "" {
-			fmt.Printf("[%s] %s %s %s error=%s duration=%s\n",
-				status,
-				result.Name,
-				result.Method,
-				result.URL,
-				result.Error,
-				result.Duration,
-			)
-			continue
-		}
-
-		fmt.Printf("[%s] %s %s %s expected=%d actual=%d duration=%s\n",
-			status,
-			result.Name,
-			result.Method,
-			result.URL,
-			result.ExpectedStatus,
-			result.ActualStatus,
-			result.Duration,
-		)
+		passed = checker.AllPassed(results)
 	}
 
-	passed := checker.AllPassed(results)
+	logs := ""
+	if readinessErr != nil || !passed {
+		fmt.Println("Collecting container logs...")
+
+		collectedLogs, logErr := sb.Logs()
+		if logErr != nil {
+			logs = fmt.Sprintf("Failed to collect logs: %v\n\nPartial output:\n%s", logErr, collectedLogs)
+		} else {
+			logs = collectedLogs
+		}
+	}
+
 	finishedAt := time.Now()
 
 	reportPath, reportErr := report.WriteMarkdown(cfg, report.ReportData{
@@ -109,10 +102,17 @@ func Run(cfg *config.Config) error {
 		FinishedAt:  finishedAt,
 		Results:     results,
 		Passed:      passed,
+		Logs:        logs,
 	})
 
 	if reportErr != nil {
 		return reportErr
+	}
+
+	if readinessErr != nil {
+		fmt.Println("Result: FAIL")
+		fmt.Printf("Report written to: %s\n", reportPath)
+		return readinessErr
 	}
 
 	if !passed {
