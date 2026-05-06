@@ -24,10 +24,16 @@ func NewComposeSandbox(cfg *config.Config) (*ComposeSandbox, error) {
 		return nil, fmt.Errorf("create temporary sandbox directory: %w", err)
 	}
 
+	hostPort, err := findFreePort()
+	if err != nil {
+		_ = os.RemoveAll(workDir)
+		return nil, err
+	}
+
 	sandbox := &ComposeSandbox{
 		WorkDir:     workDir,
 		ComposeFile: filepath.Join(workDir, "docker-compose.yml"),
-		HostPort:    DefaultHostPort,
+		HostPort:    hostPort,
 		ServiceName: sanitizeServiceName(cfg.Service.Name),
 	}
 

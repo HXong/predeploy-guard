@@ -11,7 +11,7 @@ checks:
   smoke:
     - name: homepage check
       method: GET
-      path: /wrong-path
+      path: /
       expectedStatus: 200
 
 settings:
