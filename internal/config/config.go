@@ -22,9 +22,15 @@ type RuntimeConfig struct {
 type ServiceConfig struct {
 	Name       string            `yaml:"name"`
 	Image      string            `yaml:"image"`
+	Build      BuildConfig       `yaml:"build"`
 	Port       int32             `yaml:"port"`
 	HealthPath string            `yaml:"healthPath"`
 	Env        map[string]string `yaml:"env"`
+}
+
+type BuildConfig struct {
+	Context    string `yaml:"context"`
+	Dockerfile string `yaml:"dockerfile"`
 }
 
 type DependencyConfig struct {
@@ -89,6 +95,15 @@ func (c *Config) Validate() error {
 	}
 	if c.Service.Image == "" {
 		return fmt.Errorf("service.image is required")
+	}
+	if c.Service.Build.Context != "" {
+		if c.Service.Build.Dockerfile == "" {
+			c.Service.Build.Dockerfile = "Dockerfile"
+		}
+
+		if _, err := os.Stat(c.Service.Build.Context); err != nil {
+			return fmt.Errorf("service.build.context is invalid: %w", err)
+		}
 	}
 	if c.Service.Port <= 0 {
 		return fmt.Errorf("service.port must be greater than 0")

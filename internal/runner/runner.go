@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/HXong/predeploy-guard/internal/builder"
 	"github.com/HXong/predeploy-guard/internal/checker"
 	"github.com/HXong/predeploy-guard/internal/config"
 	"github.com/HXong/predeploy-guard/internal/report"
@@ -16,6 +17,50 @@ func Run(cfg *config.Config) error {
 	}
 
 	startedAt := time.Now()
+
+	fmt.Println("Checking whether target image build is required...")
+
+	buildResult := builder.BuildImageIfNeeded(cfg)
+
+	if buildResult.Enabled {
+		if buildResult.Passed {
+			fmt.Printf("Built target image successfully: %s\n", buildResult.Image)
+		} else {
+			fmt.Printf("Target image build failed: %s\n", buildResult.Error)
+
+			finishedAt := time.Now()
+
+			reportPath, reportErr := report.WriteMarkdown(cfg, report.ReportData{
+				ServiceName: cfg.Service.Name,
+				Image:       cfg.Service.Image,
+				Runtime:     cfg.Runtime.Type,
+				BaseURL:     "-",
+				StartedAt:   startedAt,
+				FinishedAt:  finishedAt,
+				BuildResult: report.BuildResult{
+					Enabled:    buildResult.Enabled,
+					Image:      buildResult.Image,
+					Context:    buildResult.Context,
+					Dockerfile: buildResult.Dockerfile,
+					Passed:     buildResult.Passed,
+					Error:      buildResult.Error,
+					Output:     buildResult.Output,
+				},
+				Passed: false,
+			})
+
+			if reportErr != nil {
+				return reportErr
+			}
+
+			fmt.Println("Result: FAIL")
+			fmt.Printf("Report written to: %s\n", reportPath)
+
+			return fmt.Errorf("%s", buildResult.Error)
+		}
+	} else {
+		fmt.Println("No target image build configured")
+	}
 
 	fmt.Println("Creating Docker Compose sandbox...")
 
@@ -138,12 +183,21 @@ func Run(cfg *config.Config) error {
 	finishedAt := time.Now()
 
 	reportPath, reportErr := report.WriteMarkdown(cfg, report.ReportData{
-		ServiceName:      cfg.Service.Name,
-		Image:            cfg.Service.Image,
-		Runtime:          cfg.Runtime.Type,
-		BaseURL:          sb.BaseURL(),
-		StartedAt:        startedAt,
-		FinishedAt:       finishedAt,
+		ServiceName: cfg.Service.Name,
+		Image:       cfg.Service.Image,
+		Runtime:     cfg.Runtime.Type,
+		BaseURL:     sb.BaseURL(),
+		StartedAt:   startedAt,
+		FinishedAt:  finishedAt,
+		BuildResult: report.BuildResult{
+			Enabled:    buildResult.Enabled,
+			Image:      buildResult.Image,
+			Context:    buildResult.Context,
+			Dockerfile: buildResult.Dockerfile,
+			Passed:     buildResult.Passed,
+			Error:      buildResult.Error,
+			Output:     buildResult.Output,
+		},
 		ReadinessResults: readinessResults,
 		Results:          results,
 		Passed:           passed,

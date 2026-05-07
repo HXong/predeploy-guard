@@ -17,10 +17,21 @@ type ReportData struct {
 	BaseURL          string
 	StartedAt        time.Time
 	FinishedAt       time.Time
+	BuildResult      BuildResult
 	ReadinessResults []ReadinessResult
 	Results          []checker.SmokeResult
 	Passed           bool
 	Logs             string
+}
+
+type BuildResult struct {
+	Enabled    bool
+	Image      string
+	Context    string
+	Dockerfile string
+	Passed     bool
+	Error      string
+	Output     string
 }
 
 type ReadinessResult struct {

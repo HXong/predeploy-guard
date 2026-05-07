@@ -56,6 +56,7 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 	fmt.Fprintf(&builder, "- **Total Duration:** %s\n", duration.Round(time.Millisecond))
 	fmt.Fprintf(&builder, "\n")
 
+	writeBuildSection(&builder, data.BuildResult)
 	writeReadinessSection(&builder, data.ReadinessResults)
 	writeSmokeSection(&builder, data.Results)
 
@@ -78,6 +79,45 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 	}
 
 	return builder.String()
+}
+
+func writeBuildSection(builder *strings.Builder, result BuildResult) {
+	fmt.Fprintf(builder, "## Build Check\n\n")
+
+	if !result.Enabled {
+		fmt.Fprintf(builder, "No image build was configured.\n\n")
+		return
+	}
+
+	status := "FAIL"
+	if result.Passed {
+		status = "PASS"
+	}
+
+	errorText := result.Error
+	if errorText == "" {
+		errorText = "-"
+	}
+
+	fmt.Fprintf(builder, "| Step | Image | Context | Dockerfile | Result | Error |\n")
+	fmt.Fprintf(builder, "|---|---|---|---|---|---|\n")
+
+	fmt.Fprintf(
+		builder,
+		"| docker build | `%s` | `%s` | `%s` | %s | %s |\n\n",
+		escapeMarkdownTable(result.Image),
+		escapeMarkdownTable(result.Context),
+		escapeMarkdownTable(result.Dockerfile),
+		status,
+		escapeMarkdownTable(errorText),
+	)
+
+	if result.Output != "" && !result.Passed {
+		fmt.Fprintf(builder, "### Build Output\n\n")
+		fmt.Fprintf(builder, "```txt\n")
+		fmt.Fprintf(builder, result.Output)
+		fmt.Fprintf(builder, "\n```\n\n")
+	}
 }
 
 func writeReadinessSection(builder *strings.Builder, results []ReadinessResult) {
