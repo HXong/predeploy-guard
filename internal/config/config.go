@@ -12,6 +12,7 @@ type Config struct {
 	Service      ServiceConfig               `yaml:"service"`
 	Dependencies map[string]DependencyConfig `yaml:"dependencies"`
 	Checks       ChecksConfig                `yaml:"checks"`
+	Performance  PerformanceConfig           `yaml:"performance"`
 	Settings     SettingsConfig              `yaml:"settings"`
 }
 
@@ -56,6 +57,25 @@ type SmokeCheck struct {
 	Method         string `yaml:"method"`
 	Path           string `yaml:"path"`
 	ExpectedStatus int    `yaml:"expectedStatus"`
+}
+
+type PerformanceConfig struct {
+	Enabled    bool                  `yaml:"enabled"`
+	VUs        int                   `yaml:"vus"`
+	Duration   string                `yaml:"duration"`
+	Thresholds PerformanceThresholds `yaml:"thresholds"`
+	Endpoints  []PerformanceEndpoint `yaml:"endpoints"`
+}
+
+type PerformanceThresholds struct {
+	MaxP95LatencyMs float64 `yaml:"maxP95LatencyMs"`
+	MaxErrorRate    float64 `yaml:"maxErrorRate"`
+}
+
+type PerformanceEndpoint struct {
+	Name   string `yaml:"name"`
+	Method string `yaml:"method"`
+	Path   string `yaml:"path"`
 }
 
 type SettingsConfig struct {
@@ -141,6 +161,50 @@ func (c *Config) Validate() error {
 			}
 
 			c.Dependencies[name] = dependency
+		}
+	}
+	if c.Performance.Enabled {
+		if c.Performance.VUs <= 0 {
+			c.Performance.VUs = 10
+		}
+		if c.Performance.Duration == "" {
+			c.Performance.Duration = "15s"
+		}
+
+		if c.Performance.Thresholds.MaxP95LatencyMs <= 0 {
+			c.Performance.Thresholds.MaxP95LatencyMs = 500
+		}
+
+		if c.Performance.Thresholds.MaxErrorRate < 0 {
+			return fmt.Errorf("performance.thresholds.maxErrorRate cannot be negative")
+		}
+
+		if c.Performance.Thresholds.MaxErrorRate == 0 {
+			c.Performance.Thresholds.MaxErrorRate = 0.01
+		}
+
+		if len(c.Performance.Endpoints) == 0 {
+			for _, smoke := range c.Checks.Smoke {
+				c.Performance.Endpoints = append(c.Performance.Endpoints, PerformanceEndpoint{
+					Name:   smoke.Name,
+					Method: smoke.Method,
+					Path:   smoke.Path,
+				})
+			}
+		}
+
+		for i, endpoint := range c.Performance.Endpoints {
+			if endpoint.Name == "" {
+				return fmt.Errorf("performance.endpoints[%d].name is required", i)
+			}
+
+			if endpoint.Method == "" {
+				c.Performance.Endpoints[i].Method = "GET"
+			}
+
+			if endpoint.Path == "" {
+				return fmt.Errorf("performance.endpoints[%d].path is required", i)
+			}
 		}
 	}
 	if c.Settings.NamespacePrefix == "" {

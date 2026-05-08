@@ -7,6 +7,7 @@ import (
 	"github.com/HXong/predeploy-guard/internal/builder"
 	"github.com/HXong/predeploy-guard/internal/checker"
 	"github.com/HXong/predeploy-guard/internal/config"
+	"github.com/HXong/predeploy-guard/internal/loadtest"
 	"github.com/HXong/predeploy-guard/internal/report"
 	"github.com/HXong/predeploy-guard/internal/sandbox"
 )
@@ -137,7 +138,12 @@ func Run(cfg *config.Config) error {
 
 	serviceReadiness := report.ReadinessResult{
 		Name:   "service readiness",
-		Target: sb.BaseURL() + cfg.Service.HealthPath,
+		Target: joinURL(sb.BaseURL(), cfg.Service.HealthPath),
+	}
+
+	performanceResult := loadtest.K6Result{
+		Enabled: cfg.Performance.Enabled,
+		Passed:  !cfg.Performance.Enabled,
 	}
 
 	if dependencyErr != nil {
@@ -171,7 +177,23 @@ func Run(cfg *config.Config) error {
 				printSmokeResult(result)
 			}
 
-			passed = checker.AllPassed(results)
+			smokePassed := len(results) > 0 && checker.AllPassed(results)
+
+			if smokePassed && cfg.Performance.Enabled {
+				fmt.Println("Running performance checks with k6...")
+
+				performanceResult = loadtest.RunK6IfEnabled(cfg, sb.K6BaseURL(), sb.WorkDir)
+
+				if performanceResult.Enabled {
+					if performanceResult.Passed {
+						fmt.Println("Performance check passed")
+					} else {
+						fmt.Printf("Performance check failed: %s\n", performanceResult.Error)
+					}
+				}
+			}
+
+			passed = smokePassed && performanceResult.Passed
 		}
 	}
 
@@ -200,8 +222,20 @@ func Run(cfg *config.Config) error {
 		},
 		ReadinessResults: readinessResults,
 		Results:          results,
-		Passed:           passed,
-		Logs:             logs,
+		PerformanceResult: report.PerformanceResult{
+			Enabled:         performanceResult.Enabled,
+			Passed:          performanceResult.Passed,
+			VUs:             performanceResult.VUs,
+			Duration:        performanceResult.Duration,
+			P95LatencyMs:    performanceResult.P95LatencyMs,
+			MaxP95LatencyMs: performanceResult.MaxP95LatencyMs,
+			ErrorRate:       performanceResult.ErrorRate,
+			MaxErrorRate:    performanceResult.MaxErrorRate,
+			Error:           performanceResult.Error,
+			Output:          performanceResult.Output,
+		},
+		Passed: passed,
+		Logs:   logs,
 	})
 
 	if reportErr != nil {
@@ -223,7 +257,7 @@ func Run(cfg *config.Config) error {
 	if !passed {
 		fmt.Println("Result: FAIL")
 		fmt.Printf("Report written to: %s\n", reportPath)
-		return fmt.Errorf("one or more smoke checks failed")
+		return fmt.Errorf("one or more validation checks failed")
 	}
 
 	fmt.Println("Result: PASS")

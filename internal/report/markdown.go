@@ -59,6 +59,7 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 	writeBuildSection(&builder, data.BuildResult)
 	writeReadinessSection(&builder, data.ReadinessResults)
 	writeSmokeSection(&builder, data.Results)
+	writePerformanceSection(&builder, data.PerformanceResult)
 
 	fmt.Fprintf(&builder, "## Check Summary\n\n")
 	fmt.Fprintf(&builder, "- Readiness checks: %d total, %d passed, %d failed\n", totalReadiness, passedReadiness, failedReadiness)
@@ -188,6 +189,73 @@ func writeSmokeSection(builder *strings.Builder, results []checker.SmokeResult) 
 	}
 
 	fmt.Fprintf(builder, "\n")
+}
+
+func writePerformanceSection(builder *strings.Builder, result PerformanceResult) {
+	fmt.Fprintf(builder, "## Performance Check\n\n")
+
+	if !result.Enabled {
+		fmt.Fprintf(builder, "No performance check was configured.\n\n")
+		return
+	}
+
+	status := "FAIL"
+	if result.Passed {
+		status = "PASS"
+	}
+
+	fmt.Fprintf(builder, "### Summary\n\n")
+	fmt.Fprintf(builder, "- VUs: `%d`\n", result.VUs)
+	fmt.Fprintf(builder, "- Duration: `%s`\n", result.Duration)
+	fmt.Fprintf(builder, "- Result: **%s**\n\n", status)
+
+	fmt.Fprintf(builder, "| Metric | Value | Threshold | Result |\n")
+	fmt.Fprintf(builder, "|---|---:|---:|---|\n")
+
+	if result.Error != "" {
+		fmt.Fprintf(builder, "| p95 latency | N/A | %.2fms | N/A |\n", result.MaxP95LatencyMs)
+		fmt.Fprintf(builder, "| error rate | N/A | %.4f | N/A |\n\n", result.MaxErrorRate)
+	} else {
+		p95Status := "PASS"
+		if result.P95LatencyMs > result.MaxP95LatencyMs {
+			p95Status = "FAIL"
+		}
+
+		errorRateStatus := "PASS"
+		if result.ErrorRate > result.MaxErrorRate {
+			errorRateStatus = "FAIL"
+		}
+
+		fmt.Fprintf(
+			builder,
+			"| p95 latency | %.2fms | %.2fms | %s |\n",
+			result.P95LatencyMs,
+			result.MaxP95LatencyMs,
+			p95Status,
+		)
+
+		fmt.Fprintf(
+			builder,
+			"| error rate | %.4f | %.4f | %s |\n\n",
+			result.ErrorRate,
+			result.MaxErrorRate,
+			errorRateStatus,
+		)
+	}
+
+	if result.Error != "" {
+		fmt.Fprintf(builder, "### Performance Error\n\n")
+		fmt.Fprintf(builder, "```txt\n")
+		fmt.Fprintf(builder, "%s", result.Error)
+		fmt.Fprintf(builder, "\n```\n\n")
+	}
+
+	if result.Output != "" && !result.Passed {
+		fmt.Fprintf(builder, "### k6 Output\n\n")
+		fmt.Fprintf(builder, "```txt\n")
+		fmt.Fprintf(builder, "%s", result.Output)
+		fmt.Fprintf(builder, "\n```\n\n")
+	}
 }
 
 func buildReportFilename(serviceName string, timestamp time.Time) string {

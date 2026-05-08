@@ -2,6 +2,7 @@ package runner
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/HXong/predeploy-guard/internal/checker"
 )
@@ -33,4 +34,10 @@ func printSmokeResult(result checker.SmokeResult) {
 		result.ActualStatus,
 		result.Duration,
 	)
+}
+
+func joinURL(baseURL string, path string) string {
+	baseURL = strings.TrimRight(baseURL, "/")
+	path = strings.TrimLeft(path, "/")
+	return baseURL + "/" + path
 }

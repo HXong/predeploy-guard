@@ -92,3 +92,7 @@ func (s *ComposeSandbox) RemoveFiles() error {
 func (s *ComposeSandbox) BaseURL() string {
 	return fmt.Sprintf("http://localhost:%d", s.HostPort)
 }
+
+func (s *ComposeSandbox) K6BaseURL() string {
+	return fmt.Sprintf("http://host.docker.internal:%d", s.HostPort)
+}

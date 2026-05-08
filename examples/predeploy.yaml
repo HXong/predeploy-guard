@@ -47,6 +47,22 @@ checks:
       path: /api/bookings
       expectedStatus: 200
 
+performance:
+  enabled: true
+  vus: 10
+  duration: 15s
+  thresholds:
+    maxP95LatencyMs: 300
+    maxErrorRate: 0.01
+  endpoints:
+    - name: health check load
+      method: GET
+      path: /health
+
+    - name: bookings load
+      method: GET
+      path: /api/bookings
+
 settings:
   cleanup: true
   timeoutSeconds: 60
