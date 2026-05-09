@@ -192,10 +192,10 @@ func writeSmokeSection(builder *strings.Builder, results []checker.SmokeResult) 
 }
 
 func writePerformanceSection(builder *strings.Builder, result PerformanceResult) {
-	fmt.Fprintf(builder, "## Performance Check\n\n")
+	builder.WriteString("## Performance Check\n\n")
 
 	if !result.Enabled {
-		fmt.Fprintf(builder, "No performance check was configured.\n\n")
+		builder.WriteString("No performance check was configured.\n\n")
 		return
 	}
 
@@ -204,13 +204,13 @@ func writePerformanceSection(builder *strings.Builder, result PerformanceResult)
 		status = "PASS"
 	}
 
-	fmt.Fprintf(builder, "### Summary\n\n")
+	builder.WriteString("### Summary\n\n")
 	fmt.Fprintf(builder, "- VUs: `%d`\n", result.VUs)
 	fmt.Fprintf(builder, "- Duration: `%s`\n", result.Duration)
 	fmt.Fprintf(builder, "- Result: **%s**\n\n", status)
 
-	fmt.Fprintf(builder, "| Metric | Value | Threshold | Result |\n")
-	fmt.Fprintf(builder, "|---|---:|---:|---|\n")
+	builder.WriteString("| Metric | Value | Threshold | Result |\n")
+	builder.WriteString("|---|---:|---:|---|\n")
 
 	if result.Error != "" {
 		fmt.Fprintf(builder, "| p95 latency | N/A | %.2fms | N/A |\n", result.MaxP95LatencyMs)
@@ -244,29 +244,30 @@ func writePerformanceSection(builder *strings.Builder, result PerformanceResult)
 	}
 
 	if result.Error != "" {
-		fmt.Fprintf(builder, "### Performance Error\n\n")
-		fmt.Fprintf(builder, "```txt\n")
-		fmt.Fprintf(builder, "%s", result.Error)
-		fmt.Fprintf(builder, "\n```\n\n")
+		builder.WriteString("### Performance Error\n\n")
+		builder.WriteString("```txt\n")
+		builder.WriteString(result.Error)
+		builder.WriteString("\n```\n\n")
 	}
 
 	if result.Output != "" && !result.Passed {
-		fmt.Fprintf(builder, "### k6 Output\n\n")
-		fmt.Fprintf(builder, "```txt\n")
-		fmt.Fprintf(builder, "%s", result.Output)
-		fmt.Fprintf(builder, "\n```\n\n")
+		builder.WriteString("### k6 Output\n\n")
+		builder.WriteString("```txt\n")
+		builder.WriteString(result.Output)
+		builder.WriteString("\n```\n\n")
 	}
 }
 
-func buildReportFilename(serviceName string, timestamp time.Time) string {
+func buildReportFilename(serviceName string, timestamp time.Time, extension string) string {
 	cleanName := strings.ToLower(serviceName)
 	cleanName = strings.ReplaceAll(cleanName, "_", "-")
 	cleanName = strings.ReplaceAll(cleanName, " ", "-")
 
 	return fmt.Sprintf(
-		"predeploy-%s-%s.md",
+		"predeploy-%s-%s.%s",
 		cleanName,
 		timestamp.Format("2006-01-02-150405"),
+		extension,
 	)
 }
 

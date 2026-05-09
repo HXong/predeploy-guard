@@ -31,7 +31,7 @@ func Run(cfg *config.Config) error {
 
 			finishedAt := time.Now()
 
-			reportPath, reportErr := report.WriteMarkdown(cfg, report.ReportData{
+			reportData := report.ReportData{
 				ServiceName: cfg.Service.Name,
 				Image:       cfg.Service.Image,
 				Runtime:     cfg.Runtime.Type,
@@ -48,14 +48,15 @@ func Run(cfg *config.Config) error {
 					Output:     buildResult.Output,
 				},
 				Passed: false,
-			})
+			}
 
+			paths, reportErr := writeReports(cfg, reportData)
 			if reportErr != nil {
 				return reportErr
 			}
 
 			fmt.Println("Result: FAIL")
-			fmt.Printf("Report written to: %s\n", reportPath)
+			printReportPaths(paths)
 
 			return fmt.Errorf("%s", buildResult.Error)
 		}
@@ -204,7 +205,7 @@ func Run(cfg *config.Config) error {
 
 	finishedAt := time.Now()
 
-	reportPath, reportErr := report.WriteMarkdown(cfg, report.ReportData{
+	reportData := report.ReportData{
 		ServiceName: cfg.Service.Name,
 		Image:       cfg.Service.Image,
 		Runtime:     cfg.Runtime.Type,
@@ -236,32 +237,33 @@ func Run(cfg *config.Config) error {
 		},
 		Passed: passed,
 		Logs:   logs,
-	})
+	}
 
+	paths, reportErr := writeReports(cfg, reportData)
 	if reportErr != nil {
 		return reportErr
 	}
 
 	if dependencyErr != nil {
 		fmt.Println("Result: FAIL")
-		fmt.Printf("Report written to: %s\n", reportPath)
+		printReportPaths(paths)
 		return dependencyErr
 	}
 
 	if readinessErr != nil {
 		fmt.Println("Result: FAIL")
-		fmt.Printf("Report written to: %s\n", reportPath)
+		printReportPaths(paths)
 		return readinessErr
 	}
 
 	if !passed {
 		fmt.Println("Result: FAIL")
-		fmt.Printf("Report written to: %s\n", reportPath)
+		printReportPaths(paths)
 		return fmt.Errorf("one or more validation checks failed")
 	}
 
 	fmt.Println("Result: PASS")
-	fmt.Printf("Report written to: %s\n", reportPath)
+	printReportPaths(paths)
 
 	return nil
 }

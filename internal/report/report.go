@@ -1,6 +1,7 @@
 package report
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -60,13 +61,33 @@ func WriteMarkdown(cfg *config.Config, data ReportData) (string, error) {
 		return "", fmt.Errorf("create reports directory: %w", err)
 	}
 
-	filename := buildReportFilename(cfg.Service.Name, data.StartedAt)
+	filename := buildReportFilename(cfg.Service.Name, data.StartedAt, "md")
 	reportPath := filepath.Join("reports", filename)
 
 	content := buildMarkdown(cfg, data)
 
 	if err := os.WriteFile(reportPath, []byte(content), 0644); err != nil {
 		return "", fmt.Errorf("write markdown report: %w", err)
+	}
+
+	return reportPath, nil
+}
+
+func WriteJSON(cfg *config.Config, data ReportData) (string, error) {
+	if err := os.MkdirAll("reports", 0755); err != nil {
+		return "", fmt.Errorf("create reports directory: %w", err)
+	}
+
+	filename := buildReportFilename(cfg.Service.Name, data.StartedAt, "json")
+	reportPath := filepath.Join("reports", filename)
+
+	content, err := json.MarshalIndent(data, "", " ")
+	if err != nil {
+		return "", fmt.Errorf("marshal json report: %w", err)
+	}
+
+	if err := os.WriteFile(reportPath, content, 0644); err != nil {
+		return "", fmt.Errorf("write json report: %w", err)
 	}
 
 	return reportPath, nil

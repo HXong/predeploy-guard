@@ -10,14 +10,15 @@ import (
 )
 
 type SmokeResult struct {
-	Name           string
-	Method         string
-	URL            string
-	ExpectedStatus int
-	ActualStatus   int
-	Passed         bool
-	Error          string
-	Duration       time.Duration
+	Name           string        `json:"name"`
+	Method         string        `json:"method"`
+	URL            string        `json:"url"`
+	ExpectedStatus int           `json:"expectedStatus"`
+	ActualStatus   int           `json:"actualStatus"`
+	Passed         bool          `json:"passed"`
+	Error          string        `json:"error,omitempty"`
+	Duration       time.Duration `json:"duration"`
+	DurationMs     float64       `json:"durationMs"`
 }
 
 func WaitUntilReady(baseURL string, healthPath string, timeoutSeconds int) error {
@@ -79,12 +80,14 @@ func runSingleSmokeCheck(client *http.Client, baseURL string, check config.Smoke
 	if err != nil {
 		result.Error = err.Error()
 		result.Duration = time.Since(start)
+		result.DurationMs = float64(result.Duration.Microseconds()) / 1000.0
 		return result
 	}
 	defer resp.Body.Close()
 
 	result.ActualStatus = resp.StatusCode
 	result.Duration = time.Since(start)
+	result.DurationMs = float64(result.Duration.Microseconds()) / 1000.0
 	result.Passed = resp.StatusCode == check.ExpectedStatus
 
 	return result
