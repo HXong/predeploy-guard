@@ -52,7 +52,7 @@ Markdown Deployment Report
 
 ## Features
 
-Current Phase 1 MVP features:
+Current features:
 
 - CLI-based workflow
 - YAML configuration
@@ -64,9 +64,16 @@ Current Phase 1 MVP features:
 - Service readiness checks
 - HTTP smoke checks
 - Container log collection on failure
-- Markdown report generation
+- Markdown and JSON report generation
 - Automatic cleanup
 - Example Go backend service with PostgreSQL and Redis
+- Dockerized k6 performance checks
+- Performance thresholds for p95 latency and error rate
+- Rich performance metrics
+- Markdown and JSON report generation
+- Config-relative path resolution
+- Config validation command
+- GitHub Actions workflow support
 
 ---
 
@@ -156,7 +163,14 @@ git clone <your-repo-url>
 cd predeploy-guard
 ```
 
-### 2. Run PreDeploy Guard
+### 2. PreDeploy validate
+```bash
+go run ./cmd/predeploy validate examples/predeploy.yaml
+```
+
+The validate command checks the YAML config, resolves build paths relative to the config file, and prints a summary without starting Docker.
+
+### 3. Run PreDeploy Guard
 
 ```bash
 go run ./cmd/predeploy run examples/predeploy.yaml
@@ -171,8 +185,9 @@ The tool will:
 5. Wait for dependency readiness
 6. Wait for service readiness
 7. Run smoke checks
-8. Generate a Markdown report
-9. Clean up the sandbox
+8. Run k6 performance checks
+9. Generate Markdown and JSON reports
+10. Clean up the sandbox
 
 ---
 
@@ -188,7 +203,7 @@ service:
   name: booking-service
   image: predeploy-sample-service:latest
   build:
-    context: examples/sample-service
+    context: sample-service
     dockerfile: Dockerfile
   port: 8080
   healthPath: /health
@@ -229,6 +244,22 @@ checks:
       method: GET
       path: /api/bookings
       expectedStatus: 200
+
+performance:
+  enabled: true
+  vus: 10
+  duration: 15s
+  thresholds:
+    maxP95LatencyMs: 300
+    maxErrorRate: 0.01
+  endpoints:
+    - name: health check load
+      method: GET
+      path: /health
+
+    - name: bookings load
+      method: GET
+      path: /api/bookings
 
 settings:
   cleanup: true
@@ -402,7 +433,10 @@ Removing sandbox files...
 
 ## Report Example
 
-PreDeploy Guard generates a Markdown report under `reports/`.
+PreDeploy Guard generates both Markdown and JSON reports under a `reports/` directory next to the `predeploy.yaml` file.
+
+- Markdown reports are for humans.
+- JSON reports are for automation and CI/CD.
 
 Example sections:
 
@@ -512,74 +546,36 @@ PreDeploy Guard checks dependency readiness before validating the target service
 This is the Phase 1 MVP, so there are several known limitations:
 
 - Docker Compose runtime only
-- Local development only
-- No Kubernetes runtime yet
-- No k6 load testing yet
-- No JSON report output yet
-- No GitHub Actions integration yet
-- No secret management
-- No API gateway or ingress latency simulation
+- Local development focused
+- Kubernetes runtime not implemented yet
+- No GUI/config wizard yet
+- No API gateway or ingress latency simulation yet
 - Dependency readiness depends on user-provided commands
-- Only simple HTTP smoke checks are supported
+- Smoke checks currently support simple HTTP status validation
 
 ---
 
 ## Roadmap
 
-Planned future phases:
+### Completed:
+- Phase 1: Docker Compose validation MVP
+- Phase 2: Dockerized k6, JSON reports, richer metrics, validation command, GitHub Actions workflow
 
-### Phase 2: Performance Checks
+### Next Developements:
+- Phase 3: Config usability
+  - predeploy init
+  - config templates
+  - dependency presets
+  - profile support
 
-- Add k6 support
-- Define latency thresholds
-- Define error-rate thresholds
-- Include performance summary in reports
-
-Example future config:
-
-```yaml
-load:
-  enabled: true
-  vus: 20
-  duration: 30s
-  thresholds:
-    maxP95LatencyMs: 300
-    maxErrorRate: 0.01
-```
-
----
-
-### Phase 3: Machine-Readable Reports
-
-- Add JSON report output
-- Support CI/CD parsing
-- Allow pass/fail gating in pipelines
-
----
-
-### Phase 4: CI/CD Integration
-
-- GitHub Actions example
-- Run PreDeploy Guard before deployment
-- Upload report as build artifact
-
----
-
-### Phase 5: Kubernetes Runtime
-
-- Support existing Kubernetes clusters
-- Create temporary namespaces
-- Deploy target services using Kubernetes manifests or Helm
-- Run readiness and smoke checks inside a cluster environment
-
----
-
-### Phase 6: API Gateway and Ingress Testing
-
-- Support gateway configuration
-- Test routing latency
-- Test ingress behavior
-- Compare direct service latency vs gateway latency
+### Future:
+- GUI/platform mode inspired by GDP
+  - guided YAML builder
+  - dependency wizard
+  - k6 profile builder
+  - report dashboard
+  - GitHub Actions workflow generator
+  - Kubernetes runtime support
 
 ---
 
