@@ -9,23 +9,47 @@ import (
 )
 
 type K6Result struct {
-	Enabled         bool
-	Passed          bool
-	VUs             int
-	Duration        string
+	Enabled  bool
+	Passed   bool
+	VUs      int
+	Duration string
+
+	AvgLatencyMs    float64
+	MinLatencyMs    float64
+	MedianLatencyMs float64
+	MaxLatencyMs    float64
+	P90LatencyMs    float64
 	P95LatencyMs    float64
 	MaxP95LatencyMs float64
-	ErrorRate       float64
-	MaxErrorRate    float64
-	ScriptPath      string
-	SummaryPath     string
-	Error           string
-	Output          string
+
+	ErrorRate    float64
+	MaxErrorRate float64
+
+	RequestCount  int64
+	Iterations    int64
+	ChecksTotal   int64
+	CheckPassRate float64
+
+	ScriptPath  string
+	SummaryPath string
+	Error       string
+	Output      string
 }
 
 type predeployK6Summary struct {
-	P95LatencyMs *float64 `json:"p95LatencyMs"`
-	ErrorRate    *float64 `json:"errorRate"`
+	AvgLatencyMs    *float64 `json:"avgLatencyMs"`
+	MinLatencyMs    *float64 `json:"minLatencyMs"`
+	MedianLatencyMs *float64 `json:"medianLatencyMs"`
+	MaxLatencyMs    *float64 `json:"maxLatencyMs"`
+	P90LatencyMs    *float64 `json:"p90LatencyMs"`
+	P95LatencyMs    *float64 `json:"p95LatencyMs"`
+
+	ErrorRate *float64 `json:"errorRate"`
+
+	RequestCount  *int64   `json:"requestCount"`
+	Iterations    *int64   `json:"iterations"`
+	ChecksTotal   *int64   `json:"checksTotal"`
+	CheckPassRate *float64 `json:"checkPassRate"`
 }
 
 func RunK6IfEnabled(cfg *config.Config, K6BaseURL string, workDir string) K6Result {

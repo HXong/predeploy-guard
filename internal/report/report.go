@@ -44,16 +44,29 @@ type ReadinessResult struct {
 }
 
 type PerformanceResult struct {
-	Enabled         bool
-	Passed          bool
-	VUs             int
-	Duration        string
-	P95LatencyMs    float64
-	MaxP95LatencyMs float64
-	ErrorRate       float64
-	MaxErrorRate    float64
-	Error           string
-	Output          string
+	Enabled  bool   `json:"enabled"`
+	Passed   bool   `json:"passed"`
+	VUs      int    `json:"vus"`
+	Duration string `json:"duration"`
+
+	AvgLatencyMs    float64 `json:"avgLatencyMs"`
+	MinLatencyMs    float64 `json:"minLatencyMs"`
+	MedianLatencyMs float64 `json:"medianLatencyMs"`
+	MaxLatencyMs    float64 `json:"maxLatencyMs"`
+	P90LatencyMs    float64 `json:"p90LatencyMs"`
+	P95LatencyMs    float64 `json:"p95LatencyMs"`
+	MaxP95LatencyMs float64 `json:"maxP95LatencyMs"`
+
+	ErrorRate    float64 `json:"errorRate"`
+	MaxErrorRate float64 `json:"maxErrorRate"`
+
+	RequestCount  int64   `json:"requestCount"`
+	Iterations    int64   `json:"iterations"`
+	ChecksTotal   int64   `json:"checksTotal"`
+	CheckPassRate float64 `json:"checkPassRate"`
+
+	Error  string `json:"error,omitempty"`
+	Output string `json:"output,omitempty"`
 }
 
 func WriteMarkdown(cfg *config.Config, data ReportData) (string, error) {

@@ -209,18 +209,48 @@ func writePerformanceSection(builder *strings.Builder, result PerformanceResult)
 	fmt.Fprintf(builder, "- Duration: `%s`\n", result.Duration)
 	fmt.Fprintf(builder, "- Result: **%s**\n\n", status)
 
+	builder.WriteString("### Latency Metrics\n\n")
 	builder.WriteString("| Metric | Value | Threshold | Result |\n")
 	builder.WriteString("|---|---:|---:|---|\n")
 
 	if result.Error != "" {
-		fmt.Fprintf(builder, "| p95 latency | N/A | %.2fms | N/A |\n", result.MaxP95LatencyMs)
-		fmt.Fprintf(builder, "| error rate | N/A | %.4f | N/A |\n\n", result.MaxErrorRate)
+		fmt.Fprintf(builder, "| avg latency | N/A | - | N/A |\n")
+		fmt.Fprintf(builder, "| min latency | N/A | - | N/A |\n")
+		fmt.Fprintf(builder, "| median latency | N/A | - | N/A |\n")
+		fmt.Fprintf(builder, "| max latency | N/A | - | N/A |\n")
+		fmt.Fprintf(builder, "| p90 latency | N/A | - | N/A |\n")
+		fmt.Fprintf(builder, "| p95 latency | N/A | %.2fms | N/A |\n\n", result.MaxP95LatencyMs)
 	} else {
 		p95Status := "PASS"
 		if result.P95LatencyMs > result.MaxP95LatencyMs {
 			p95Status = "FAIL"
 		}
 
+		fmt.Fprintf(builder, "| avg latency | %.2fms | - | - |\n", result.AvgLatencyMs)
+		fmt.Fprintf(builder, "| min latency | %.2fms | - | - |\n", result.MinLatencyMs)
+		fmt.Fprintf(builder, "| median latency | %.2fms | - | - |\n", result.MedianLatencyMs)
+		fmt.Fprintf(builder, "| max latency | %.2fms | - | - |\n", result.MaxLatencyMs)
+		fmt.Fprintf(builder, "| p90 latency | %.2fms | - | - |\n", result.P90LatencyMs)
+		fmt.Fprintf(
+			builder,
+			"| p95 latency | %.2fms | %.2fms | %s |\n\n",
+			result.P95LatencyMs,
+			result.MaxP95LatencyMs,
+			p95Status,
+		)
+	}
+
+	builder.WriteString("### Reliability Metrics\n\n")
+	builder.WriteString("| Metric | Value | Threshold | Result |\n")
+	builder.WriteString("|---|---:|---:|---|\n")
+
+	if result.Error != "" {
+		fmt.Fprintf(builder, "| error rate | N/A | %.4f | N/A |\n", result.MaxErrorRate)
+		fmt.Fprintf(builder, "| request count | N/A | - | N/A |\n")
+		fmt.Fprintf(builder, "| iterations | N/A | - | N/A |\n")
+		fmt.Fprintf(builder, "| checks total | N/A | - | N/A |\n")
+		fmt.Fprintf(builder, "| check pass rate | N/A | 1.0000 | N/A |\n\n")
+	} else {
 		errorRateStatus := "PASS"
 		if result.ErrorRate > result.MaxErrorRate {
 			errorRateStatus = "FAIL"
@@ -228,19 +258,21 @@ func writePerformanceSection(builder *strings.Builder, result PerformanceResult)
 
 		fmt.Fprintf(
 			builder,
-			"| p95 latency | %.2fms | %.2fms | %s |\n",
-			result.P95LatencyMs,
-			result.MaxP95LatencyMs,
-			p95Status,
-		)
-
-		fmt.Fprintf(
-			builder,
-			"| error rate | %.4f | %.4f | %s |\n\n",
+			"| error rate | %.4f | %.4f | %s |\n",
 			result.ErrorRate,
 			result.MaxErrorRate,
 			errorRateStatus,
 		)
+		fmt.Fprintf(builder, "| request count | %d | - | - |\n", result.RequestCount)
+		fmt.Fprintf(builder, "| iterations | %d | - | - |\n", result.Iterations)
+
+		checkStatus := "PASS"
+		if result.CheckPassRate < 1 {
+			checkStatus = "FAIL"
+		}
+
+		fmt.Fprintf(builder, "| checks total | %d | - | - |\n", result.ChecksTotal)
+		fmt.Fprintf(builder, "| check pass rate | %.4f | 1.0000 | %s |\n\n", result.CheckPassRate, checkStatus)
 	}
 
 	if result.Error != "" {
