@@ -3,7 +3,6 @@ package builder
 import (
 	"fmt"
 	"os/exec"
-	"path/filepath"
 
 	"github.com/HXong/predeploy-guard/internal/config"
 )
@@ -33,18 +32,17 @@ func BuildImageIfNeeded(cfg *config.Config) BuildResult {
 		return result
 	}
 
-	dockerfilePath := filepath.Join(build.Context, build.Dockerfile)
-
 	cmd := exec.Command(
 		"docker",
 		"build",
 		"-t",
 		cfg.Service.Image,
 		"-f",
-		dockerfilePath,
-		build.Context,
+		build.Dockerfile,
+		".",
 	)
 
+	cmd.Dir = build.Context
 	output, err := cmd.CombinedOutput()
 	result.Output = string(output)
 

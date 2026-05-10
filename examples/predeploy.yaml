@@ -5,7 +5,7 @@ service:
   name: booking-service
   image: predeploy-sample-service:latest
   build:
-    context: examples/sample-service
+    context: sample-service
     dockerfile: Dockerfile
   port: 8080
   healthPath: /health

@@ -3,11 +3,14 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
+	ConfigDir string `yaml:"-"`
+
 	Runtime      RuntimeConfig               `yaml:"runtime"`
 	Service      ServiceConfig               `yaml:"service"`
 	Dependencies map[string]DependencyConfig `yaml:"dependencies"`
@@ -93,6 +96,17 @@ func Load(path string) (*Config, error) {
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
+	}
+
+	configDir, err := filepath.Abs(filepath.Dir(path))
+	if err != nil {
+		return nil, fmt.Errorf("resolve config directory: %w", err)
+	}
+
+	cfg.ConfigDir = configDir
+
+	if err := cfg.ResolvePaths(); err != nil {
+		return nil, err
 	}
 
 	if err := cfg.Validate(); err != nil {
