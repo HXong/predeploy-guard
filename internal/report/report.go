@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/HXong/predeploy-guard/internal/checker"
@@ -70,38 +69,34 @@ type PerformanceResult struct {
 }
 
 func WriteMarkdown(cfg *config.Config, data ReportData) (string, error) {
-	if err := os.MkdirAll("reports", 0755); err != nil {
-		return "", fmt.Errorf("create reports directory: %w", err)
+	path, err := reportPath(cfg, data, "md")
+	if err != nil {
+		return "", err
 	}
-
-	filename := buildReportFilename(cfg.Service.Name, data.StartedAt, "md")
-	reportPath := filepath.Join("reports", filename)
 
 	content := buildMarkdown(cfg, data)
 
-	if err := os.WriteFile(reportPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		return "", fmt.Errorf("write markdown report: %w", err)
 	}
 
-	return reportPath, nil
+	return path, nil
 }
 
 func WriteJSON(cfg *config.Config, data ReportData) (string, error) {
-	if err := os.MkdirAll("reports", 0755); err != nil {
-		return "", fmt.Errorf("create reports directory: %w", err)
+	path, err := reportPath(cfg, data, "json")
+	if err != nil {
+		return "", err
 	}
 
-	filename := buildReportFilename(cfg.Service.Name, data.StartedAt, "json")
-	reportPath := filepath.Join("reports", filename)
-
-	content, err := json.MarshalIndent(data, "", " ")
+	content, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("marshal json report: %w", err)
 	}
 
-	if err := os.WriteFile(reportPath, content, 0644); err != nil {
+	if err := os.WriteFile(path, content, 0644); err != nil {
 		return "", fmt.Errorf("write json report: %w", err)
 	}
 
-	return reportPath, nil
+	return path, nil
 }

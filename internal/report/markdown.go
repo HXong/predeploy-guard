@@ -116,7 +116,7 @@ func writeBuildSection(builder *strings.Builder, result BuildResult) {
 	if result.Output != "" && !result.Passed {
 		fmt.Fprintf(builder, "### Build Output\n\n")
 		fmt.Fprintf(builder, "```txt\n")
-		fmt.Fprintf(builder, result.Output)
+		builder.WriteString(result.Output)
 		fmt.Fprintf(builder, "\n```\n\n")
 	}
 }

@@ -9,7 +9,8 @@ import (
 )
 
 type Config struct {
-	ConfigDir string `yaml:"-"`
+	ConfigPath string `yaml:"-"`
+	ConfigDir  string `yaml:"-"`
 
 	Runtime      RuntimeConfig               `yaml:"runtime"`
 	Service      ServiceConfig               `yaml:"service"`
@@ -98,12 +99,13 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
 	}
 
-	configDir, err := filepath.Abs(filepath.Dir(path))
+	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return nil, fmt.Errorf("resolve config directory: %w", err)
+		return nil, fmt.Errorf("resolve config path: %w", err)
 	}
 
-	cfg.ConfigDir = configDir
+	cfg.ConfigPath = absPath
+	cfg.ConfigDir = filepath.Dir(absPath)
 
 	if err := cfg.ResolvePaths(); err != nil {
 		return nil, err

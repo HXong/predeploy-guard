@@ -1,0 +1,42 @@
+name: PreDeploy Guard
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  predeploy:
+    name: Run PreDeploy Guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Verify Docker
+        run: |
+          docker version
+          docker compose version
+
+      - name: Download Go dependencies
+        run: go mod download
+
+      - name: Validate PreDeploy config
+        run: go run ./cmd/predeploy validate examples/predeploy.yaml
+
+      - name: Run PreDeploy Guard
+        run: go run ./cmd/predeploy run examples/predeploy.yaml
+
+      - name: Upload PreDeploy reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: predeploy-reports
+          path: reports/
