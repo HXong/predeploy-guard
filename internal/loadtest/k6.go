@@ -87,7 +87,7 @@ func RunK6IfEnabled(cfg *config.Config, K6BaseURL string, workDir string) K6Resu
 
 	if err != nil {
 		result.Passed = false
-		result.Error = fmt.Sprintf("k6 docker run failed: %v", err)
+		result.Error = fmt.Sprintf("k6 docker run failed: %v\nOutput:\n%s", err, output)
 		return result
 	}
 

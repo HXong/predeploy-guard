@@ -543,7 +543,7 @@ PreDeploy Guard checks dependency readiness before validating the target service
 
 ## Current Limitations
 
-This is the Phase 1 MVP, so there are several known limitations:
+This is the Phase 2 MVP, so there are several known limitations:
 
 - Docker Compose runtime only
 - Local development focused

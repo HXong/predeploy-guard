@@ -20,6 +20,8 @@ func runK6Docker(workDir string) (string, error) {
 		"docker",
 		"run",
 		"--rm",
+		"--add-host",
+		"host.docker.internal:host-gateway",
 		"-v",
 		fmt.Sprintf("%s:/scripts", mountPath),
 		K6DockerImage,
