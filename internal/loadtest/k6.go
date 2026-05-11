@@ -68,8 +68,16 @@ func RunK6IfEnabled(cfg *config.Config, K6BaseURL string, workDir string) K6Resu
 		return result
 	}
 
-	scriptPath := filepath.Join(workDir, "predeploy-k6.js")
-	summaryPath := filepath.Join(workDir, "predeploy-summary.json")
+	k6WorkDir := filepath.Join(workDir, "k6")
+
+	if err := os.MkdirAll(k6WorkDir, 0755); err != nil {
+		result.Passed = false
+		result.Error = fmt.Sprintf("create k6 work directory: %v", err)
+		return result
+	}
+
+	scriptPath := filepath.Join(k6WorkDir, "predeploy-k6.js")
+	summaryPath := filepath.Join(k6WorkDir, "predeploy-summary.json")
 
 	result.ScriptPath = scriptPath
 	result.SummaryPath = summaryPath
@@ -82,7 +90,13 @@ func RunK6IfEnabled(cfg *config.Config, K6BaseURL string, workDir string) K6Resu
 		return result
 	}
 
-	output, err := runK6Docker(workDir)
+	if err := os.Chmod(scriptPath, 0644); err != nil {
+		result.Passed = false
+		result.Error = fmt.Sprintf("set k6 script permissions: %v", err)
+		return result
+	}
+
+	output, err := runK6Docker(k6WorkDir)
 	result.Output = output
 
 	if err != nil {

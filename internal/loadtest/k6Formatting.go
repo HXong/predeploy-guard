@@ -20,6 +20,8 @@ func runK6Docker(workDir string) (string, error) {
 		"docker",
 		"run",
 		"--rm",
+		"--user",
+		"0:0",
 		"--add-host",
 		"host.docker.internal:host-gateway",
 		"-v",
