@@ -13,12 +13,17 @@ import (
 func main() {
 	var initOutputPath string
 	var initForce bool
+	var initDependencies string
 
 	initCmd := &cobra.Command{
 		Use:   "init",
 		Short: "Create a starter predeploy.yaml config",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := scaffold.WriteDefaultConfig(initOutputPath, initForce); err != nil {
+			if err := scaffold.WriteDefaultConfig(scaffold.InitOptions{
+				OutputPath:   initOutputPath,
+				Overwrite:    initForce,
+				Dependencies: initDependencies,
+			}); err != nil {
 				return err
 			}
 
@@ -37,8 +42,28 @@ func main() {
 		},
 	}
 
-	initCmd.Flags().StringVarP(&initOutputPath, "output", "o", scaffold.DefaultConfigFilename, "Output path for generated config")
-	initCmd.Flags().BoolVarP(&initForce, "force", "f", false, "Overwrite existing config file")
+	initCmd.Flags().StringVarP(
+		&initOutputPath,
+		"output",
+		"o",
+		scaffold.DefaultConfigFilename,
+		"Output path for generated config",
+	)
+
+	initCmd.Flags().BoolVarP(
+		&initForce,
+		"force",
+		"f",
+		false,
+		"Overwrite existing config file",
+	)
+
+	initCmd.Flags().StringVar(
+		&initDependencies,
+		"with",
+		"",
+		"Comma-separated dependency presets to include, e.g. postgres,redis",
+	)
 
 	rootCmd := &cobra.Command{
 		Use:   "predeploy",

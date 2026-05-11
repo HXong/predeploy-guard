@@ -1,14 +1,58 @@
 package scaffold
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
 const DefaultConfigFilename = "predeploy.yaml"
 
-const DefaultPredeployYAML = `runtime:
+type InitOptions struct {
+	OutputPath   string
+	Overwrite    bool
+	Dependencies string
+}
+
+func WriteDefaultConfig(options InitOptions) error {
+	outputPath := options.OutputPath
+	if outputPath == "" {
+		outputPath = DefaultConfigFilename
+	}
+
+	absPath, err := filepath.Abs(outputPath)
+	if err != nil {
+		return fmt.Errorf("resolve output path: %w", err)
+	}
+
+	if !options.Overwrite {
+		if _, err := os.Stat(absPath); err == nil {
+			return fmt.Errorf("config file already exists: %s; use --force to overwrite", absPath)
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("check existing config file: %w", err)
+		}
+	}
+
+	presets, err := GetDependencyPresets(options.Dependencies)
+	if err != nil {
+		return err
+	}
+
+	content := buildDefaultConfig(presets)
+
+	if err := os.WriteFile(absPath, []byte(content), 0644); err != nil {
+		return fmt.Errorf("write default config: %w", err)
+	}
+
+	return nil
+}
+
+func buildDefaultConfig(presets []DependencyPreset) string {
+	var builder bytes.Buffer
+
+	builder.WriteString(`runtime:
   type: docker-compose
 
 service:
@@ -19,7 +63,12 @@ service:
     dockerfile: Dockerfile
   port: 8080
   healthPath: /health
+`)
 
+	writeServiceEnvBlock(&builder, presets)
+	writeDependenciesBlock(&builder, presets)
+
+	builder.WriteString(`
 checks:
   smoke:
     - name: health check
@@ -42,29 +91,45 @@ performance:
 settings:
   cleanup: true
   timeoutSeconds: 60
-`
+`)
 
-func WriteDefaultConfig(outputPath string, overwrite bool) error {
-	if outputPath == "" {
-		outputPath = DefaultConfigFilename
-	}
+	return builder.String()
+}
 
-	absPath, err := filepath.Abs(outputPath)
-	if err != nil {
-		return fmt.Errorf("resolve output path: %w", err)
-	}
+func writeServiceEnvBlock(builder *bytes.Buffer, presets []DependencyPreset) {
+	env := make(map[string]string)
 
-	if !overwrite {
-		if _, err := os.Stat(absPath); err == nil {
-			return fmt.Errorf("config file already exists: %s; use --force to overwrite", absPath)
-		} else if !os.IsNotExist(err) {
-			return fmt.Errorf("check existing config file: %w", err)
+	for _, preset := range presets {
+		for key, value := range preset.Env {
+			env[key] = value
 		}
 	}
 
-	if err := os.WriteFile(absPath, []byte(DefaultPredeployYAML), 0644); err != nil {
-		return fmt.Errorf("write default config: %w", err)
+	if len(env) == 0 {
+		return
 	}
 
-	return nil
+	builder.WriteString("  env:\n")
+
+	keys := make([]string, 0, len(env))
+	for key := range env {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		fmt.Fprintf(builder, "    %s: %q\n", key, env[key])
+	}
+}
+
+func writeDependenciesBlock(builder *bytes.Buffer, presets []DependencyPreset) {
+	if len(presets) == 0 {
+		return
+	}
+
+	builder.WriteString("\ndependencies:\n")
+
+	for _, preset := range presets {
+		builder.WriteString(preset.YAML)
+	}
 }
