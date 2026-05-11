@@ -6,10 +6,40 @@ import (
 
 	"github.com/HXong/predeploy-guard/internal/config"
 	"github.com/HXong/predeploy-guard/internal/runner"
+	"github.com/HXong/predeploy-guard/internal/scaffold"
 	"github.com/spf13/cobra"
 )
 
 func main() {
+	var initOutputPath string
+	var initForce bool
+
+	initCmd := &cobra.Command{
+		Use:   "init",
+		Short: "Create a starter predeploy.yaml config",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := scaffold.WriteDefaultConfig(initOutputPath, initForce); err != nil {
+				return err
+			}
+
+			output := initOutputPath
+			if output == "" {
+				output = scaffold.DefaultConfigFilename
+			}
+
+			fmt.Printf("Created %s\n", output)
+			fmt.Println("Next steps:")
+			fmt.Printf("  1. Edit %s for your service\n", output)
+			fmt.Printf("  2. Run: predeploy validate %s\n", output)
+			fmt.Printf("  3. Run: predeploy run %s\n", output)
+
+			return nil
+		},
+	}
+
+	initCmd.Flags().StringVarP(&initOutputPath, "output", "o", scaffold.DefaultConfigFilename, "Output path for generated config")
+	initCmd.Flags().BoolVarP(&initForce, "force", "f", false, "Overwrite existing config file")
+
 	rootCmd := &cobra.Command{
 		Use:   "predeploy",
 		Short: "PreDeploy Guard validates backend services before deployment",
@@ -52,6 +82,7 @@ func main() {
 		},
 	}
 
+	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(validateCmd)
 
