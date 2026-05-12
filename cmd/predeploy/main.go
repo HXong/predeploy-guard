@@ -36,7 +36,8 @@ func main() {
 			fmt.Println("Next steps:")
 			fmt.Printf("  1. Edit %s for your service\n", output)
 			fmt.Printf("  2. Run: predeploy validate %s\n", output)
-			fmt.Printf("  3. Run: predeploy run %s\n", output)
+			fmt.Printf("  3. Run: predeploy explain %s\n", output)
+			fmt.Printf("  4. Run: predeploy run %s\n", output)
 
 			return nil
 		},
@@ -107,9 +108,25 @@ func main() {
 		},
 	}
 
+	explainCmd := &cobra.Command{
+		Use:   "explain <config-path>",
+		Short: "Explain what a PreDeploy Guard config will do",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.Load(args[0])
+			if err != nil {
+				return err
+			}
+
+			printExplainSummary(cfg)
+			return nil
+		},
+	}
+
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(validateCmd)
+	rootCmd.AddCommand(explainCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("Error: %v\n", err)
