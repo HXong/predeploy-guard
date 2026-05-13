@@ -1,14 +1,16 @@
 # PreDeploy Guard
 
-PreDeploy Guard is a lightweight local pre-deployment validation tool for backend services.
+PreDeploy Guard is a lightweight local-first pre-deployment validation tool for backend services.
 
-It is designed for developers or small teams that do not have a full multi-stage deployment setup. Instead of deploying directly after building a service, developers can run PreDeploy Guard locally to create a temporary sandbox, start the service with its dependencies, run readiness and smoke checks, and generate a deployment safety report.
+It is designed for developers, small teams, and student teams that do not have a full multi-stage deployment setup. Instead of deploying directly after building a service, developers can run PreDeploy Guard locally to create a temporary sandbox, start the service with its dependencies, run readiness, smoke, and performance checks, then generate deployment safety reports.
+
+PreDeploy Guard also reduces YAML configuration friction through starter config generation, dependency presets, config validation, config explanation, and validation profiles.
 
 ---
 
 ## Problem
 
-Small teams, student teams, and solo developers often do not have proper staging environments.
+Small teams and solo developers often do not have proper staging environments.
 
 This means a backend service may be deployed without knowing whether:
 
@@ -16,8 +18,10 @@ This means a backend service may be deployed without knowing whether:
 - Required dependencies such as PostgreSQL or Redis are reachable
 - The service can start successfully
 - The health endpoint is working
-- Basic API endpoints return the expected status codes
+- Basic API endpoints return expected status codes
+- Performance checks pass latency and error-rate thresholds
 - Logs contain obvious runtime errors
+- The validation configuration itself is correct
 
 PreDeploy Guard helps reduce this risk by providing a simple local validation layer before deployment.
 
@@ -27,10 +31,10 @@ PreDeploy Guard helps reduce this risk by providing a simple local validation la
 
 PreDeploy Guard creates a temporary Docker Compose sandbox for the target service.
 
-The tool reads a `predeploy.yaml` file, builds the service image if needed, starts dependency containers, waits for readiness checks, runs smoke tests, captures logs on failure, and writes a Markdown report.
+The tool reads a `predeploy.yaml` file, builds the service image if needed, starts dependency containers, waits for dependency and service readiness, runs smoke checks, runs Dockerized k6 performance checks, captures logs on failure, and writes Markdown and JSON reports.
 
 ```txt
-Developer Service
+Developer Service Repo
         |
         | predeploy.yaml
         v
@@ -42,20 +46,22 @@ Temporary Docker Compose Sandbox
         |
         | starts service + dependencies
         v
-Readiness Checks + Smoke Checks
+Readiness + Smoke + Performance Checks
         |
         v
-Markdown Deployment Report
+Markdown + JSON Reports
 ```
+
+The long-term direction is to keep the CLI as the core engine and later add a GDP-inspired GUI/config platform on top of it.
 
 ---
 
-## Features
+## Current Features
 
-Current features:
+### Core validation
 
 - CLI-based workflow
-- YAML configuration
+- YAML-based configuration
 - Docker image build support
 - Temporary Docker Compose sandbox
 - Automatic free host port allocation
@@ -63,17 +69,34 @@ Current features:
 - Dependency readiness checks
 - Service readiness checks
 - HTTP smoke checks
-- Container log collection on failure
-- Markdown and JSON report generation
-- Automatic cleanup
-- Example Go backend service with PostgreSQL and Redis
 - Dockerized k6 performance checks
 - Performance thresholds for p95 latency and error rate
 - Rich performance metrics
-- Markdown and JSON report generation
+- Container log collection on failure
+- Automatic cleanup
+
+### Reporting
+
+- Markdown report generation for humans
+- JSON report generation for automation and CI/CD
+- Reports written next to the `predeploy.yaml` file under `reports/`
+- Build, readiness, smoke, and performance sections
+- Container logs included on failure
+
+### Config usability
+
+- `predeploy init` starter config generation
+- Dependency presets through `predeploy init --with postgres,redis`
+- `predeploy validate` for config validation
+- `predeploy explain` for human-readable execution plans
+- Validation profiles through `--profile`
 - Config-relative path resolution
-- Config validation command
+
+### CI support
+
 - GitHub Actions workflow support
+- Reports uploaded as workflow artifacts
+- CI fails when PreDeploy Guard validation fails
 
 ---
 
@@ -86,9 +109,11 @@ Current features:
 | Sandbox Runtime | Docker Compose |
 | Service Build | Docker |
 | Smoke Checks | Go `net/http` |
-| Reports | Markdown |
+| Performance Checks | Dockerized k6 |
+| Reports | Markdown, JSON |
 | Example Service | Go |
 | Example Dependencies | PostgreSQL, Redis |
+| CI Example | GitHub Actions |
 
 ---
 
@@ -96,44 +121,45 @@ Current features:
 
 ```txt
 predeploy-guard/
+├── .github/
+│   └── workflows/
+│       └── predeploy.yml
 ├── cmd/
 │   └── predeploy/
-│       └── main.go
+│       ├── main.go
+│       ├── validate_output.go
+│       └── explain_output.go
 ├── internal/
 │   ├── builder/
-│   │   └── docker.go
 │   ├── checker/
-│   │   ├── smoke.go
-│   │   └── url.go
 │   ├── config/
-│   │   ├── config.go
-│   │   └── validation.go
+│   ├── loadtest/
 │   ├── report/
-│   │   ├── report.go
-│   │   └── markdown.go
 │   ├── runner/
-│   │   ├── runner.go
-│   │   ├── output.go
-│   │   └── logs.go
-│   └── sandbox/
-│       ├── compose.go
-│       ├── compose_file.go
-│       ├── file.go
-│       ├── health.go
-│       ├── naming.go
-│       └── port.go
+│   ├── sandbox/
+│   └── scaffold/
 ├── examples/
 │   ├── predeploy.yaml
+│   ├── reports/
 │   └── sample-service/
-│       ├── Dockerfile
-│       ├── go.mod
-│       ├── go.sum
-│       └── main.go
-├── reports/
 ├── go.mod
 ├── go.sum
 └── README.md
 ```
+
+Main package boundaries:
+
+| Package | Responsibility |
+|---|---|
+| `cmd/predeploy` | CLI command wiring and terminal output |
+| `internal/config` | Config loading, validation, profile application, path resolution |
+| `internal/scaffold` | Starter config and dependency preset generation |
+| `internal/builder` | Docker image build execution |
+| `internal/sandbox` | Docker Compose sandbox creation and cleanup |
+| `internal/checker` | HTTP smoke/readiness checks |
+| `internal/loadtest` | Dockerized k6 execution and metric parsing |
+| `internal/report` | Markdown and JSON report generation |
+| `internal/runner` | Main orchestration flow |
 
 ---
 
@@ -152,6 +178,8 @@ docker version
 docker compose version
 ```
 
+No local k6 installation is required. PreDeploy Guard runs k6 through Docker using the `grafana/k6` image.
+
 ---
 
 ## Quick Start
@@ -163,14 +191,23 @@ git clone <your-repo-url>
 cd predeploy-guard
 ```
 
-### 2. PreDeploy validate
+### 2. Validate the example config
+
 ```bash
 go run ./cmd/predeploy validate examples/predeploy.yaml
 ```
 
 The validate command checks the YAML config, resolves build paths relative to the config file, and prints a summary without starting Docker.
 
-### 3. Run PreDeploy Guard
+### 3. Explain the execution plan
+
+```bash
+go run ./cmd/predeploy explain examples/predeploy.yaml
+```
+
+This explains what PreDeploy Guard will do before actually running validation.
+
+### 4. Run PreDeploy Guard
 
 ```bash
 go run ./cmd/predeploy run examples/predeploy.yaml
@@ -185,9 +222,78 @@ The tool will:
 5. Wait for dependency readiness
 6. Wait for service readiness
 7. Run smoke checks
-8. Run k6 performance checks
+8. Run Dockerized k6 performance checks
 9. Generate Markdown and JSON reports
 10. Clean up the sandbox
+
+---
+
+## CLI Commands
+
+### `predeploy init`
+
+Creates a starter `predeploy.yaml`.
+
+```bash
+predeploy init
+predeploy init --output predeploy.yaml
+predeploy init --output predeploy.yaml --force
+predeploy init --with postgres,redis
+```
+
+Supported dependency presets:
+
+| Preset | Description |
+|---|---|
+| `postgres` / `postgresql` | Adds PostgreSQL dependency, readiness check, and `DATABASE_URL` |
+| `redis` | Adds Redis dependency, readiness check, and `REDIS_URL` |
+
+---
+
+### `predeploy validate`
+
+Validates the config without running Docker.
+
+```bash
+predeploy validate predeploy.yaml
+predeploy validate predeploy.yaml --profile light-load
+```
+
+The output includes:
+
+- Config file path
+- Config directory
+- Runtime
+- Service details
+- Resolved build context
+- Dependencies
+- Smoke checks
+- Performance settings
+- Available profiles
+
+---
+
+### `predeploy explain`
+
+Explains what a config will do.
+
+```bash
+predeploy explain predeploy.yaml
+predeploy explain predeploy.yaml --profile smoke-only
+```
+
+This is useful when a developer wants to understand the YAML without reading the full README.
+
+---
+
+### `predeploy run`
+
+Runs the full validation flow.
+
+```bash
+predeploy run predeploy.yaml
+predeploy run predeploy.yaml --profile light-load
+```
 
 ---
 
@@ -261,9 +367,72 @@ performance:
       method: GET
       path: /api/bookings
 
+profiles:
+  smoke-only:
+    performance:
+      enabled: false
+
+  light-load:
+    performance:
+      enabled: true
+      vus: 10
+      duration: 15s
+      thresholds:
+        maxP95LatencyMs: 300
+        maxErrorRate: 0.01
+      endpoints:
+        - name: health check load
+          method: GET
+          path: /health
+
+        - name: bookings load
+          method: GET
+          path: /api/bookings
+
+  stress-test:
+    performance:
+      enabled: true
+      vus: 50
+      duration: 30s
+      thresholds:
+        maxP95LatencyMs: 800
+        maxErrorRate: 0.05
+      endpoints:
+        - name: health check load
+          method: GET
+          path: /health
+
+        - name: bookings load
+          method: GET
+          path: /api/bookings
+
 settings:
   cleanup: true
   timeoutSeconds: 60
+```
+
+Important: `build.context` is resolved relative to the `predeploy.yaml` file location.
+
+For example, because `examples/predeploy.yaml` is inside `examples/`, this:
+
+```yaml
+build:
+  context: sample-service
+```
+
+resolves to:
+
+```txt
+examples/sample-service
+```
+
+For a real service repository, the config will usually look like:
+
+```yaml
+service:
+  build:
+    context: .
+    dockerfile: Dockerfile
 ```
 
 ---
@@ -271,8 +440,6 @@ settings:
 ## Configuration Reference
 
 ### `runtime`
-
-Defines the execution runtime.
 
 ```yaml
 runtime:
@@ -292,27 +459,14 @@ Currently supported:
 
 Defines the backend service to validate.
 
-```yaml
-service:
-  name: booking-service
-  image: predeploy-sample-service:latest
-  build:
-    context: examples/sample-service
-    dockerfile: Dockerfile
-  port: 8080
-  healthPath: /health
-  env:
-    PORT: "8080"
-```
-
 | Field | Description |
 |---|---|
 | `name` | Logical service name |
 | `image` | Docker image tag for the service |
-| `build.context` | Optional Docker build context |
-| `build.dockerfile` | Optional Dockerfile name |
+| `build.context` | Optional Docker build context, resolved relative to `predeploy.yaml` |
+| `build.dockerfile` | Optional Dockerfile name or path relative to the build context |
 | `port` | Container port exposed by the service |
-| `healthPath` | HTTP endpoint used for readiness |
+| `healthPath` | HTTP endpoint used for service readiness |
 | `env` | Environment variables passed to the service |
 
 If `build.context` is provided, PreDeploy Guard builds the image before starting the sandbox.
@@ -322,21 +476,6 @@ If `build.context` is provided, PreDeploy Guard builds the image before starting
 ### `dependencies`
 
 Defines supporting services required by the target service.
-
-```yaml
-dependencies:
-  postgres:
-    image: postgres:16
-    port: 5432
-    env:
-      POSTGRES_USER: test
-      POSTGRES_PASSWORD: test
-      POSTGRES_DB: testdb
-    readiness:
-      command: ["pg_isready", "-U", "test", "-d", "testdb"]
-```
-
-Each dependency can include:
 
 | Field | Description |
 |---|---|
@@ -365,15 +504,6 @@ readiness:
 
 Defines basic HTTP checks to run after the service becomes ready.
 
-```yaml
-checks:
-  smoke:
-    - name: health check
-      method: GET
-      path: /health
-      expectedStatus: 200
-```
-
 | Field | Description |
 |---|---|
 | `name` | Human-readable check name |
@@ -383,15 +513,60 @@ checks:
 
 ---
 
+### `performance`
+
+Defines Dockerized k6 performance checks.
+
+| Field | Description |
+|---|---|
+| `enabled` | Whether to run k6 performance checks |
+| `vus` | Number of virtual users |
+| `duration` | Duration of the k6 run |
+| `thresholds.maxP95LatencyMs` | Maximum allowed p95 latency in milliseconds |
+| `thresholds.maxErrorRate` | Maximum allowed HTTP error rate |
+| `endpoints` | Endpoints to hit during the k6 run |
+
+k6 is run through Docker using the `grafana/k6` image.
+
+---
+
+### `profiles`
+
+Profiles allow multiple validation modes for the same service.
+
+```yaml
+profiles:
+  smoke-only:
+    performance:
+      enabled: false
+
+  light-load:
+    performance:
+      enabled: true
+      vus: 10
+      duration: 15s
+      thresholds:
+        maxP95LatencyMs: 300
+        maxErrorRate: 0.01
+      endpoints:
+        - name: health check load
+          method: GET
+          path: /health
+```
+
+Run a profile:
+
+```bash
+predeploy run predeploy.yaml --profile smoke-only
+```
+
+Profile overrides currently replace whole sections. For example, if a profile overrides `performance`, include the full performance block unless the override is intentionally minimal, such as disabling performance entirely.
+
+---
+
 ### `settings`
 
 Controls runtime behavior.
-
-```yaml
-settings:
-  cleanup: true
-  timeoutSeconds: 60
-```
 
 | Field | Description |
 |---|---|
@@ -400,45 +575,14 @@ settings:
 
 ---
 
-## Example Output
-
-Successful run:
-
-```txt
-Loaded config successfully
-Service: booking-service
-Image: predeploy-sample-service:latest
-Port: 8080
-Health path: /health
-Checking whether target image build is required...
-Built target image successfully: predeploy-sample-service:latest
-Creating Docker Compose sandbox...
-Sandbox directory: /tmp/predeploy-guard-xxxxxx
-Starting service with Docker Compose...
-Service base URL: http://localhost:53241
-Waiting for dependency readiness...
-Dependency ready: postgres
-Dependency ready: redis
-Waiting for service readiness...
-Running smoke checks...
-[PASS] health check GET http://localhost:53241/health expected=200 actual=200
-[PASS] list bookings GET http://localhost:53241/api/bookings expected=200 actual=200
-Result: PASS
-Report written to: reports/predeploy-booking-service-2026-05-08-120000.md
-Stopping Docker Compose sandbox...
-Removing sandbox files...
-```
-
----
-
-## Report Example
+## Reports
 
 PreDeploy Guard generates both Markdown and JSON reports under a `reports/` directory next to the `predeploy.yaml` file.
 
 - Markdown reports are for humans.
 - JSON reports are for automation and CI/CD.
 
-Example sections:
+Example report sections:
 
 ```md
 # PreDeploy Guard Report
@@ -454,7 +598,7 @@ Example sections:
 
 | Step | Image | Context | Dockerfile | Result | Error |
 |---|---|---|---|---|---|
-| docker build | predeploy-sample-service:latest | examples/sample-service | Dockerfile | PASS | - |
+| docker build | predeploy-sample-service:latest | sample-service | Dockerfile | PASS | - |
 
 ## Readiness Checks
 
@@ -469,6 +613,22 @@ Example sections:
 | Check | Method | URL | Expected | Actual | Duration | Result | Error |
 |---|---|---|---:|---:|---:|---|---|
 | health check | GET | http://localhost:53241/health | 200 | 200 | 15ms | PASS | - |
+
+## Performance Check
+
+### Latency Metrics
+
+| Metric | Value | Threshold | Result |
+|---|---:|---:|---|
+| avg latency | 17.15ms | - | - |
+| p95 latency | 44.29ms | 300.00ms | PASS |
+
+### Reliability Metrics
+
+| Metric | Value | Threshold | Result |
+|---|---:|---:|---|
+| error rate | 0.0000 | 0.0100 | PASS |
+| request count | 300 | - | - |
 ```
 
 If a failure occurs, the report also includes container logs.
@@ -485,6 +645,8 @@ Failure scenarios include:
 - Dependency readiness failure
 - Service readiness failure
 - Smoke check failure
+- k6 performance threshold failure
+- k6 execution failure
 
 For example, if Redis readiness fails, the report may show:
 
@@ -498,6 +660,61 @@ For example, if Redis readiness fails, the report may show:
 ```
 
 The report will also include container logs to help diagnose the issue.
+
+---
+
+## GitHub Actions
+
+PreDeploy Guard can run in GitHub Actions as a CI validation gate.
+
+Example workflow:
+
+```yaml
+name: PreDeploy Guard
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  predeploy:
+    name: Run PreDeploy Guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Verify Docker
+        run: |
+          docker version
+          docker compose version
+
+      - name: Download Go dependencies
+        run: go mod download
+
+      - name: Validate PreDeploy config
+        run: go run ./cmd/predeploy validate examples/predeploy.yaml
+
+      - name: Run PreDeploy Guard
+        run: go run ./cmd/predeploy run examples/predeploy.yaml
+
+      - name: Upload PreDeploy reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: predeploy-reports
+          path: examples/reports/
+```
+
+The workflow fails if PreDeploy Guard fails, and reports are uploaded as artifacts for debugging.
 
 ---
 
@@ -541,41 +758,91 @@ PreDeploy Guard checks dependency readiness before validating the target service
 
 ---
 
+### Why config usability commands matter
+
+A major goal is to reduce YAML configuration mistakes.
+
+The CLI now includes:
+
+```bash
+predeploy init
+predeploy validate
+predeploy explain
+```
+
+These commands are early steps toward a future GUI/config wizard.
+
+---
+
 ## Current Limitations
 
-This is the Phase 2 MVP, so there are several known limitations:
+This is still a local-first validation tool. Current limitations include:
 
 - Docker Compose runtime only
-- Local development focused
 - Kubernetes runtime not implemented yet
 - No GUI/config wizard yet
 - No API gateway or ingress latency simulation yet
 - Dependency readiness depends on user-provided commands
 - Smoke checks currently support simple HTTP status validation
+- Profile overrides are section-level replacements rather than deep merges
+- Secrets are passed as plain environment variables in local configs
 
 ---
 
 ## Roadmap
 
-### Completed:
+### Completed
+
 - Phase 1: Docker Compose validation MVP
-- Phase 2: Dockerized k6, JSON reports, richer metrics, validation command, GitHub Actions workflow
+  - Docker Compose sandbox
+  - image build
+  - dependency readiness
+  - service readiness
+  - smoke checks
+  - Markdown reports
 
-### Next Developements:
+- Phase 2: Performance and automation
+  - Dockerized k6
+  - JSON reports
+  - richer performance metrics
+  - config-relative path resolution
+  - GitHub Actions workflow support
+
 - Phase 3: Config usability
-  - predeploy init
-  - config templates
+  - `predeploy init`
   - dependency presets
-  - profile support
+  - `predeploy validate`
+  - `predeploy explain`
+  - validation profiles
 
-### Future:
-- GUI/platform mode inspired by GDP
+### Next
+
+- Phase 4: Run history and profile comparison
+  - store previous run summaries
+  - compare latest run against previous run
+  - compare profiles such as `smoke-only` vs `light-load`
+  - CLI command for listing and viewing run history
+
+### Future
+
+- GDP-inspired GUI/platform mode
   - guided YAML builder
   - dependency wizard
+  - smoke check builder
   - k6 profile builder
   - report dashboard
   - GitHub Actions workflow generator
-  - Kubernetes runtime support
+
+- Kubernetes runtime
+  - existing cluster support
+  - temporary namespace creation
+  - manifest-based deployment
+  - Helm chart support
+
+- API gateway and ingress testing
+  - gateway configuration
+  - routing latency testing
+  - direct service vs gateway latency comparison
 
 ---
 
@@ -585,6 +852,31 @@ Run the tool:
 
 ```bash
 go run ./cmd/predeploy run examples/predeploy.yaml
+```
+
+Validate config:
+
+```bash
+go run ./cmd/predeploy validate examples/predeploy.yaml
+```
+
+Explain config:
+
+```bash
+go run ./cmd/predeploy explain examples/predeploy.yaml
+```
+
+Run a profile:
+
+```bash
+go run ./cmd/predeploy run examples/predeploy.yaml --profile smoke-only
+go run ./cmd/predeploy run examples/predeploy.yaml --profile light-load
+```
+
+Generate a starter config:
+
+```bash
+go run ./cmd/predeploy init --with postgres,redis --output predeploy.yaml
 ```
 
 Format code:
@@ -623,6 +915,6 @@ On Windows PowerShell:
 
 PreDeploy Guard is best described as:
 
-> A local pre-deployment validation tool that creates temporary Docker Compose sandboxes for backend services, validates dependency readiness, service readiness, and smoke checks, then generates deployment safety reports.
+> A local-first pre-deployment validation tool that creates temporary Docker Compose sandboxes for backend services, validates dependency readiness, service readiness, smoke checks, and performance thresholds, then generates human-readable and machine-readable deployment safety reports.
 
-This project demonstrates backend engineering, developer tooling, Docker-based workflows, reliability thinking, and early platform engineering concepts.
+This project demonstrates backend engineering, developer tooling, Docker-based workflows, performance validation, CI readiness, reliability thinking, and early platform engineering concepts.
