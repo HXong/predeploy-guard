@@ -18,6 +18,9 @@ type Config struct {
 	Checks       ChecksConfig                `yaml:"checks"`
 	Performance  PerformanceConfig           `yaml:"performance"`
 	Settings     SettingsConfig              `yaml:"settings"`
+
+	Profiles      map[string]ProfileConfig `yaml:"profiles"`
+	ActiveProfile string                   `yaml:"-"`
 }
 
 type RuntimeConfig struct {
@@ -88,7 +91,17 @@ type SettingsConfig struct {
 	TimeoutSeconds  int    `yaml:"timeoutSeconds"`
 }
 
+type ProfileConfig struct {
+	Checks      *ChecksConfig      `yaml:"checks"`
+	Performance *PerformanceConfig `yaml:"performance"`
+	Settings    *SettingsConfig    `yaml:"settings"`
+}
+
 func Load(path string) (*Config, error) {
+	return LoadWithProfile(path, "")
+}
+
+func LoadWithProfile(path string, profileName string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read config file: %w", err)
@@ -96,7 +109,7 @@ func Load(path string) (*Config, error) {
 
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("unmarshal config: %w", err)
+		return nil, fmt.Errorf("parse yaml: %w", err)
 	}
 
 	absPath, err := filepath.Abs(path)
@@ -111,8 +124,12 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 
-	if err := cfg.Validate(); err != nil {
+	if err := cfg.ApplyProfile(profileName); err != nil {
 		return nil, err
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("validate config: %w", err)
 	}
 
 	return &cfg, nil

@@ -14,6 +14,9 @@ func main() {
 	var initOutputPath string
 	var initForce bool
 	var initDependencies string
+	var runProfile string
+	var validateProfile string
+	var explainProfile string
 
 	initCmd := &cobra.Command{
 		Use:   "init",
@@ -78,7 +81,7 @@ func main() {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			configPath := args[0]
 
-			cfg, err := config.Load(configPath)
+			cfg, err := config.LoadWithProfile(configPath, runProfile)
 			if err != nil {
 				return err
 			}
@@ -93,12 +96,20 @@ func main() {
 		},
 	}
 
+	runCmd.Flags().StringVarP(
+		&runProfile,
+		"profile",
+		"p",
+		"",
+		"Profile to apply from the config file",
+	)
+
 	validateCmd := &cobra.Command{
 		Use:   "validate <config-path>",
 		Short: "Validate a PreDeploy Guard YAML config",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.Load(args[0])
+			cfg, err := config.LoadWithProfile(args[0], validateProfile)
 			if err != nil {
 				return err
 			}
@@ -108,12 +119,20 @@ func main() {
 		},
 	}
 
+	validateCmd.Flags().StringVarP(
+		&validateProfile,
+		"profile",
+		"p",
+		"",
+		"Profile to apply from the config file",
+	)
+
 	explainCmd := &cobra.Command{
 		Use:   "explain <config-path>",
 		Short: "Explain what a PreDeploy Guard config will do",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.Load(args[0])
+			cfg, err := config.LoadWithProfile(args[0], explainProfile)
 			if err != nil {
 				return err
 			}
@@ -122,6 +141,14 @@ func main() {
 			return nil
 		},
 	}
+
+	explainCmd.Flags().StringVarP(
+		&explainProfile,
+		"profile",
+		"p",
+		"",
+		"Profile to apply from the config file",
+	)
 
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(runCmd)

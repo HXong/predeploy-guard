@@ -14,6 +14,13 @@ func printValidationSummary(cfg *config.Config) {
 	fmt.Println("Config")
 	fmt.Printf("  File: %s\n", cfg.ConfigPath)
 	fmt.Printf("  Directory: %s\n", cfg.ConfigDir)
+	if cfg.ActiveProfile != "" {
+		fmt.Printf("  Active profile: %s\n", cfg.ActiveProfile)
+	}
+
+	if len(cfg.Profiles) > 0 {
+		fmt.Printf("  Available profiles: %v\n", cfg.ProfileNames())
+	}
 	fmt.Println()
 
 	fmt.Println("Runtime")

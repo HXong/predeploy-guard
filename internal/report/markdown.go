@@ -47,6 +47,9 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 
 	fmt.Fprintf(&builder, "## Summary\n\n")
 	fmt.Fprintf(&builder, "- **Service:** %s\n", data.ServiceName)
+	if data.ActiveProfile != "" {
+		fmt.Fprintf(&builder, "- **Profile:** `%s`\n", data.ActiveProfile)
+	}
 	fmt.Fprintf(&builder, "- **Image:** `%s`\n", data.Image)
 	fmt.Fprintf(&builder, "- **Runtime:** %s\n", data.Runtime)
 	fmt.Fprintf(&builder, "- **Base URL:** %s\n", data.BaseURL)

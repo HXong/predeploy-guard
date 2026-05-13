@@ -206,12 +206,13 @@ func Run(cfg *config.Config) error {
 	finishedAt := time.Now()
 
 	reportData := report.ReportData{
-		ServiceName: cfg.Service.Name,
-		Image:       cfg.Service.Image,
-		Runtime:     cfg.Runtime.Type,
-		BaseURL:     sb.BaseURL(),
-		StartedAt:   startedAt,
-		FinishedAt:  finishedAt,
+		ServiceName:   cfg.Service.Name,
+		ActiveProfile: cfg.ActiveProfile,
+		Image:         cfg.Service.Image,
+		Runtime:       cfg.Runtime.Type,
+		BaseURL:       sb.BaseURL(),
+		StartedAt:     startedAt,
+		FinishedAt:    finishedAt,
 		BuildResult: report.BuildResult{
 			Enabled:    buildResult.Enabled,
 			Image:      buildResult.Image,

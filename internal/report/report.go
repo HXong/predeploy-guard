@@ -12,6 +12,7 @@ import (
 
 type ReportData struct {
 	ServiceName       string
+	ActiveProfile     string `json:"activeProfile,omitempty"`
 	Image             string
 	Runtime           string
 	BaseURL           string

@@ -12,6 +12,7 @@ func printExplainSummary(cfg *config.Config) {
 	fmt.Println("PreDeploy Guard Execution Plan")
 	fmt.Println()
 
+	printExplainProfile(cfg)
 	printExplainRuntime(cfg)
 	printExplainService(cfg)
 	printExplainDependencies(cfg)
@@ -22,8 +23,27 @@ func printExplainSummary(cfg *config.Config) {
 	printExplainCleanup(cfg)
 }
 
+func printExplainProfile(cfg *config.Config) {
+	fmt.Println("0. Profile")
+
+	if cfg.ActiveProfile == "" {
+		fmt.Println("   No profile was selected. The base configuration will be used.")
+	} else {
+		fmt.Printf("   Profile `%s` was selected and applied to the base configuration.\n", cfg.ActiveProfile)
+	}
+
+	if len(cfg.Profiles) > 0 {
+		fmt.Printf("   Available profiles: %v\n", cfg.ProfileNames())
+	}
+
+	fmt.Println()
+}
+
 func printExplainRuntime(cfg *config.Config) {
 	fmt.Println("1. Runtime")
+	if cfg.ActiveProfile != "" {
+		fmt.Printf("   Active profile: `%s`.\n", cfg.ActiveProfile)
+	}
 
 	switch cfg.Runtime.Type {
 	case "docker-compose":
