@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/HXong/predeploy-guard/internal/config"
+	"github.com/HXong/predeploy-guard/internal/history"
 	"github.com/HXong/predeploy-guard/internal/runner"
 	"github.com/HXong/predeploy-guard/internal/scaffold"
 	"github.com/spf13/cobra"
@@ -150,10 +151,31 @@ func main() {
 		"Profile to apply from the config file",
 	)
 
+	historyCmd := &cobra.Command{
+		Use:   "history <config-path>",
+		Short: "Show previous PreDeploy Guard runs for a config",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.Load(args[0])
+			if err != nil {
+				return err
+			}
+
+			summaries, err := history.ReadHistory(cfg.ConfigDir)
+			if err != nil {
+				return err
+			}
+
+			printHistory(summaries)
+			return nil
+		},
+	}
+
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(explainCmd)
+	rootCmd.AddCommand(historyCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("Error: %v\n", err)

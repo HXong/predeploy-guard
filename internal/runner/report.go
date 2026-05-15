@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/HXong/predeploy-guard/internal/config"
+	"github.com/HXong/predeploy-guard/internal/history"
 	"github.com/HXong/predeploy-guard/internal/report"
 )
 
@@ -20,6 +21,10 @@ func writeReports(cfg *config.Config, data report.ReportData) (writtenReports, e
 
 	jsonPath, err := report.WriteJSON(cfg, data)
 	if err != nil {
+		return writtenReports{}, err
+	}
+
+	if err := history.AppendRun(cfg.ConfigDir, data, markdownPath, jsonPath); err != nil {
 		return writtenReports{}, err
 	}
 
