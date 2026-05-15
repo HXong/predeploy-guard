@@ -171,11 +171,32 @@ func main() {
 		},
 	}
 
+	showCmd := &cobra.Command{
+		Use:   "show <config-path> <run-id>",
+		Short: "Show details for a previous PreDeploy Guard run",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.Load(args[0])
+			if err != nil {
+				return err
+			}
+
+			summary, err := history.FindRun(cfg.ConfigDir, args[1])
+			if err != nil {
+				return err
+			}
+
+			printRunSummary(summary)
+			return nil
+		},
+	}
+
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(explainCmd)
 	rootCmd.AddCommand(historyCmd)
+	rootCmd.AddCommand(showCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("Error: %v\n", err)

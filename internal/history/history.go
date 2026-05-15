@@ -49,6 +49,21 @@ func AppendRun(configDir string, data report.ReportData, markdownPath string, js
 	return nil
 }
 
+func FindRun(configDir string, runID string) (RunSummary, error) {
+	summaries, err := ReadHistory(configDir)
+	if err != nil {
+		return RunSummary{}, err
+	}
+
+	for _, summary := range summaries {
+		if summary.RunID == runID {
+			return summary, nil
+		}
+	}
+
+	return RunSummary{}, fmt.Errorf("run %q not found", runID)
+}
+
 func ReadHistory(configDir string) ([]RunSummary, error) {
 	historyPath := filepath.Join(configDir, "reports", HistoryFilename)
 
