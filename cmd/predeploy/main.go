@@ -37,11 +37,26 @@ func main() {
 			}
 
 			fmt.Printf("Created %s\n", output)
+
+			if initDependencies != "" {
+				fmt.Printf("Included dependency presets: %s\n", initDependencies)
+			}
+
 			fmt.Println("Next steps:")
 			fmt.Printf("  1. Edit %s for your service\n", output)
 			fmt.Printf("  2. Run: predeploy validate %s\n", output)
 			fmt.Printf("  3. Run: predeploy explain %s\n", output)
 			fmt.Printf("  4. Run: predeploy run %s\n", output)
+
+			fmt.Println("Optional profile commands:")
+			fmt.Printf("  - Run smoke only: predeploy run %s --profile smoke-only\n", output)
+			fmt.Printf("  - Run light load: predeploy run %s --profile light-load\n", output)
+			fmt.Printf("  - Run stress test: predeploy run %s --profile stress-test\n", output)
+
+			fmt.Println("After running:")
+			fmt.Printf("  - View history: predeploy history %s\n", output)
+			fmt.Printf("  - Show a run: predeploy show %s <run-id>\n", output)
+			fmt.Printf("  - Compare runs: predeploy compare %s <base-run-id> <target-run-id>\n", output)
 
 			return nil
 		},
@@ -191,12 +206,33 @@ func main() {
 		},
 	}
 
+	compareCmd := &cobra.Command{
+		Use:   "compare <config-path> <base-run-id> <target-run-id>",
+		Short: "Compare two previous PreDeploy Guard runs",
+		Args:  cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.Load(args[0])
+			if err != nil {
+				return err
+			}
+
+			base, target, err := history.FindTwoRuns(cfg.ConfigDir, args[1], args[2])
+			if err != nil {
+				return err
+			}
+
+			printRunComparison(base, target)
+			return nil
+		},
+	}
+
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(explainCmd)
 	rootCmd.AddCommand(historyCmd)
 	rootCmd.AddCommand(showCmd)
+	rootCmd.AddCommand(compareCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("Error: %v\n", err)

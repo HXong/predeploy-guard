@@ -88,6 +88,37 @@ performance:
       method: GET
       path: /health
 
+profiles:
+  smoke-only:
+    performance:
+      enabled: false
+
+  light-load:
+    performance:
+      enabled: true
+      vus: 10
+      duration: 15s
+      thresholds:
+        maxP95LatencyMs: 300
+        maxErrorRate: 0.01
+      endpoints:
+        - name: health load
+          method: GET
+          path: /health
+
+  stress-test:
+    performance:
+      enabled: true
+      vus: 50
+      duration: 30s
+      thresholds:
+        maxP95LatencyMs: 800
+        maxErrorRate: 0.05
+      endpoints:
+        - name: health load
+          method: GET
+          path: /health
+
 settings:
   cleanup: true
   timeoutSeconds: 60

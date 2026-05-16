@@ -64,6 +64,20 @@ func FindRun(configDir string, runID string) (RunSummary, error) {
 	return RunSummary{}, fmt.Errorf("run %q not found", runID)
 }
 
+func FindTwoRuns(configDir string, baseRunID string, targetRunID string) (RunSummary, RunSummary, error) {
+	base, err := FindRun(configDir, baseRunID)
+	if err != nil {
+		return RunSummary{}, RunSummary{}, fmt.Errorf("find base run: %w", err)
+	}
+
+	target, err := FindRun(configDir, targetRunID)
+	if err != nil {
+		return RunSummary{}, RunSummary{}, fmt.Errorf("find target run: %w", err)
+	}
+
+	return base, target, nil
+}
+
 func ReadHistory(configDir string) ([]RunSummary, error) {
 	historyPath := filepath.Join(configDir, "reports", HistoryFilename)
 
