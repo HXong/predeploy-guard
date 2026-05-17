@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/HXong/predeploy-guard/internal/app"
 	"github.com/HXong/predeploy-guard/internal/config"
-	"github.com/HXong/predeploy-guard/internal/history"
 	"github.com/HXong/predeploy-guard/internal/runner"
 	"github.com/HXong/predeploy-guard/internal/scaffold"
+	"github.com/HXong/predeploy-guard/internal/server"
 	"github.com/spf13/cobra"
 )
 
@@ -18,6 +19,8 @@ func main() {
 	var runProfile string
 	var validateProfile string
 	var explainProfile string
+	var serveConfigPath string
+	var serveAddr string
 
 	initCmd := &cobra.Command{
 		Use:   "init",
@@ -176,7 +179,8 @@ func main() {
 				return err
 			}
 
-			summaries, err := history.ReadHistory(cfg.ConfigDir)
+			historyService := app.NewHistoryService(cfg)
+			summaries, err := historyService.ListRuns()
 			if err != nil {
 				return err
 			}
@@ -196,7 +200,8 @@ func main() {
 				return err
 			}
 
-			summary, err := history.FindRun(cfg.ConfigDir, args[1])
+			historyService := app.NewHistoryService(cfg)
+			summary, err := historyService.FindRun(args[1])
 			if err != nil {
 				return err
 			}
@@ -216,7 +221,8 @@ func main() {
 				return err
 			}
 
-			base, target, err := history.FindTwoRuns(cfg.ConfigDir, args[1], args[2])
+			historyService := app.NewHistoryService(cfg)
+			base, target, err := historyService.CompareRuns(args[1], args[2])
 			if err != nil {
 				return err
 			}
@@ -226,6 +232,34 @@ func main() {
 		},
 	}
 
+	serveCmd := &cobra.Command{
+		Use:   "serve",
+		Short: "Start a local PreDeploy Guard API server",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.Load(serveConfigPath)
+			if err != nil {
+				return err
+			}
+
+			srv := server.New(cfg)
+			return srv.Start(serveAddr)
+		},
+	}
+
+	serveCmd.Flags().StringVar(
+		&serveConfigPath,
+		"config",
+		"predeploy.yaml",
+		"Path to predeploy.yaml",
+	)
+
+	serveCmd.Flags().StringVar(
+		&serveAddr,
+		"addr",
+		"localhost:7070",
+		"Address for the local API server",
+	)
+
 	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(validateCmd)
@@ -233,6 +267,7 @@ func main() {
 	rootCmd.AddCommand(historyCmd)
 	rootCmd.AddCommand(showCmd)
 	rootCmd.AddCommand(compareCmd)
+	rootCmd.AddCommand(serveCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("Error: %v\n", err)
