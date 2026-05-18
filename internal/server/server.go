@@ -10,6 +10,7 @@ import (
 
 type Server struct {
 	cfg            *config.Config
+	configService  *app.ConfigService
 	historyService *app.HistoryService
 	reportService  *app.ReportService
 	mux            *http.ServeMux
@@ -20,6 +21,7 @@ func New(cfg *config.Config) *Server {
 
 	server := &Server{
 		cfg:            cfg,
+		configService:  app.NewConfigService(cfg),
 		historyService: historyService,
 		reportService:  app.NewReportService(historyService),
 		mux:            http.NewServeMux(),
@@ -36,6 +38,8 @@ func (s *Server) Start(addr string) error {
 
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/health", s.handleHealth)
+	s.mux.HandleFunc("GET /api/config/summary", s.handleConfigSummary)
+	s.mux.HandleFunc("GET /api/config/explain", s.handleConfigExplain)
 	s.mux.HandleFunc("GET /api/history", s.handleHistory)
 	s.mux.HandleFunc("GET /api/history/", s.handleHistoryRun)
 	s.mux.HandleFunc("GET /api/reports/", s.handleReport)

@@ -11,6 +11,14 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleConfigSummary(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, s.configService.Summary())
+}
+
+func (s *Server) handleConfigExplain(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, s.configService.Explain())
+}
+
 func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
 	runs, err := s.historyService.ListRuns()
 	if err != nil {
