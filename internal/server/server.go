@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/HXong/predeploy-guard/internal/app"
@@ -9,7 +8,6 @@ import (
 )
 
 type Server struct {
-	cfg            *config.Config
 	configService  *app.ConfigService
 	historyService *app.HistoryService
 	reportService  *app.ReportService
@@ -20,7 +18,6 @@ func New(cfg *config.Config) *Server {
 	historyService := app.NewHistoryService(cfg)
 
 	server := &Server{
-		cfg:            cfg,
 		configService:  app.NewConfigService(cfg),
 		historyService: historyService,
 		reportService:  app.NewReportService(historyService),
@@ -32,7 +29,6 @@ func New(cfg *config.Config) *Server {
 }
 
 func (s *Server) Start(addr string) error {
-	fmt.Printf("PreDeploy Guard server listening on http://%s\n", addr)
 	return http.ListenAndServe(addr, s.mux)
 }
 

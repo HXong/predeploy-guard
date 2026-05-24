@@ -242,6 +242,7 @@ func main() {
 			}
 
 			srv := server.New(cfg)
+			printServeStarted(serveAddr)
 			return srv.Start(serveAddr)
 		},
 	}

@@ -9,92 +9,92 @@ import (
 )
 
 type Config struct {
-	ConfigPath string `yaml:"-" json:"configPath"`
-	ConfigDir  string `yaml:"-" json:"configDir"`
+	ConfigPath string `yaml:"-"`
+	ConfigDir  string `yaml:"-"`
 
 	Runtime      RuntimeConfig               `yaml:"runtime"`
 	Service      ServiceConfig               `yaml:"service"`
-	Dependencies map[string]DependencyConfig `yaml:"dependencies" json:"dependencies"`
-	Checks       ChecksConfig                `yaml:"checks" json:"checks"`
-	Performance  PerformanceConfig           `yaml:"performance" json:"performance"`
-	Settings     SettingsConfig              `yaml:"settings" json:"settings"`
+	Dependencies map[string]DependencyConfig `yaml:"dependencies"`
+	Checks       ChecksConfig                `yaml:"checks"`
+	Performance  PerformanceConfig           `yaml:"performance"`
+	Settings     SettingsConfig              `yaml:"settings"`
 
-	Profiles      map[string]ProfileConfig `yaml:"profiles" json:"profiles"`
-	ActiveProfile string                   `yaml:"-" json:"activeProfile,omitempty"`
+	Profiles      map[string]ProfileConfig `yaml:"profiles"`
+	ActiveProfile string                   `yaml:"-"`
 }
 
 type RuntimeConfig struct {
-	Type string `yaml:"type" json:"type"`
+	Type string `yaml:"type"`
 }
 
 type ServiceConfig struct {
-	Name       string            `yaml:"name" json:"name"`
-	Image      string            `yaml:"image" json:"image"`
-	Build      BuildConfig       `yaml:"build" json:"build"`
-	Port       int32             `yaml:"port" json:"port"`
-	HealthPath string            `yaml:"healthPath" json:"healthPath"`
-	Env        map[string]string `yaml:"env" json:"env"`
+	Name       string            `yaml:"name"`
+	Image      string            `yaml:"image"`
+	Build      BuildConfig       `yaml:"build"`
+	Port       int32             `yaml:"port"`
+	HealthPath string            `yaml:"healthPath"`
+	Env        map[string]string `yaml:"env"`
 }
 
 type BuildConfig struct {
-	Context    string `yaml:"context" json:"context"`
-	Dockerfile string `yaml:"dockerfile" json:"dockerfile"`
+	Context    string `yaml:"context"`
+	Dockerfile string `yaml:"dockerfile"`
 }
 
 type DependencyConfig struct {
-	Image     string            `yaml:"image" json:"image"`
-	Port      int               `yaml:"port" json:"port"`
-	Env       map[string]string `yaml:"env" json:"env"`
-	Readiness ReadinessConfig   `yaml:"readiness" json:"readiness"`
+	Image     string            `yaml:"image"`
+	Port      int               `yaml:"port"`
+	Env       map[string]string `yaml:"env"`
+	Readiness ReadinessConfig   `yaml:"readiness"`
 }
 
 type ReadinessConfig struct {
-	Command         []string `yaml:"command" json:"command"`
-	Shell           string   `yaml:"shell" json:"shell"`
-	IntervalSeconds int      `yaml:"intervalSeconds" json:"intervalSeconds"`
-	TimeoutSeconds  int      `yaml:"timeoutSeconds" json:"timeoutSeconds"`
+	Command         []string `yaml:"command"`
+	Shell           string   `yaml:"shell"`
+	IntervalSeconds int      `yaml:"intervalSeconds"`
+	TimeoutSeconds  int      `yaml:"timeoutSeconds"`
 }
 
 type ChecksConfig struct {
-	Smoke []SmokeCheck `yaml:"smoke" json:"smoke"`
+	Smoke []SmokeCheck `yaml:"smoke"`
 }
 
 type SmokeCheck struct {
-	Name           string `yaml:"name" json:"name"`
-	Method         string `yaml:"method" json:"method"`
-	Path           string `yaml:"path" json:"path"`
-	ExpectedStatus int    `yaml:"expectedStatus" json:"expectedStatus"`
+	Name           string `yaml:"name"`
+	Method         string `yaml:"method"`
+	Path           string `yaml:"path"`
+	ExpectedStatus int    `yaml:"expectedStatus"`
 }
 
 type PerformanceConfig struct {
-	Enabled    bool                  `yaml:"enabled" json:"enabled"`
-	VUs        int                   `yaml:"vus" json:"vus"`
-	Duration   string                `yaml:"duration" json:"duration"`
-	Thresholds PerformanceThresholds `yaml:"thresholds" json:"thresholds"`
-	Endpoints  []PerformanceEndpoint `yaml:"endpoints" json:"endpoints"`
+	Enabled    bool                  `yaml:"enabled"`
+	VUs        int                   `yaml:"vus"`
+	Duration   string                `yaml:"duration"`
+	Thresholds PerformanceThresholds `yaml:"thresholds"`
+	Endpoints  []PerformanceEndpoint `yaml:"endpoints"`
 }
 
 type PerformanceThresholds struct {
-	MaxP95LatencyMs float64 `yaml:"maxP95LatencyMs" json:"maxP95LatencyMs"`
-	MaxErrorRate    float64 `yaml:"maxErrorRate" json:"maxErrorRate"`
+	MaxP95LatencyMs float64 `yaml:"maxP95LatencyMs"`
+	MaxErrorRate    float64 `yaml:"maxErrorRate"`
 }
 
 type PerformanceEndpoint struct {
-	Name   string `yaml:"name" json:"name"`
-	Method string `yaml:"method" json:"method"`
-	Path   string `yaml:"path" json:"path"`
+	Name   string `yaml:"name"`
+	Method string `yaml:"method"`
+	Path   string `yaml:"path"`
 }
 
 type SettingsConfig struct {
-	NamespacePrefix string `yaml:"namespacePrefix" json:"namespacePrefix"`
-	Cleanup         bool   `yaml:"cleanup" json:"cleanup"`
-	TimeoutSeconds  int    `yaml:"timeoutSeconds" json:"timeoutSeconds"`
+	NamespacePrefix string `yaml:"namespacePrefix"`
+	Cleanup         bool   `yaml:"cleanup"`
+	TimeoutSeconds  int    `yaml:"timeoutSeconds"`
 }
 
 type ProfileConfig struct {
-	Checks      *ChecksConfig      `yaml:"checks" json:"checks,omitempty"`
-	Performance *PerformanceConfig `yaml:"performance" json:"performance,omitempty"`
-	Settings    *SettingsConfig    `yaml:"settings" json:"settings,omitempty"`
+	Checks      *ChecksConfig      `yaml:"checks"`
+	Performance *PerformanceConfig `yaml:"performance"`
+	Settings    *SettingsConfig    `yaml:"settings"`
 }
 
 func Load(path string) (*Config, error) {
