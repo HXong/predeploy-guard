@@ -236,12 +236,11 @@ func main() {
 		Use:   "serve",
 		Short: "Start a local PreDeploy Guard API server",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.Load(serveConfigPath)
+			srv, err := server.New(serveConfigPath)
 			if err != nil {
 				return err
 			}
 
-			srv := server.New(cfg)
 			printServeStarted(serveAddr)
 			return srv.Start(serveAddr)
 		},

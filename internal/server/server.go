@@ -11,21 +11,28 @@ type Server struct {
 	configService  *app.ConfigService
 	historyService *app.HistoryService
 	reportService  *app.ReportService
+	runService     *app.RunService
 	mux            *http.ServeMux
 }
 
-func New(cfg *config.Config) *Server {
+func New(configPath string) (*Server, error) {
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return nil, err
+	}
+
 	historyService := app.NewHistoryService(cfg)
 
 	server := &Server{
 		configService:  app.NewConfigService(cfg),
 		historyService: historyService,
 		reportService:  app.NewReportService(historyService),
+		runService:     app.NewRunService(cfg.ConfigPath),
 		mux:            http.NewServeMux(),
 	}
 
 	server.registerRoutes()
-	return server
+	return server, nil
 }
 
 func (s *Server) Start(addr string) error {
@@ -39,4 +46,5 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/history", s.handleHistory)
 	s.mux.HandleFunc("GET /api/history/", s.handleHistoryRun)
 	s.mux.HandleFunc("GET /api/reports/", s.handleReport)
+	s.mux.HandleFunc("POST /api/runs", s.handleRun)
 }

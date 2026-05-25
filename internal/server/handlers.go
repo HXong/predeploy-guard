@@ -1,9 +1,15 @@
 package server
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 )
+
+type runRequest struct {
+	Profile string `json:"profile"`
+}
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{
@@ -17,6 +23,22 @@ func (s *Server) handleConfigSummary(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleConfigExplain(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, s.configService.Explain())
+}
+
+func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
+	var request runRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil && err != io.EOF {
+		writeError(w, http.StatusBadRequest, "invalid JSON request body")
+		return
+	}
+
+	result, err := s.runService.Run(request.Profile)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
 }
 
 func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {
