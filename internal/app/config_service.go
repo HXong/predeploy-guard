@@ -110,6 +110,14 @@ func NewConfigService(cfg *config.Config) *ConfigService {
 	}
 }
 
+func (s *ConfigService) Load(path string) (*config.Config, error) {
+	return config.Load(path)
+}
+
+func (s *ConfigService) LoadWithProfile(path string, profile string) (*config.Config, error) {
+	return config.LoadWithProfile(path, profile)
+}
+
 func (s *ConfigService) Summary() ConfigSummary {
 	dependencies := s.dependencySummaries()
 	smokeChecks := s.smokeCheckSummaries()

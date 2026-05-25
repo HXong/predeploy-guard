@@ -32,13 +32,28 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := s.runService.Run(request.Profile)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+	task := s.runManager.Start(request.Profile)
+	writeJSON(w, http.StatusAccepted, task)
+}
+
+func (s *Server) handleRuns(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, s.runManager.List())
+}
+
+func (s *Server) handleRunTask(w http.ResponseWriter, r *http.Request) {
+	taskID := strings.TrimPrefix(r.URL.Path, "/api/runs/")
+	if taskID == "" {
+		writeError(w, http.StatusBadRequest, "task id is required")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, result)
+	task, ok := s.runManager.Get(taskID)
+	if !ok {
+		writeError(w, http.StatusNotFound, "run task not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, task)
 }
 
 func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {

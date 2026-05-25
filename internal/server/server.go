@@ -11,7 +11,7 @@ type Server struct {
 	configService  *app.ConfigService
 	historyService *app.HistoryService
 	reportService  *app.ReportService
-	runService     *app.RunService
+	runManager     *app.RunManager
 	mux            *http.ServeMux
 }
 
@@ -27,7 +27,7 @@ func New(configPath string) (*Server, error) {
 		configService:  app.NewConfigService(cfg),
 		historyService: historyService,
 		reportService:  app.NewReportService(historyService),
-		runService:     app.NewRunService(cfg.ConfigPath),
+		runManager:     app.NewRunManager(app.NewRunService(cfg.ConfigPath)),
 		mux:            http.NewServeMux(),
 	}
 
@@ -46,5 +46,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/history", s.handleHistory)
 	s.mux.HandleFunc("GET /api/history/", s.handleHistoryRun)
 	s.mux.HandleFunc("GET /api/reports/", s.handleReport)
+	s.mux.HandleFunc("GET /api/runs", s.handleRuns)
+	s.mux.HandleFunc("GET /api/runs/", s.handleRunTask)
 	s.mux.HandleFunc("POST /api/runs", s.handleRun)
 }
