@@ -32,29 +32,44 @@
 - `predeploy show`
 - `predeploy compare`
 
-## Current Phase
-
 ### Phase 5: Local API and GUI Groundwork
 Goal: introduce a local HTTP API so the future GUI can reuse the existing CLI engine.
 
-Planned:
+Completed:
 - `predeploy serve`
 - `GET /api/health`
+- `GET /api/config/summary`
+- `GET /api/config/explain`
 - `GET /api/history`
 - `GET /api/history/{runId}`
 - `GET /api/reports/{runId}/json`
 - `GET /api/reports/{runId}/markdown`
-- Config summary endpoints
-- Run trigger endpoint later
+- `POST /api/runs`
+- `GET /api/runs`
+- `GET /api/runs/{taskId}`
+- `GET /api/runs/{taskId}/logs`
+- Async API-triggered validation runs
+- In-memory run task status tracking
+- Basic run task logs
+- Server route tests
+
+## Current Phase
+
+### Phase 6: Local Dashboard UI
+Goal: build a simple local dashboard on top of the existing API.
+
+Planned:
+- React + TypeScript frontend
+- API health card
+- Config summary card
+- Run history table
+- Run task table
+- Run button with profile selector
+- Poll `GET /api/runs/{taskId}` for task status
+- Show task logs from `GET /api/runs/{taskId}/logs`
+- Link to Markdown/JSON report endpoints
 
 ## Future Direction
-
-### Phase 6: Local GUI
-- React + TypeScript frontend
-- Go local API backend
-- Report dashboard
-- Run history view
-- Profile comparison view
 
 ### Phase 7: Guided Config Builder
 - Service config wizard
