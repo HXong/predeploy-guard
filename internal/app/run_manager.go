@@ -32,6 +32,7 @@ type RunTask struct {
 	StartedAt  *time.Time `json:"startedAt,omitempty"`
 	FinishedAt *time.Time `json:"finishedAt,omitempty"`
 	Message    string     `json:"message,omitempty"`
+	Logs       []string   `json:"logs"`
 }
 
 func NewRunManager(service *RunService) *RunManager {
@@ -50,6 +51,7 @@ func (m *RunManager) Start(profile string) RunTask {
 		Status:    RunTaskQueued,
 		CreatedAt: now,
 		Message:   "validation run queued",
+		Logs:      []string{"validation run queued"},
 	}
 
 	m.mu.Lock()
@@ -58,7 +60,7 @@ func (m *RunManager) Start(profile string) RunTask {
 
 	go m.run(task.TaskID, profile)
 
-	return task
+	return copyRunTask(task)
 }
 
 func (m *RunManager) Get(taskID string) (RunTask, bool) {
@@ -66,7 +68,23 @@ func (m *RunManager) Get(taskID string) (RunTask, bool) {
 	defer m.mu.RUnlock()
 
 	task, ok := m.tasks[taskID]
-	return task, ok
+	if !ok {
+		return RunTask{}, false
+	}
+
+	return copyRunTask(task), true
+}
+
+func (m *RunManager) GetLogs(taskID string) ([]string, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	task, ok := m.tasks[taskID]
+	if !ok {
+		return nil, false
+	}
+
+	return copyLogs(task.Logs), true
 }
 
 func (m *RunManager) List() []RunTask {
@@ -75,7 +93,7 @@ func (m *RunManager) List() []RunTask {
 
 	tasks := make([]RunTask, 0, len(m.tasks))
 	for _, task := range m.tasks {
-		tasks = append(tasks, task)
+		tasks = append(tasks, copyRunTask(task))
 	}
 
 	sort.Slice(tasks, func(i, j int) bool {
@@ -91,6 +109,7 @@ func (m *RunManager) run(taskID string, profile string) {
 		task.Status = RunTaskRunning
 		task.StartedAt = &startedAt
 		task.Message = "validation run started"
+		task.Logs = appendRunTaskLog(task, "validation run started")
 		return task
 	})
 
@@ -105,6 +124,7 @@ func (m *RunManager) run(taskID string, profile string) {
 			task.Passed = false
 			task.Error = err.Error()
 			task.Message = ""
+			task.Logs = appendRunTaskLog(task, fmt.Sprintf("validation run failed: %s", err.Error()))
 			return task
 		}
 
@@ -115,8 +135,15 @@ func (m *RunManager) run(taskID string, profile string) {
 
 		if result.Passed {
 			task.Status = RunTaskCompleted
+			task.Logs = appendRunTaskLog(task, "validation run completed")
 		} else {
+			failureMessage := result.Error
+			if failureMessage == "" {
+				failureMessage = "validation checks failed"
+			}
+
 			task.Status = RunTaskFailed
+			task.Logs = appendRunTaskLog(task, fmt.Sprintf("validation run failed: %s", failureMessage))
 		}
 
 		return task
@@ -150,4 +177,20 @@ func runTaskProfile(profile string) string {
 	}
 
 	return profile
+}
+
+func appendRunTaskLog(task RunTask, message string) []string {
+	logs := copyLogs(task.Logs)
+	return append(logs, message)
+}
+
+func copyRunTask(task RunTask) RunTask {
+	task.Logs = copyLogs(task.Logs)
+	return task
+}
+
+func copyLogs(logs []string) []string {
+	copied := make([]string, len(logs))
+	copy(copied, logs)
+	return copied
 }

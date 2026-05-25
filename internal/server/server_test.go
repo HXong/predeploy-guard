@@ -29,6 +29,7 @@ func TestServerRoutesExposeSafeEndpoints(t *testing.T) {
 		{method: http.MethodGet, path: "/api/history", wantStatus: http.StatusOK, wantJSON: true},
 		{method: http.MethodGet, path: "/api/runs", wantStatus: http.StatusOK, wantJSON: true},
 		{method: http.MethodGet, path: "/api/runs/missing-task", wantStatus: http.StatusNotFound, wantJSON: true},
+		{method: http.MethodGet, path: "/api/runs/missing-task/logs", wantStatus: http.StatusNotFound, wantJSON: true},
 		{method: http.MethodPost, path: "/api/runs", body: "{", wantStatus: http.StatusBadRequest, wantJSON: true},
 		{method: http.MethodGet, path: "/api/config", wantStatus: http.StatusNotFound},
 	}

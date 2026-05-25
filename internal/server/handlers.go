@@ -41,7 +41,7 @@ func (s *Server) handleRuns(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRunTask(w http.ResponseWriter, r *http.Request) {
-	taskID := strings.TrimPrefix(r.URL.Path, "/api/runs/")
+	taskID := r.PathValue("taskID")
 	if taskID == "" {
 		writeError(w, http.StatusBadRequest, "task id is required")
 		return
@@ -54,6 +54,25 @@ func (s *Server) handleRunTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, task)
+}
+
+func (s *Server) handleRunTaskLogs(w http.ResponseWriter, r *http.Request) {
+	taskID := r.PathValue("taskID")
+	if taskID == "" {
+		writeError(w, http.StatusBadRequest, "task id is required")
+		return
+	}
+
+	logs, ok := s.runManager.GetLogs(taskID)
+	if !ok {
+		writeError(w, http.StatusNotFound, "run task not found")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"taskID": taskID,
+		"logs":   logs,
+	})
 }
 
 func (s *Server) handleHistory(w http.ResponseWriter, r *http.Request) {

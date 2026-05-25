@@ -47,6 +47,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/history/", s.handleHistoryRun)
 	s.mux.HandleFunc("GET /api/reports/", s.handleReport)
 	s.mux.HandleFunc("GET /api/runs", s.handleRuns)
-	s.mux.HandleFunc("GET /api/runs/", s.handleRunTask)
+	s.mux.HandleFunc("GET /api/runs/{taskID}", s.handleRunTask)
+	s.mux.HandleFunc("GET /api/runs/{taskID}/logs", s.handleRunTaskLogs)
 	s.mux.HandleFunc("POST /api/runs", s.handleRun)
 }
