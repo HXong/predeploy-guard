@@ -126,23 +126,6 @@ h2 {
   padding: 4px 8px;
 }
 
-.label-container {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.helper-icon {
-  color: var(--muted);
-  font-size: 0.86rem;
-  cursor: help;
-  transition: color 150ms ease;
-}
-
-.helper-icon:hover {
-  color: var(--brand);
-}
-
 .status-row,
 .task-summary {
   display: flex;
@@ -197,7 +180,7 @@ h2 {
 
 .profile-panel {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 label {
@@ -219,6 +202,13 @@ input {
 input:focus {
   border-color: var(--brand);
   outline: 3px solid rgb(22 110 99 / 18%);
+}
+
+.helper-text {
+  margin: -2px 0 2px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
 }
 
 .profile-buttons {
@@ -262,7 +252,7 @@ input:focus {
 
 table {
   width: 100%;
-  min-width: 560px;
+  min-width: 680px;
   border-collapse: collapse;
   font-size: 0.92rem;
 }
@@ -327,6 +317,23 @@ tbody tr.selected-row {
 .logs-panel {
   display: grid;
   gap: 14px;
+}
+
+.report-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.report-links a {
+  color: var(--brand);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.report-links a:hover {
+  color: var(--brand-strong);
+  text-decoration: underline;
 }
 
 pre {

@@ -24,6 +24,7 @@ type Resource<T> = {
 };
 
 const profiles = ["base", "smoke-only", "light-load", "stress-test"];
+const runningStatuses = new Set<RunTask["status"]>(["queued", "running"]);
 
 function initialResource<T>(): Resource<T> {
   return {
@@ -82,19 +83,23 @@ export default function App() {
     }
   }, []);
 
-  const loadSelectedTask = useCallback(async (taskId: string) => {
+  const loadSelectedTask = useCallback(async (taskId: string, showLoading = true): Promise<RunTask | null> => {
     if (!taskId) {
       setSelectedTask({ data: null, error: null, loading: false });
       setTaskLogs({ data: null, error: null, loading: false });
-      return;
+      return null;
     }
 
-    setSelectedTask((current) => ({ ...current, loading: true, error: null }));
-    setTaskLogs((current) => ({ ...current, loading: true, error: null }));
+    if (showLoading) {
+      setSelectedTask((current) => ({ ...current, loading: true, error: null }));
+      setTaskLogs((current) => ({ ...current, loading: true, error: null }));
+    }
 
     const [taskResult, logsResult] = await Promise.allSettled([getRunTask(taskId), getRunTaskLogs(taskId)]);
+    let nextTask: RunTask | null = null;
 
     if (taskResult.status === "fulfilled") {
+      nextTask = taskResult.value;
       setSelectedTask({ data: taskResult.value, error: null, loading: false });
     } else {
       setSelectedTask({ data: null, error: errorMessage(taskResult.reason), loading: false });
@@ -105,6 +110,8 @@ export default function App() {
     } else {
       setTaskLogs({ data: null, error: errorMessage(logsResult.reason), loading: false });
     }
+
+    return nextTask;
   }, []);
 
   useEffect(() => {
@@ -121,17 +128,29 @@ export default function App() {
 
   useEffect(() => {
     const task = selectedTask.data;
-    if (!task || (task.status !== "queued" && task.status !== "running")) {
+    if (!task || !runningStatuses.has(task.status)) {
       return;
     }
 
     const intervalId = window.setInterval(() => {
-      void loadTasks();
-      void loadSelectedTask(task.taskId);
-    }, 3000);
+      void loadSelectedTask(task.taskId, false).then((nextTask) => {
+        if (!nextTask) {
+          return;
+        }
+
+        if (nextTask.status !== task.status) {
+          void loadTasks();
+        }
+
+        if (!runningStatuses.has(nextTask.status)) {
+          void loadTasks();
+          loadHistory();
+        }
+      });
+    }, 2000);
 
     return () => window.clearInterval(intervalId);
-  }, [loadSelectedTask, loadTasks, selectedTask.data]);
+  }, [loadHistory, loadSelectedTask, loadTasks, selectedTask.data]);
 
   const latestHistory = useMemo(() => history.data?.slice().reverse().slice(0, 8) ?? [], [history.data]);
 
@@ -141,6 +160,8 @@ export default function App() {
 
     try {
       const task = await triggerRun(profile);
+      setSelectedTask({ data: task, error: null, loading: false });
+      setTaskLogs({ data: { taskId: task.taskId, logs: task.logs }, error: null, loading: false });
       setSelectedTaskId(task.taskId);
       await loadTasks();
     } catch (error) {
@@ -187,30 +208,21 @@ export default function App() {
 
         <Card title="Trigger Run">
           <div className="profile-panel">
-
-            <div className="label-container">
-              <label htmlFor="profile">Profile (optional)</label>
-              <span 
-                className="helper-icon" 
-                title="Select or type a configuration profile to run. Leave empty to run base config."
-              >
-                (?)
-              </span>
-            </div>
-
+            <label htmlFor="profile">Profile (optional)</label>
             <input
               id="profile"
               value={profile}
               onChange={(event) => setProfile(event.target.value)}
-              placeholder="base"
+              placeholder="Leave empty for base"
             />
+            <p className="helper-text">Leave empty to run the base config.</p>
             <div className="profile-buttons">
               {profiles.map((candidate) => (
                 <button
-                  className={candidate === profile ? "chip active" : "chip"}
+                  className={isSelectedProfile(candidate, profile) ? "chip active" : "chip"}
                   key={candidate}
                   type="button"
-                  onClick={() => setProfile(candidate)}
+                  onClick={() => setProfile(candidate === "base" ? "" : candidate)}
                 >
                   {candidate}
                 </button>
@@ -387,16 +399,27 @@ function HistoryTable({ runs }: { runs: RunHistoryItem[] }) {
             <th>Profile</th>
             <th>Result</th>
             <th>Finished</th>
+            <th>Reports</th>
           </tr>
         </thead>
         <tbody>
           {runs.map((run) => (
             <tr key={run.runId}>
-              <td title={run.runId}>{shortenRunId(run.runId)}</td>
+              <td title={run.runId}>{shortId(run.runId)}</td>
               <td>{run.serviceName}</td>
               <td>{run.profile || "base"}</td>
               <td>{run.passed ? "Passed" : "Failed"}</td>
               <td>{formatDate(run.finishedAt)}</td>
+              <td>
+                <div className="report-links">
+                  <a href={`/api/reports/${encodeURIComponent(run.runId)}/markdown`} target="_blank" rel="noreferrer">
+                    Markdown
+                  </a>
+                  <a href={`/api/reports/${encodeURIComponent(run.runId)}/json`} target="_blank" rel="noreferrer">
+                    JSON
+                  </a>
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -432,8 +455,9 @@ function shortId(value: string): string {
   return `${value.slice(0, 10)}...${value.slice(-4)}`;
 }
 
-function shortenRunId(runId: string): string {
-  return runId.length > 12 ? `${runId.slice(0, 18)}...${runId.slice(-8)}` : runId;
+function isSelectedProfile(candidate: string, value: string): boolean {
+  const normalized = value.trim();
+  return candidate === "base" ? normalized === "" || normalized === "base" : normalized === candidate;
 }
 
 function formatDate(value: string): string {

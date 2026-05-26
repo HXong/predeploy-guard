@@ -102,8 +102,7 @@ export type RunTask = {
 };
 
 export type RunTaskLogsResponse = {
-  taskID?: string;
-  taskId?: string;
+  taskId: string;
   logs: string[];
 };
 
@@ -186,7 +185,7 @@ export function triggerRun(profile: string): Promise<RunTask> {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(requestProfile ? { profile: requestProfile } : {}),
+    body: JSON.stringify({ profile: requestProfile }),
   });
 }
 
