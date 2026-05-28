@@ -106,6 +106,8 @@ export type RunTaskLogsResponse = {
   logs: string[];
 };
 
+export type ReportType = "markdown" | "json";
+
 type ApiErrorBody = {
   error?: string;
   message?: string;
@@ -147,6 +149,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function requestText(path: string): Promise<string> {
+  let response: Response;
+
+  try {
+    response = await fetch(buildApiUrl(path), {
+      headers: {
+        Accept: "text/markdown, text/plain, */*",
+      },
+    });
+  } catch (error) {
+    throw new Error("Could not reach the PreDeploy Guard API. Start the backend and try again.");
+  }
+
+  if (!response.ok) {
+    const message = await readTextErrorMessage(response);
+    throw new Error(message || `API request failed with HTTP ${response.status}.`);
+  }
+
+  return response.text();
+}
+
 async function readErrorMessage(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as ApiErrorBody;
@@ -154,6 +177,23 @@ async function readErrorMessage(response: Response): Promise<string> {
   } catch {
     return "";
   }
+}
+
+async function readTextErrorMessage(response: Response): Promise<string> {
+  const contentType = response.headers.get("Content-Type") ?? "";
+  if (contentType.includes("application/json")) {
+    return readErrorMessage(response);
+  }
+
+  try {
+    return await response.text();
+  } catch {
+    return "";
+  }
+}
+
+export function getReportPath(runId: string, reportType: ReportType): string {
+  return `/api/reports/${encodeURIComponent(runId)}/${reportType}`;
 }
 
 export function getHealth(): Promise<HealthResponse> {
@@ -195,4 +235,8 @@ export function getRunTask(taskId: string): Promise<RunTask> {
 
 export function getRunTaskLogs(taskId: string): Promise<RunTaskLogsResponse> {
   return request<RunTaskLogsResponse>(`/runs/${encodeURIComponent(taskId)}/logs`);
+}
+
+export function getMarkdownReport(runId: string): Promise<string> {
+  return requestText(`/reports/${encodeURIComponent(runId)}/markdown`);
 }

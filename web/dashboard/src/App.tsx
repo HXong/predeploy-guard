@@ -7,6 +7,8 @@ import {
   getConfigSummary,
   getHealth,
   getHistory,
+  getMarkdownReport,
+  getReportPath,
   getRunTask,
   getRunTaskLogs,
   getRunTasks,
@@ -54,6 +56,12 @@ export default function App() {
   const [profile, setProfile] = useState("smoke-only");
   const [triggering, setTriggering] = useState(false);
   const [triggerError, setTriggerError] = useState<string | null>(null);
+  const [selectedRunId, setSelectedRunId] = useState("");
+  const [markdownPreview, setMarkdownPreview] = useState<Resource<string>>({
+    data: null,
+    error: null,
+    loading: false,
+  });
 
   const loadHealth = useCallback(() => {
     loadResource(setHealth, getHealth);
@@ -153,6 +161,14 @@ export default function App() {
   }, [loadHistory, loadSelectedTask, loadTasks, selectedTask.data]);
 
   const latestHistory = useMemo(() => history.data?.slice().reverse().slice(0, 8) ?? [], [history.data]);
+  const selectedRun = useMemo(
+    () => history.data?.find((run) => run.runId === selectedRunId) ?? null,
+    [history.data, selectedRunId],
+  );
+
+  useEffect(() => {
+    setMarkdownPreview({ data: null, error: null, loading: false });
+  }, [selectedRunId]);
 
   async function handleTriggerRun() {
     setTriggering(true);
@@ -248,9 +264,19 @@ export default function App() {
 
       <section className="content-grid">
         <Card title="Run History" loading={history.loading} error={history.error}>
-          <HistoryTable runs={latestHistory} />
+          <HistoryTable runs={latestHistory} selectedRunId={selectedRunId} onSelect={setSelectedRunId} />
         </Card>
 
+        <Card title="Run Details">
+          <RunDetailsPanel
+            markdownPreview={markdownPreview}
+            onPreviewMarkdown={handlePreviewMarkdown}
+            run={selectedRun}
+          />
+        </Card>
+      </section>
+
+      <section className="content-grid single-grid">
         <Card title={explain.data?.title ?? "Execution Plan"} loading={explain.loading} error={explain.error}>
           <div className="plan-list">
             {(explain.data?.steps.slice(0, 4) ?? []).map((step) => (
@@ -267,6 +293,21 @@ export default function App() {
       </section>
     </main>
   );
+
+  async function handlePreviewMarkdown() {
+    if (!selectedRun) {
+      return;
+    }
+
+    setMarkdownPreview({ data: null, error: null, loading: true });
+
+    try {
+      const markdown = await getMarkdownReport(selectedRun.runId);
+      setMarkdownPreview({ data: markdown, error: null, loading: false });
+    } catch (error) {
+      setMarkdownPreview({ data: null, error: errorMessage(error), loading: false });
+    }
+  }
 
   function refreshAll() {
     loadHealth();
@@ -384,7 +425,15 @@ function TaskLogPanel({
   );
 }
 
-function HistoryTable({ runs }: { runs: RunHistoryItem[] }) {
+function HistoryTable({
+  runs,
+  selectedRunId,
+  onSelect,
+}: {
+  runs: RunHistoryItem[];
+  selectedRunId: string;
+  onSelect: (runId: string) => void;
+}) {
   if (runs.length === 0) {
     return <p className="empty-state">No completed run history yet.</p>;
   }
@@ -404,18 +453,22 @@ function HistoryTable({ runs }: { runs: RunHistoryItem[] }) {
         </thead>
         <tbody>
           {runs.map((run) => (
-            <tr key={run.runId}>
+            <tr
+              className={run.runId === selectedRunId ? "selected-row" : ""}
+              key={run.runId}
+              onClick={() => onSelect(run.runId)}
+            >
               <td title={run.runId}>{shortId(run.runId)}</td>
               <td>{run.serviceName}</td>
               <td>{run.profile || "base"}</td>
               <td>{run.passed ? "Passed" : "Failed"}</td>
               <td>{formatDate(run.finishedAt)}</td>
               <td>
-                <div className="report-links">
-                  <a href={`/api/reports/${encodeURIComponent(run.runId)}/markdown`} target="_blank" rel="noreferrer">
+                <div className="report-links" onClick={(event) => event.stopPropagation()}>
+                  <a href={getReportPath(run.runId, "markdown")} target="_blank" rel="noreferrer">
                     Markdown
                   </a>
-                  <a href={`/api/reports/${encodeURIComponent(run.runId)}/json`} target="_blank" rel="noreferrer">
+                  <a href={getReportPath(run.runId, "json")} target="_blank" rel="noreferrer">
                     JSON
                   </a>
                 </div>
@@ -424,6 +477,65 @@ function HistoryTable({ runs }: { runs: RunHistoryItem[] }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function RunDetailsPanel({
+  run,
+  markdownPreview,
+  onPreviewMarkdown,
+}: {
+  run: RunHistoryItem | null;
+  markdownPreview: Resource<string>;
+  onPreviewMarkdown: () => void;
+}) {
+  if (!run) {
+    return <p className="empty-state">Select a run from history to inspect its details.</p>;
+  }
+
+  return (
+    <div className="run-details">
+      <div className="details-grid">
+        <Detail label="Run ID" title={run.runId} value={shortId(run.runId)} />
+        <Detail label="Service" value={run.serviceName} />
+        <Detail label="Profile" value={run.profile || "base"} />
+        <Detail label="Result" value={run.passed ? "Passed" : "Failed"} />
+        <Detail label="Started" value={formatDate(run.startedAt)} />
+        <Detail label="Finished" value={formatDate(run.finishedAt)} />
+        <Detail label="Duration" value={formatDuration(run.startedAt, run.finishedAt)} />
+        {run.p95LatencyMs !== undefined && <Detail label="p95 latency" value={`${run.p95LatencyMs.toFixed(2)} ms`} />}
+        {run.errorRate !== undefined && <Detail label="Error rate" value={`${(run.errorRate * 100).toFixed(2)}%`} />}
+      </div>
+
+      <div className="panel-actions">
+        <a href={getReportPath(run.runId, "markdown")} target="_blank" rel="noreferrer">
+          Markdown report
+        </a>
+        <a href={getReportPath(run.runId, "json")} target="_blank" rel="noreferrer">
+          JSON report
+        </a>
+        <button
+          className="secondary-button"
+          disabled={markdownPreview.loading}
+          type="button"
+          onClick={onPreviewMarkdown}
+        >
+          {markdownPreview.loading ? "Loading preview..." : "Preview Markdown"}
+        </button>
+      </div>
+
+      {markdownPreview.error && <p className="error-text">{markdownPreview.error}</p>}
+      {markdownPreview.data !== null && <pre className="markdown-preview">{markdownPreview.data}</pre>}
+    </div>
+  );
+}
+
+function Detail({ label, value, title }: { label: string; value: string; title?: string }) {
+  return (
+    <div className="detail-item">
+      <span>{label}</span>
+      <strong title={title}>{value}</strong>
     </div>
   );
 }
@@ -470,4 +582,33 @@ function formatDate(value: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function formatDuration(startedAt: string, finishedAt: string): string {
+  const started = new Date(startedAt);
+  const finished = new Date(finishedAt);
+  const milliseconds = finished.getTime() - started.getTime();
+
+  if (Number.isNaN(milliseconds) || milliseconds < 0) {
+    return "Unknown";
+  }
+
+  if (milliseconds < 1000) {
+    return `${milliseconds} ms`;
+  }
+
+  const totalSeconds = Math.round(milliseconds / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
 }
