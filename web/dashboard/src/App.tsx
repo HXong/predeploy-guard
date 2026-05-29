@@ -1,23 +1,33 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import {
-  ConfigExplanation,
-  ConfigSummary,
   getConfigExplain,
   getConfigSummary,
   getHealth,
   getHistory,
   getMarkdownReport,
-  getReportPath,
   getRunTask,
   getRunTaskLogs,
   getRunTasks,
+  triggerRun,
+} from "./api/client";
+import { ConfigSummaryCard } from "./components/ConfigSummaryCard";
+import { ExecutionPlanCard } from "./components/ExecutionPlanCard";
+import { Header } from "./components/Header";
+import { HealthCard } from "./components/HealthCard";
+import { RunDetailsPanel } from "./components/RunDetailsPanel";
+import { RunHistoryTable } from "./components/RunHistoryTable";
+import { RunTasksTable } from "./components/RunTasksTable";
+import { TaskLogsPanel } from "./components/TaskLogsPanel";
+import { TriggerRunPanel } from "./components/TriggerRunPanel";
+import type {
+  ConfigExplanation,
+  ConfigSummary,
   HealthResponse,
   RunHistoryItem,
   RunTask,
   RunTaskLogsResponse,
-  triggerRun,
-} from "./api/client";
+} from "./types/api";
 
 type Resource<T> = {
   data: T | null;
@@ -25,7 +35,6 @@ type Resource<T> = {
   loading: boolean;
 };
 
-const profiles = ["base", "smoke-only", "light-load", "stress-test"];
 const runningStatuses = new Set<RunTask["status"]>(["queued", "running"]);
 
 function initialResource<T>(): Resource<T> {
@@ -42,7 +51,7 @@ export default function App() {
   const [explain, setExplain] = useState<Resource<ConfigExplanation>>(initialResource);
   const [history, setHistory] = useState<Resource<RunHistoryItem[]>>(initialResource);
   const [tasks, setTasks] = useState<Resource<RunTask[]>>(initialResource);
-  const [selectedTaskId, setSelectedTaskId] = useState<string>("");
+  const [selectedTaskId, setSelectedTaskId] = useState("");
   const [selectedTask, setSelectedTask] = useState<Resource<RunTask>>({
     data: null,
     error: null,
@@ -187,113 +196,6 @@ export default function App() {
     }
   }
 
-  return (
-    <main className="app-shell">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">Local validation control plane</p>
-          <h1>PreDeploy Guard Dashboard</h1>
-        </div>
-        <button className="secondary-button" type="button" onClick={refreshAll}>
-          Refresh
-        </button>
-      </header>
-
-      <section className="top-grid">
-        <Card title="API Health" loading={health.loading} error={health.error}>
-          {health.data && (
-            <div className="status-row">
-              <span className={`status-dot ${health.data.status === "ok" ? "ok" : "warn"}`} />
-              <span className="status-text">{health.data.status}</span>
-            </div>
-          )}
-        </Card>
-
-        <Card title="Config Summary" loading={summary.loading} error={summary.error}>
-          {summary.data && (
-            <div className="summary-grid">
-              <Metric label="Service" value={summary.data.service.name} />
-              <Metric label="Runtime" value={summary.data.runtime.type} />
-              <Metric label="Port" value={String(summary.data.service.port)} />
-              <Metric label="Profiles" value={String(summary.data.counts.profiles)} />
-              <Metric label="Smoke checks" value={String(summary.data.counts.smokeChecks)} />
-              <Metric label="Dependencies" value={String(summary.data.counts.dependencies)} />
-            </div>
-          )}
-        </Card>
-
-        <Card title="Trigger Run">
-          <div className="profile-panel">
-            <label htmlFor="profile">Profile (optional)</label>
-            <input
-              id="profile"
-              value={profile}
-              onChange={(event) => setProfile(event.target.value)}
-              placeholder="Leave empty for base"
-            />
-            <p className="helper-text">Leave empty to run the base config.</p>
-            <div className="profile-buttons">
-              {profiles.map((candidate) => (
-                <button
-                  className={isSelectedProfile(candidate, profile) ? "chip active" : "chip"}
-                  key={candidate}
-                  type="button"
-                  onClick={() => setProfile(candidate === "base" ? "" : candidate)}
-                >
-                  {candidate}
-                </button>
-              ))}
-            </div>
-            <button className="primary-button" type="button" disabled={triggering} onClick={handleTriggerRun}>
-              {triggering ? "Starting..." : "Start validation"}
-            </button>
-            {triggerError && <p className="error-text">{triggerError}</p>}
-          </div>
-        </Card>
-      </section>
-
-      <section className="content-grid">
-        <Card title="Run Tasks" loading={tasks.loading} error={tasks.error}>
-          <TaskList tasks={tasks.data ?? []} selectedTaskId={selectedTaskId} onSelect={setSelectedTaskId} />
-        </Card>
-
-        <Card title="Task Logs" loading={taskLogs.loading} error={taskLogs.error}>
-          <TaskLogPanel task={selectedTask.data} logs={taskLogs.data?.logs ?? []} taskError={selectedTask.error} />
-        </Card>
-      </section>
-
-      <section className="content-grid">
-        <Card title="Run History" loading={history.loading} error={history.error}>
-          <HistoryTable runs={latestHistory} selectedRunId={selectedRunId} onSelect={setSelectedRunId} />
-        </Card>
-
-        <Card title="Run Details">
-          <RunDetailsPanel
-            markdownPreview={markdownPreview}
-            onPreviewMarkdown={handlePreviewMarkdown}
-            run={selectedRun}
-          />
-        </Card>
-      </section>
-
-      <section className="content-grid single-grid">
-        <Card title={explain.data?.title ?? "Execution Plan"} loading={explain.loading} error={explain.error}>
-          <div className="plan-list">
-            {(explain.data?.steps.slice(0, 4) ?? []).map((step) => (
-              <div className="plan-step" key={step.number}>
-                <span>{step.number}</span>
-                <div>
-                  <strong>{step.title}</strong>
-                  <p>{step.details[0]}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </section>
-    </main>
-  );
-
   async function handlePreviewMarkdown() {
     if (!selectedRun) {
       return;
@@ -319,229 +221,60 @@ export default function App() {
       void loadSelectedTask(selectedTaskId);
     }
   }
-}
-
-function Card({
-  title,
-  loading,
-  error,
-  children,
-}: {
-  title: string;
-  loading?: boolean;
-  error?: string | null;
-  children: ReactNode;
-}) {
-  return (
-    <article className="card">
-      <div className="card-header">
-        <h2>{title}</h2>
-        {loading && <span className="loading-pill">Loading</span>}
-      </div>
-      {error ? <p className="empty-state">{error}</p> : children}
-    </article>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function TaskList({
-  tasks,
-  selectedTaskId,
-  onSelect,
-}: {
-  tasks: RunTask[];
-  selectedTaskId: string;
-  onSelect: (taskId: string) => void;
-}) {
-  if (tasks.length === 0) {
-    return <p className="empty-state">No API-triggered runs yet.</p>;
-  }
 
   return (
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Task</th>
-            <th>Profile</th>
-            <th>Status</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.map((task) => (
-            <tr
-              className={task.taskId === selectedTaskId ? "selected-row" : ""}
-              key={task.taskId}
-              onClick={() => onSelect(task.taskId)}
-            >
-              <td>{shortId(task.taskId)}</td>
-              <td>{task.profile || "base"}</td>
-              <td>
-                <StatusBadge status={task.status} />
-              </td>
-              <td>{formatDate(task.createdAt)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <main className="app-shell">
+      <Header onRefresh={refreshAll} />
+
+      <section className="top-grid">
+        <HealthCard data={health.data} loading={health.loading} error={health.error} />
+        <ConfigSummaryCard data={summary.data} loading={summary.loading} error={summary.error} />
+        <TriggerRunPanel
+          error={triggerError}
+          onProfileChange={setProfile}
+          onTriggerRun={handleTriggerRun}
+          profile={profile}
+          triggering={triggering}
+        />
+      </section>
+
+      <section className="content-grid">
+        <RunTasksTable
+          error={tasks.error}
+          loading={tasks.loading}
+          onSelect={setSelectedTaskId}
+          selectedTaskId={selectedTaskId}
+          tasks={tasks.data ?? []}
+        />
+        <TaskLogsPanel
+          error={taskLogs.error}
+          loading={taskLogs.loading}
+          logs={taskLogs.data?.logs ?? []}
+          task={selectedTask.data}
+          taskError={selectedTask.error}
+        />
+      </section>
+
+      <section className="content-grid">
+        <RunHistoryTable
+          error={history.error}
+          loading={history.loading}
+          onSelect={setSelectedRunId}
+          runs={latestHistory}
+          selectedRunId={selectedRunId}
+        />
+        <RunDetailsPanel
+          markdownPreview={markdownPreview}
+          onPreviewMarkdown={handlePreviewMarkdown}
+          run={selectedRun}
+        />
+      </section>
+
+      <section className="content-grid single-grid">
+        <ExecutionPlanCard data={explain.data} loading={explain.loading} error={explain.error} />
+      </section>
+    </main>
   );
-}
-
-function TaskLogPanel({
-  task,
-  logs,
-  taskError,
-}: {
-  task: RunTask | null;
-  logs: string[];
-  taskError: string | null;
-}) {
-  if (taskError) {
-    return <p className="empty-state">{taskError}</p>;
-  }
-
-  if (!task) {
-    return <p className="empty-state">Select a task to inspect its logs.</p>;
-  }
-
-  return (
-    <div className="logs-panel">
-      <div className="task-summary">
-        <StatusBadge status={task.status} />
-        <span>{task.message || task.error || task.taskId}</span>
-      </div>
-      <pre>{logs.length > 0 ? logs.join("\n") : "No logs recorded yet."}</pre>
-    </div>
-  );
-}
-
-function HistoryTable({
-  runs,
-  selectedRunId,
-  onSelect,
-}: {
-  runs: RunHistoryItem[];
-  selectedRunId: string;
-  onSelect: (runId: string) => void;
-}) {
-  if (runs.length === 0) {
-    return <p className="empty-state">No completed run history yet.</p>;
-  }
-
-  return (
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Run</th>
-            <th>Service</th>
-            <th>Profile</th>
-            <th>Result</th>
-            <th>Finished</th>
-            <th>Reports</th>
-          </tr>
-        </thead>
-        <tbody>
-          {runs.map((run) => (
-            <tr
-              className={run.runId === selectedRunId ? "selected-row" : ""}
-              key={run.runId}
-              onClick={() => onSelect(run.runId)}
-            >
-              <td title={run.runId}>{shortId(run.runId)}</td>
-              <td>{run.serviceName}</td>
-              <td>{run.profile || "base"}</td>
-              <td>{run.passed ? "Passed" : "Failed"}</td>
-              <td>{formatDate(run.finishedAt)}</td>
-              <td>
-                <div className="report-links" onClick={(event) => event.stopPropagation()}>
-                  <a href={getReportPath(run.runId, "markdown")} target="_blank" rel="noreferrer">
-                    Markdown
-                  </a>
-                  <a href={getReportPath(run.runId, "json")} target="_blank" rel="noreferrer">
-                    JSON
-                  </a>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function RunDetailsPanel({
-  run,
-  markdownPreview,
-  onPreviewMarkdown,
-}: {
-  run: RunHistoryItem | null;
-  markdownPreview: Resource<string>;
-  onPreviewMarkdown: () => void;
-}) {
-  if (!run) {
-    return <p className="empty-state">Select a run from history to inspect its details.</p>;
-  }
-
-  return (
-    <div className="run-details">
-      <div className="details-grid">
-        <Detail label="Run ID" title={run.runId} value={shortId(run.runId)} />
-        <Detail label="Service" value={run.serviceName} />
-        <Detail label="Profile" value={run.profile || "base"} />
-        <Detail label="Result" value={run.passed ? "Passed" : "Failed"} />
-        <Detail label="Started" value={formatDate(run.startedAt)} />
-        <Detail label="Finished" value={formatDate(run.finishedAt)} />
-        <Detail label="Duration" value={formatDuration(run.startedAt, run.finishedAt)} />
-        {run.p95LatencyMs !== undefined && <Detail label="p95 latency" value={`${run.p95LatencyMs.toFixed(2)} ms`} />}
-        {run.errorRate !== undefined && <Detail label="Error rate" value={`${(run.errorRate * 100).toFixed(2)}%`} />}
-      </div>
-
-      <div className="panel-actions">
-        <a href={getReportPath(run.runId, "markdown")} target="_blank" rel="noreferrer">
-          Markdown report
-        </a>
-        <a href={getReportPath(run.runId, "json")} target="_blank" rel="noreferrer">
-          JSON report
-        </a>
-        <button
-          className="secondary-button"
-          disabled={markdownPreview.loading}
-          type="button"
-          onClick={onPreviewMarkdown}
-        >
-          {markdownPreview.loading ? "Loading preview..." : "Preview Markdown"}
-        </button>
-      </div>
-
-      {markdownPreview.error && <p className="error-text">{markdownPreview.error}</p>}
-      {markdownPreview.data !== null && <pre className="markdown-preview">{markdownPreview.data}</pre>}
-    </div>
-  );
-}
-
-function Detail({ label, value, title }: { label: string; value: string; title?: string }) {
-  return (
-    <div className="detail-item">
-      <span>{label}</span>
-      <strong title={title}>{value}</strong>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: RunTask["status"] }) {
-  return <span className={`status-badge ${status}`}>{status}</span>;
 }
 
 function loadResource<T>(setter: Dispatch<SetStateAction<Resource<T>>>, loader: () => Promise<T>) {
@@ -557,58 +290,4 @@ function errorMessage(error: unknown): string {
   }
 
   return "Something went wrong while talking to the PreDeploy Guard API.";
-}
-
-function shortId(value: string): string {
-  if (value.length <= 16) {
-    return value;
-  }
-
-  return `${value.slice(0, 10)}...${value.slice(-4)}`;
-}
-
-function isSelectedProfile(candidate: string, value: string): boolean {
-  const normalized = value.trim();
-  return candidate === "base" ? normalized === "" || normalized === "base" : normalized === candidate;
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-}
-
-function formatDuration(startedAt: string, finishedAt: string): string {
-  const started = new Date(startedAt);
-  const finished = new Date(finishedAt);
-  const milliseconds = finished.getTime() - started.getTime();
-
-  if (Number.isNaN(milliseconds) || milliseconds < 0) {
-    return "Unknown";
-  }
-
-  if (milliseconds < 1000) {
-    return `${milliseconds} ms`;
-  }
-
-  const totalSeconds = Math.round(milliseconds / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m ${seconds}s`;
-  }
-
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
-  }
-
-  return `${seconds}s`;
 }
