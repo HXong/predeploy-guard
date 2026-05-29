@@ -4,7 +4,70 @@ PreDeploy Guard is a lightweight local-first pre-deployment validation tool for 
 
 It is designed for developers, small teams, and student teams that do not have a full multi-stage deployment setup. Instead of deploying directly after building a service, developers can run PreDeploy Guard locally to create a temporary sandbox, start the service with its dependencies, run readiness, smoke, and performance checks, then generate deployment safety reports.
 
-PreDeploy Guard also reduces YAML configuration friction through starter config generation, dependency presets, config validation, config explanation, validation profiles, run history, and a local API layer for future GUI integration.
+PreDeploy Guard also reduces YAML configuration friction through starter config generation, dependency presets, config validation, config explanation, validation profiles, run history, a local API layer, and a local dashboard UI.
+
+---
+
+## Problem
+
+Small teams and solo developers often do not have proper staging environments.
+
+This means a backend service may be deployed without knowing whether:
+
+- The container image builds correctly
+- Required dependencies such as PostgreSQL or Redis are reachable
+- The service can start successfully
+- The health endpoint is working
+- Basic API endpoints return expected status codes
+- Performance checks pass latency and error-rate thresholds
+- Logs contain obvious runtime errors
+- The validation configuration itself is correct
+- Recent changes caused a regression compared to a previous run
+
+PreDeploy Guard helps reduce this risk by providing a simple local validation layer before deployment.
+
+---
+
+## Solution
+
+PreDeploy Guard creates a temporary Docker Compose sandbox for the target service.
+
+The tool reads a `predeploy.yaml` file, builds the service image if needed, starts dependency containers, waits for dependency and service readiness, runs smoke checks, runs Dockerized k6 performance checks, captures logs on failure, writes Markdown and JSON reports, and records run history.
+
+```txt
+Developer Service Repo
+        |
+        | predeploy.yaml
+        v
+PreDeploy Guard CLI
+        |
+        | builds image if configured
+        v
+Temporary Docker Compose Sandbox
+        |
+        | starts service + dependencies
+        v
+Readiness + Smoke + Performance Checks
+        |
+        v
+Markdown + JSON Reports + Run History
+```
+
+PreDeploy Guard also includes a local API server and dashboard:
+
+```txt
+Local Dashboard UI
+        |
+        | HTTP API
+        v
+PreDeploy Guard Local Server
+        |
+        | shared app services
+        v
+Config Summary + Run History + Reports + API-triggered Runs
+```
+
+The long-term direction is to keep the CLI as the core engine and evolve toward a GDP-inspired local platform for guided configuration, validation, and reporting.
 
 ---
 
@@ -46,7 +109,7 @@ PreDeploy Guard also reduces YAML configuration friction through starter config 
 - Validation profiles through `--profile`
 - Config-relative path resolution
 
-### Local API / GUI groundwork
+### Local API and dashboard
 
 - `predeploy serve` local API server
 - Safe config summary and explanation endpoints
@@ -55,7 +118,20 @@ PreDeploy Guard also reduces YAML configuration friction through starter config 
 - Async run task tracking
 - Task status polling
 - Basic task logs endpoint
-- Server route tests
+- React + TypeScript dashboard under `web/dashboard`
+- Dashboard cards for API health and config summary
+- Run history table
+- Run details panel
+- Markdown report preview
+- Run task table
+- Task logs panel
+- Trigger run panel with profile selector
+
+### CI support
+
+- GitHub Actions workflow support
+- Reports uploaded as workflow artifacts
+- CI fails when PreDeploy Guard validation fails
 
 ---
 
@@ -72,21 +148,142 @@ PreDeploy Guard also reduces YAML configuration friction through starter config 
 | Reports | Markdown, JSON |
 | History | JSON index |
 | Local API | Go `net/http` |
+| Dashboard | React, TypeScript, Vite |
 | CI Example | GitHub Actions |
+
+---
+
+## Repository Structure
+
+```txt
+predeploy-guard/
+├── .github/
+│   └── workflows/
+│       └── predeploy.yml
+├── cmd/
+│   └── predeploy/
+├── internal/
+│   ├── app/
+│   ├── builder/
+│   ├── checker/
+│   ├── config/
+│   ├── history/
+│   ├── loadtest/
+│   ├── report/
+│   ├── runner/
+│   ├── sandbox/
+│   ├── scaffold/
+│   └── server/
+├── web/
+│   └── dashboard/
+│       ├── index.html
+│       ├── package.json
+│       ├── vite.config.ts
+│       ├── tsconfig.json
+│       └── src/
+│           ├── api/
+│           ├── components/
+│           ├── types/
+│           ├── utils/
+│           ├── App.tsx
+│           ├── main.tsx
+│           └── styles.css
+├── examples/
+│   ├── predeploy.yaml
+│   └── sample-service/
+├── AGENTS.md
+├── ROADMAP.md
+├── go.mod
+├── go.sum
+└── README.md
+```
+
+Main package boundaries:
+
+| Package | Responsibility |
+|---|---|
+| `cmd/predeploy` | CLI command wiring and terminal output |
+| `internal/app` | Shared use-case services for CLI and server |
+| `internal/config` | Config loading, validation, profile application, path resolution |
+| `internal/scaffold` | Starter config and dependency preset generation |
+| `internal/builder` | Docker image build execution |
+| `internal/sandbox` | Docker Compose sandbox creation and cleanup |
+| `internal/checker` | HTTP smoke/readiness checks |
+| `internal/loadtest` | Dockerized k6 execution and metric parsing |
+| `internal/report` | Markdown and JSON report generation |
+| `internal/history` | Run history index, lookup, and comparison helpers |
+| `internal/server` | Local HTTP API server for dashboard support |
+| `internal/runner` | Main validation orchestration flow |
+| `web/dashboard` | Local React dashboard |
+
+---
+
+## Prerequisites
+
+Backend:
+
+- Go
+- Docker
+- Docker Compose
+
+Dashboard:
+
+- Node.js
+- npm
+
+Verify Docker is running:
+
+```bash
+docker version
+docker compose version
+```
+
+No local k6 installation is required. PreDeploy Guard runs k6 through Docker using the `grafana/k6` image.
 
 ---
 
 ## Quick Start
 
+### CLI validation
+
 ```bash
 git clone <your-repo-url>
 cd predeploy-guard
+
 go run ./cmd/predeploy validate examples/predeploy.yaml
 go run ./cmd/predeploy explain examples/predeploy.yaml
 go run ./cmd/predeploy run examples/predeploy.yaml
 ```
 
-The run command will build the target image if configured, create a temporary Docker Compose sandbox, start dependencies and the service, run readiness/smoke/performance checks, write reports, append history, and clean up.
+### Local API server
+
+```bash
+go run ./cmd/predeploy serve --config examples/predeploy.yaml
+```
+
+Default address:
+
+```txt
+http://localhost:7070
+```
+
+### Dashboard
+
+In another terminal:
+
+```bash
+cd web/dashboard
+npm install
+npm run dev
+```
+
+Open:
+
+```txt
+http://localhost:5173
+```
+
+During development, the Vite dev server proxies `/api` requests to `http://localhost:7070`.
 
 ---
 
@@ -146,12 +343,6 @@ predeploy compare predeploy.yaml <base-run-id> <target-run-id>
 predeploy serve --config examples/predeploy.yaml
 ```
 
-Default address:
-
-```txt
-http://localhost:7070
-```
-
 ---
 
 ## Local API Endpoints
@@ -204,6 +395,59 @@ curl -X POST "http://localhost:7070/api/runs" \
 ```
 
 `POST /api/runs` returns immediately with a task ID. The task status can then be polled through `GET /api/runs/{taskId}`.
+
+---
+
+## Dashboard
+
+The dashboard lives under:
+
+```txt
+web/dashboard
+```
+
+Current dashboard capabilities:
+
+- View API health
+- View config summary
+- View execution plan summary
+- Trigger validation run by profile
+- View async run tasks
+- Poll selected task status
+- View task logs
+- View run history
+- Select a run
+- View run details
+- Open Markdown/JSON report links
+- Preview raw Markdown report content
+
+Frontend structure:
+
+```txt
+web/dashboard/src/
+├── api/
+│   └── client.ts
+├── components/
+│   ├── Card.tsx
+│   ├── ConfigSummaryCard.tsx
+│   ├── ExecutionPlanCard.tsx
+│   ├── Header.tsx
+│   ├── HealthCard.tsx
+│   ├── RunDetailsPanel.tsx
+│   ├── RunHistoryTable.tsx
+│   ├── RunTasksTable.tsx
+│   ├── StatusBadge.tsx
+│   ├── TaskLogsPanel.tsx
+│   └── TriggerRunPanel.tsx
+├── types/
+│   └── api.ts
+├── utils/
+│   ├── format.ts
+│   └── reports.ts
+├── App.tsx
+├── main.tsx
+└── styles.css
+```
 
 ---
 
@@ -307,62 +551,11 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 
 ---
 
-## GitHub Actions
-
-PreDeploy Guard can run in GitHub Actions as a CI validation gate.
-
-```yaml
-name: PreDeploy Guard
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-
-jobs:
-  predeploy:
-    name: Run PreDeploy Guard
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
-
-      - name: Verify Docker
-        run: |
-          docker version
-          docker compose version
-
-      - name: Download Go dependencies
-        run: go mod download
-
-      - name: Validate PreDeploy config
-        run: go run ./cmd/predeploy validate examples/predeploy.yaml
-
-      - name: Run PreDeploy Guard
-        run: go run ./cmd/predeploy run examples/predeploy.yaml
-
-      - name: Upload PreDeploy reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: predeploy-reports
-          path: examples/reports/
-```
-
----
-
 ## Current Limitations
 
 - Docker Compose runtime only
 - Kubernetes runtime not implemented yet
-- No GUI/config wizard yet
+- Guided config builder not implemented yet
 - No API gateway or ingress latency simulation yet
 - Dependency readiness depends on user-provided commands
 - Smoke checks currently support simple HTTP status validation
@@ -370,6 +563,7 @@ jobs:
 - Secrets are passed as plain environment variables in local configs
 - Run comparison currently compares summary-level metrics only
 - API-triggered run logs currently contain high-level task events only, not full runner step output
+- Dashboard previews raw Markdown only; it does not render Markdown as HTML yet
 
 ---
 
@@ -382,25 +576,21 @@ jobs:
 - Phase 3: Config usability
 - Phase 4: Run history and comparison
 - Phase 5: Local API and GUI groundwork
+- Phase 6: Local dashboard UI
 
 ### Next
 
-- Phase 6: Local dashboard UI
-  - React + TypeScript frontend
-  - API health/config summary cards
-  - run history table
-  - run task table
-  - trigger validation run by profile
-  - task status polling
-  - basic task logs panel
+- Phase 7: Guided config builder
+  - service config wizard
+  - dependency wizard
+  - smoke check builder
+  - k6 profile builder
+  - generated `predeploy.yaml` preview
+  - save/export config workflow
 
 ### Future
 
 - GDP-inspired GUI/platform mode
-- Guided YAML/config builder
-- Dependency wizard
-- Smoke check builder
-- k6 profile builder
 - GitHub Actions workflow generator
 - Kubernetes runtime
 - Helm chart support
@@ -409,6 +599,8 @@ jobs:
 ---
 
 ## Development Commands
+
+Backend:
 
 ```bash
 go run ./cmd/predeploy validate examples/predeploy.yaml
@@ -424,12 +616,21 @@ go vet ./...
 go test ./...
 ```
 
+Frontend:
+
+```bash
+cd web/dashboard
+npm install
+npm run dev
+npm run build
+```
+
 ---
 
 ## Project Positioning
 
 PreDeploy Guard is best described as:
 
-> A local-first pre-deployment validation tool that creates temporary Docker Compose sandboxes for backend services, validates dependency readiness, service readiness, smoke checks, and performance thresholds, then generates human-readable and machine-readable deployment safety reports with run history, comparison, and local API support.
+> A local-first pre-deployment validation platform that creates temporary Docker Compose sandboxes for backend services, validates dependency readiness, service readiness, smoke checks, and performance thresholds, then generates human-readable and machine-readable deployment safety reports with run history, comparison, API support, and a local dashboard.
 
-This project demonstrates backend engineering, developer tooling, Docker-based workflows, performance validation, CI readiness, reliability thinking, local API design, and early platform engineering concepts.
+This project demonstrates backend engineering, developer tooling, Docker-based workflows, performance validation, CI readiness, reliability thinking, local API design, frontend dashboard development, and early platform engineering concepts.

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-PreDeploy Guard is a local-first pre-deployment validation tool for backend services.
+PreDeploy Guard is a local-first pre-deployment validation platform for backend services.
 
 The CLI validates services by:
 1. Loading `predeploy.yaml`
@@ -15,11 +15,13 @@ The CLI validates services by:
 8. Writing Markdown/JSON reports
 9. Recording run history
 
-The project also exposes a local API server for future GUI/dashboard support.
+The project also exposes a local API server and React dashboard for future GUI/platform workflows.
 
-Future direction: GDP-inspired GUI/platform mode built on top of the CLI engine.
+Future direction: GDP-inspired local platform mode built on top of the CLI engine.
 
 ## Architecture Rules
+
+### Backend
 
 - Keep `cmd/predeploy` as the CLI adapter only.
 - Keep terminal printing in `cmd/predeploy/*_output.go`.
@@ -37,7 +39,22 @@ Future direction: GDP-inspired GUI/platform mode built on top of the CLI engine.
   - `internal/report`
   - `internal/history`
 
+### Frontend
+
+- Keep dashboard frontend under `web/dashboard`.
+- Use React + TypeScript + Vite.
+- Keep API calls in `web/dashboard/src/api/client.ts`.
+- Keep API response types in `web/dashboard/src/types/api.ts`.
+- Keep reusable formatting helpers in `web/dashboard/src/utils/`.
+- Keep page sections as components under `web/dashboard/src/components/`.
+- Do not put all dashboard UI into `App.tsx`.
+- `App.tsx` should mainly compose components and manage high-level state.
+- Do not add a UI library unless explicitly requested.
+- Keep CSS in `src/styles.css` for now.
+
 ## Current Package Responsibilities
+
+### Backend
 
 - `cmd/predeploy`: Cobra CLI commands and terminal output formatting.
 - `internal/app`: shared use-case services for CLI and server.
@@ -46,11 +63,18 @@ Future direction: GDP-inspired GUI/platform mode built on top of the CLI engine.
 - `internal/runner`: orchestrate full validation runs.
 - `internal/history`: manage `reports/history.json`.
 - `internal/report`: write Markdown and JSON reports.
-- `internal/server`: local API server for future GUI.
+- `internal/server`: local API server for dashboard.
 - `internal/builder`: Docker image build logic.
 - `internal/sandbox`: Docker Compose sandbox lifecycle.
 - `internal/checker`: readiness and smoke checks.
 - `internal/loadtest`: Dockerized k6 execution.
+
+### Frontend
+
+- `web/dashboard/src/api`: API client.
+- `web/dashboard/src/components`: dashboard UI components.
+- `web/dashboard/src/types`: TypeScript API DTOs.
+- `web/dashboard/src/utils`: formatting/report helper functions.
 
 ## Local API Rules
 
@@ -90,6 +114,8 @@ Current task statuses:
 
 ## Commands to Run Before Finishing
 
+Backend checks:
+
 ```bash
 go fmt ./...
 go vet ./...
@@ -98,25 +124,43 @@ go run ./cmd/predeploy validate examples/predeploy.yaml
 go run ./cmd/predeploy explain examples/predeploy.yaml --profile smoke-only
 ```
 
-### For changes involving run execution
+Frontend checks:
+
+```bash
+cd web/dashboard
+npm run build
+```
+
+For backend run execution changes:
 
 ```bash
 go run ./cmd/predeploy run examples/predeploy.yaml --profile smoke-only
 ```
 
-### For changes involving history/server
+For history/server changes:
 
 ```bash
 go run ./cmd/predeploy history examples/predeploy.yaml
 go run ./cmd/predeploy serve --config examples/predeploy.yaml
 ```
 
-Manual API testing may be done by the developer instead of Codex if the environment cannot reliably test local HTTP calls.
+Manual API/browser testing may be done by the developer instead of Codex if the environment cannot reliably test local HTTP calls.
 
 ## Git / Generated Files
 
 - Do not commit generated reports under `examples/reports/` unless explicitly requested.
 - Do not commit temporary test configs like `tmp-predeploy.yaml`.
+- Do not commit frontend generated files:
+  - `web/dashboard/node_modules/`
+  - `web/dashboard/dist/`
+  - `*.tsbuildinfo`
+- Commit frontend source/config files:
+  - `web/dashboard/package.json`
+  - `web/dashboard/package-lock.json`
+  - `web/dashboard/index.html`
+  - `web/dashboard/vite.config.ts`
+  - `web/dashboard/tsconfig.json`
+  - `web/dashboard/src/**`
 - Keep README and ROADMAP updated when phases are completed.
 - Keep AGENTS.md updated when architecture rules change.
 
@@ -127,4 +171,5 @@ Manual API testing may be done by the developer instead of Codex if the environm
 - Phase 3 completed: config usability, presets, explain, profiles.
 - Phase 4 completed: run history, show, compare.
 - Phase 5 completed: local API server, safe config endpoints, API-triggered async runs, status polling, basic task logs.
-- Phase 6 current/next: local dashboard UI.
+- Phase 6 completed: local React dashboard, run task UI, run details view, report preview, component refactor.
+- Phase 7 current/next: guided config builder.

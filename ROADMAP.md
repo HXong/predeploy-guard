@@ -33,57 +33,61 @@
 - `predeploy compare`
 
 ### Phase 5: Local API and GUI Groundwork
-Goal: introduce a local HTTP API so the future GUI can reuse the existing CLI engine.
-
-Completed:
 - `predeploy serve`
-- `GET /api/health`
-- `GET /api/config/summary`
-- `GET /api/config/explain`
-- `GET /api/history`
-- `GET /api/history/{runId}`
-- `GET /api/reports/{runId}/json`
-- `GET /api/reports/{runId}/markdown`
-- `POST /api/runs`
-- `GET /api/runs`
-- `GET /api/runs/{taskId}`
-- `GET /api/runs/{taskId}/logs`
+- Safe config summary/explain endpoints
+- History/report API endpoints
 - Async API-triggered validation runs
 - In-memory run task status tracking
 - Basic run task logs
 - Server route tests
 
-## Current Phase
-
 ### Phase 6: Local Dashboard UI
-Goal: build a simple local dashboard on top of the existing API.
+Goal: build a simple local dashboard on top of the local API.
 
-Planned:
-- React + TypeScript frontend
+Completed:
+- React + TypeScript + Vite dashboard under `web/dashboard`
+- Vite dev proxy to local API server
 - API health card
 - Config summary card
+- Execution plan summary
+- Trigger run panel with profile selector
+- Async run task table
+- Task status polling
+- Task logs panel
 - Run history table
-- Run task table
-- Run button with profile selector
-- Poll `GET /api/runs/{taskId}` for task status
-- Show task logs from `GET /api/runs/{taskId}/logs`
-- Link to Markdown/JSON report endpoints
+- Run details panel
+- Markdown/JSON report links
+- Raw Markdown report preview
+- Dashboard component refactor
+- Frontend API client and typed DTOs
+
+## Current Phase
+
+### Phase 7: Guided Config Builder
+Goal: allow users to generate and edit `predeploy.yaml` through a guided UI instead of writing YAML manually.
+
+Planned:
+- Service configuration form
+- Dependency wizard
+- Smoke check builder
+- Performance/k6 profile builder
+- YAML preview panel
+- Export/download generated `predeploy.yaml`
+- Optional save-to-file flow through local API later
 
 ## Future Direction
 
-### Phase 7: Guided Config Builder
-- Service config wizard
-- Dependency wizard
-- Smoke check builder
-- k6 profile builder
-- GitHub Actions workflow generator
+### Phase 8: GitHub Actions Workflow Generator
+- Generate workflow YAML from dashboard
+- Suggest CI validation commands
+- Link generated workflow to selected profile
 
-### Phase 8: Kubernetes Runtime
+### Phase 9: Kubernetes Runtime
 - Existing cluster support
 - Temporary namespace creation
 - Manifest deployment
 - Helm chart support
 
-### Phase 9: API Gateway / Ingress Testing
+### Phase 10: API Gateway / Ingress Testing
 - Gateway config support
 - Direct service vs gateway latency comparison
