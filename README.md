@@ -1,12 +1,29 @@
 # PreDeploy Guard
+![Go](https://img.shields.io/badge/Go-1.22+-00ADD8?logo=go&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![k6](https://img.shields.io/badge/k6-Performance_Testing-7D64FF?logo=k6&logoColor=white)
+![React](https://img.shields.io/badge/React-Dashboard-61DAFB?logo=react&logoColor=black)
+![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white)
 
-PreDeploy Guard is a lightweight local-first pre-deployment validation tool for backend services.
+> Local-first deployment validation platform for backend services.
+
+PreDeploy Guard helps backend developers catch deployment issues before release by spinning up temporary Docker Compose sandboxes, validating dependencies, running smoke checks, executing k6 performance tests, and generating Markdown/JSON safety reports.
 
 It is designed for developers, small teams, and student teams that do not have a full multi-stage deployment setup. Instead of deploying directly after building a service, developers can run PreDeploy Guard locally to create a temporary sandbox, start the service with its dependencies, run readiness, smoke, and performance checks, then generate deployment safety reports.
 
 PreDeploy Guard also reduces YAML configuration friction through starter config generation, dependency presets, config validation, config explanation, validation profiles, run history, a local API layer, and a local dashboard UI.
 
 ---
+
+## Demo
+
+### Dashboard
+
+![PreDeploy Guard Dashboard](assets/dashboard.png)
+
+### Validation Report
+
+![Validation Report](assets/report.png)
 
 ## Problem
 
@@ -68,6 +85,16 @@ Config Summary + Run History + Reports + API-triggered Runs
 ```
 
 The long-term direction is to keep the CLI as the core engine and evolve toward a GDP-inspired local platform for guided configuration, validation, and reporting.
+
+---
+
+## Project Scope
+
+PreDeploy Guard is best described as:
+
+> A local-first pre-deployment validation platform that creates temporary Docker Compose sandboxes for backend services, validates dependency readiness, service readiness, smoke checks, and performance thresholds, then generates human-readable and machine-readable deployment safety reports with run history, comparison, API support, and a local dashboard.
+
+This project demonstrates backend engineering, developer tooling, Docker-based workflows, performance validation, CI readiness, reliability thinking, local API design, frontend dashboard development, and early platform engineering concepts.
 
 ---
 
@@ -150,6 +177,21 @@ The long-term direction is to keep the CLI as the core engine and evolve toward 
 | Local API | Go `net/http` |
 | Dashboard | React, TypeScript, Vite |
 | CI Example | GitHub Actions |
+
+---
+
+## What This Project Demonstrates
+
+PreDeploy Guard demonstrates:
+
+- Backend engineering with Go and clean package boundaries
+- REST API design for local validation runs, report access, and task polling
+- Docker Compose-based dependency orchestration
+- Performance validation using Dockerized k6
+- Developer tooling and platform engineering thinking
+- CI/CD readiness through GitHub Actions integration
+- Local dashboard development with React, TypeScript, and Vite
+- Reliability-focused design through readiness checks, smoke checks, run history, and report comparison
 
 ---
 
@@ -247,7 +289,7 @@ No local k6 installation is required. PreDeploy Guard runs k6 through Docker usi
 ### CLI validation
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/HXong/predeploy-guard.git
 cd predeploy-guard
 
 go run ./cmd/predeploy validate examples/predeploy.yaml
@@ -625,12 +667,4 @@ npm run dev
 npm run build
 ```
 
----
 
-## Project Positioning
-
-PreDeploy Guard is best described as:
-
-> A local-first pre-deployment validation platform that creates temporary Docker Compose sandboxes for backend services, validates dependency readiness, service readiness, smoke checks, and performance thresholds, then generates human-readable and machine-readable deployment safety reports with run history, comparison, API support, and a local dashboard.
-
-This project demonstrates backend engineering, developer tooling, Docker-based workflows, performance validation, CI readiness, reliability thinking, local API design, frontend dashboard development, and early platform engineering concepts.
