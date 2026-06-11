@@ -1,7 +1,6 @@
 import { ConfigSummaryCard, ExecutionPlanCard } from "../config";
 import { RunDetailsPanel } from "../reports";
 import { RunHistoryTable, RunTasksTable, TaskLogsPanel, TriggerRunPanel } from "../runs";
-import { Header } from "./components/Header";
 import { HealthCard } from "./components/HealthCard";
 import { useDashboardController } from "./hooks/useDashboardController";
 
@@ -9,11 +8,19 @@ export function DashboardPage() {
   const dashboard = useDashboardController();
 
   return (
-    <main className="app-shell">
-      <Header onRefresh={dashboard.refreshAll} />
+    <>
+      <section className="panel-actions dashboard-actions">
+        <button className="secondary-button" type="button" onClick={dashboard.refreshAll}>
+          Refresh
+        </button>
+      </section>
 
       <section className="top-grid">
-        <HealthCard data={dashboard.health.data} loading={dashboard.health.loading} error={dashboard.health.error} />
+        <HealthCard
+          data={dashboard.health.data}
+          loading={dashboard.health.loading}
+          error={dashboard.health.error}
+        />
         <ConfigSummaryCard
           data={dashboard.summary.data}
           loading={dashboard.summary.loading}
@@ -67,6 +74,6 @@ export function DashboardPage() {
           error={dashboard.explain.error}
         />
       </section>
-    </main>
+    </>
   );
 }

@@ -1,5 +1,5 @@
 type HeaderProps = {
-  onRefresh: () => void;
+  onRefresh?: () => void;
 };
 
 export function Header({ onRefresh }: HeaderProps) {
@@ -9,9 +9,11 @@ export function Header({ onRefresh }: HeaderProps) {
         <p className="eyebrow">Local validation control plane</p>
         <h1>PreDeploy Guard Dashboard</h1>
       </div>
-      <button className="secondary-button" type="button" onClick={onRefresh}>
-        Refresh
-      </button>
+      {onRefresh && (
+        <button className="secondary-button" type="button" onClick={onRefresh}>
+          Refresh
+        </button>
+      )}
     </header>
   );
 }

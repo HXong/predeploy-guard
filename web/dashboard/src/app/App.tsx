@@ -1,5 +1,5 @@
-import { DashboardPage } from "../features/dashboard";
+import { AppShell } from "./AppShell";
 
 export default function App() {
-  return <DashboardPage />;
+  return <AppShell />;
 }
