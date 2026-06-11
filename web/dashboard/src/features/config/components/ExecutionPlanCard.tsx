@@ -1,5 +1,5 @@
-import type { ConfigExplanation } from "../types/api";
-import { Card } from "./Card";
+import { Card } from "../../../shared/components";
+import type { ConfigExplanation } from "../types";
 
 type ExecutionPlanCardProps = {
   data: ConfigExplanation | null;
@@ -16,7 +16,7 @@ export function ExecutionPlanCard({ data, error, loading }: ExecutionPlanCardPro
             <span>{step.number}</span>
             <div>
               <strong>{step.title}</strong>
-              <p>{step.details[0]}</p>
+              <p>{step.details[0] ?? "No additional details."}</p>
             </div>
           </div>
         ))}

@@ -279,6 +279,7 @@ tbody tr {
   transition:
     background 120ms ease,
     color 120ms ease;
+  cursor: pointer;
 }
 
 tbody tr:hover {

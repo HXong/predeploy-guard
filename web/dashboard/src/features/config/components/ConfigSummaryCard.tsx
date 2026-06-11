@@ -1,5 +1,5 @@
-import type { ConfigSummary } from "../types/api";
-import { Card } from "./Card";
+import { Card } from "../../../shared/components";
+import type { ConfigSummary } from "../types";
 
 type ConfigSummaryCardProps = {
   data: ConfigSummary | null;
@@ -24,7 +24,12 @@ export function ConfigSummaryCard({ data, error, loading }: ConfigSummaryCardPro
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+type MetricProps = {
+  label: string;
+  value: string;
+};
+
+function Metric({ label, value }: MetricProps) {
   return (
     <div className="metric">
       <span>{label}</span>

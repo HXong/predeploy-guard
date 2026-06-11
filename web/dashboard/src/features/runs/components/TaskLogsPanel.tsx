@@ -1,6 +1,5 @@
-import type { RunTask } from "../types/api";
-import { Card } from "./Card";
-import { StatusBadge } from "./StatusBadge";
+import { Card, StatusBadge } from "../../../shared/components";
+import type { RunTask } from "../types";
 
 type TaskLogsPanelProps = {
   error: string | null;

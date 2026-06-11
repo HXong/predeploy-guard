@@ -1,5 +1,5 @@
-import type { HealthResponse } from "../types/api";
-import { Card } from "./Card";
+import { Card } from "../../../shared/components";
+import type { HealthResponse } from "../types";
 
 type HealthCardProps = {
   data: HealthResponse | null;

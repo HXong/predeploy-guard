@@ -1,7 +1,6 @@
-import type { RunTask } from "../types/api";
-import { formatDate, formatProfile, shortId } from "../utils/format";
-import { Card } from "./Card";
-import { StatusBadge } from "./StatusBadge";
+import { Card, StatusBadge } from "../../../shared/components";
+import { formatDate, formatProfile, shortId } from "../../../shared/utils";
+import type { RunTask } from "../types";
 
 type RunTasksTableProps = {
   error: string | null;

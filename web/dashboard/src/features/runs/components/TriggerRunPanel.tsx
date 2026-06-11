@@ -1,5 +1,6 @@
-import { isSelectedProfile } from "../utils/format";
-import { Card } from "./Card";
+import type { ChangeEvent } from "react";
+import { Card } from "../../../shared/components";
+import { isSelectedProfile } from "../../../shared/utils";
 
 type TriggerRunPanelProps = {
   error: string | null;
@@ -18,16 +19,15 @@ export function TriggerRunPanel({
   profile,
   triggering,
 }: TriggerRunPanelProps) {
+  function handleProfileChange(event: ChangeEvent<HTMLInputElement>) {
+    onProfileChange(event.target.value);
+  }
+
   return (
     <Card title="Trigger Run">
       <div className="profile-panel">
         <label htmlFor="profile">Profile (optional)</label>
-        <input
-          id="profile"
-          value={profile}
-          onChange={(event) => onProfileChange(event.target.value)}
-          placeholder="Leave empty for base"
-        />
+        <input id="profile" value={profile} onChange={handleProfileChange} placeholder="Leave empty for base" />
         <p className="helper-text">Leave empty to run the base config.</p>
         <div className="profile-buttons">
           {profiles.map((candidate) => (

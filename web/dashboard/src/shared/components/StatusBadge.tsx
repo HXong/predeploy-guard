@@ -1,7 +1,5 @@
-import type { RunTask } from "../types/api";
-
 type StatusBadgeProps = {
-  status: RunTask["status"];
+  status: "queued" | "running" | "completed" | "failed" | string;
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {

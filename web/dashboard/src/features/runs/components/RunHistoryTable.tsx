@@ -1,7 +1,8 @@
-import type { RunHistoryItem } from "../types/api";
-import { formatDate, formatProfile, formatResult, shortId } from "../utils/format";
-import { getReportPath } from "../utils/reports";
-import { Card } from "./Card";
+import type { MouseEvent } from "react";
+import { Card } from "../../../shared/components";
+import { formatDate, formatProfile, formatResult, shortId } from "../../../shared/utils";
+import { getReportPath } from "../../reports";
+import type { RunHistoryItem } from "../types";
 
 type RunHistoryTableProps = {
   error: string | null;
@@ -12,6 +13,10 @@ type RunHistoryTableProps = {
 };
 
 export function RunHistoryTable({ error, loading, onSelect, runs, selectedRunId }: RunHistoryTableProps) {
+  function stopReportClick(event: MouseEvent<HTMLDivElement>) {
+    event.stopPropagation();
+  }
+
   return (
     <Card title="Run History" loading={loading} error={error}>
       {runs.length === 0 ? (
@@ -42,7 +47,7 @@ export function RunHistoryTable({ error, loading, onSelect, runs, selectedRunId 
                   <td>{formatResult(run.passed)}</td>
                   <td>{formatDate(run.finishedAt)}</td>
                   <td>
-                    <div className="report-links" onClick={(event) => event.stopPropagation()}>
+                    <div className="report-links" onClick={stopReportClick}>
                       <a href={getReportPath(run.runId, "markdown")} target="_blank" rel="noreferrer">
                         Markdown
                       </a>

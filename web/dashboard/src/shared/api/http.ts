@@ -1,12 +1,3 @@
-import type {
-  ConfigExplanation,
-  ConfigSummary,
-  HealthResponse,
-  RunHistoryItem,
-  RunTask,
-  RunTaskLogsResponse,
-} from "../types/api";
-
 type ApiErrorBody = {
   error?: string;
   message?: string;
@@ -25,7 +16,7 @@ function buildApiUrl(path: string): string {
   return `${configuredBaseUrl}${baseIncludesApi ? "" : "/api"}${normalizedPath}`;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
 
   try {
@@ -36,7 +27,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       },
       ...init,
     });
-  } catch (error) {
+  } catch {
     throw new Error("Could not reach the PreDeploy Guard API. Start the backend and try again.");
   }
 
@@ -48,7 +39,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function requestText(path: string): Promise<string> {
+export async function requestText(path: string): Promise<string> {
   let response: Response;
 
   try {
@@ -57,7 +48,7 @@ async function requestText(path: string): Promise<string> {
         Accept: "text/markdown, text/plain, */*",
       },
     });
-  } catch (error) {
+  } catch {
     throw new Error("Could not reach the PreDeploy Guard API. Start the backend and try again.");
   }
 
@@ -89,49 +80,4 @@ async function readTextErrorMessage(response: Response): Promise<string> {
   } catch {
     return "";
   }
-}
-
-export function getHealth(): Promise<HealthResponse> {
-  return request<HealthResponse>("/health");
-}
-
-export function getConfigSummary(): Promise<ConfigSummary> {
-  return request<ConfigSummary>("/config/summary");
-}
-
-export function getConfigExplain(): Promise<ConfigExplanation> {
-  return request<ConfigExplanation>("/config/explain");
-}
-
-export function getHistory(): Promise<RunHistoryItem[]> {
-  return request<RunHistoryItem[]>("/history");
-}
-
-export function getRunTasks(): Promise<RunTask[]> {
-  return request<RunTask[]>("/runs");
-}
-
-export function triggerRun(profile: string): Promise<RunTask> {
-  const normalizedProfile = profile.trim();
-  const requestProfile = normalizedProfile === "base" ? "" : normalizedProfile;
-
-  return request<RunTask>("/runs", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ profile: requestProfile }),
-  });
-}
-
-export function getRunTask(taskId: string): Promise<RunTask> {
-  return request<RunTask>(`/runs/${encodeURIComponent(taskId)}`);
-}
-
-export function getRunTaskLogs(taskId: string): Promise<RunTaskLogsResponse> {
-  return request<RunTaskLogsResponse>(`/runs/${encodeURIComponent(taskId)}/logs`);
-}
-
-export function getMarkdownReport(runId: string): Promise<string> {
-  return requestText(`/reports/${encodeURIComponent(runId)}/markdown`);
 }
