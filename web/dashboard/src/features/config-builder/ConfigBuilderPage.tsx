@@ -3,6 +3,7 @@ import { Card } from "../../shared/components";
 import { defaultConfigBuilderState } from "./defaults";
 import { generatePredeployYaml } from "./yaml";
 import { validateConfigBuilder } from "./validation";
+import { DependencyBuilder } from "./components/DependencyBuilder";
 import { ServiceForm } from "./components/ServiceForm";
 import { YamlPreview } from "./components/YamlPreview";
 
@@ -13,9 +14,14 @@ export function ConfigBuilderPage() {
 
   return (
     <section className="content-grid builder-grid">
-      <Card title="Service Configuration">
-        <ServiceForm config={config} onChange={setConfig} />
-      </Card>
+      <div className="builder-stack">
+        <Card title="Service Configuration">
+          <ServiceForm config={config} onChange={setConfig} />
+        </Card>
+        <Card title="Dependencies">
+          <DependencyBuilder config={config} onChange={setConfig} />
+        </Card>
+      </div>
       <Card title="predeploy.yaml Preview">
         <YamlPreview errors={errors} yaml={yaml} />
       </Card>

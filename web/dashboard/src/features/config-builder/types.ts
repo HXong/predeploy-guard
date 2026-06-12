@@ -6,6 +6,25 @@ export type EnvVarDraft = {
 
 export type RuntimeType = "docker-compose";
 
+export type ReadinessMode = "none" | "shell" | "command";
+
+export type DependencyReadinessDraft = {
+  mode: ReadinessMode;
+  shell: string;
+  command: string;
+  intervalSeconds: number;
+  timeoutSeconds: number;
+};
+
+export type DependencyDraft = {
+  id: string;
+  name: string;
+  image: string;
+  port?: number;
+  env: EnvVarDraft[];
+  readiness: DependencyReadinessDraft;
+};
+
 export type ConfigBuilderState = {
   runtime: {
     type: RuntimeType;
@@ -21,6 +40,7 @@ export type ConfigBuilderState = {
     healthPath: string;
     env: EnvVarDraft[];
   };
+  dependencies: DependencyDraft[];
   settings: {
     cleanup: boolean;
     timeoutSeconds: number;

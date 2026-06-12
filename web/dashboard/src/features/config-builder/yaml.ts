@@ -1,4 +1,4 @@
-import type { ConfigBuilderState, EnvVarDraft } from "./types";
+import type { ConfigBuilderState, DependencyDraft, EnvVarDraft } from "./types";
 
 export function generatePredeployYaml(config: ConfigBuilderState): string {
   const lines = [
@@ -23,6 +23,13 @@ export function generatePredeployYaml(config: ConfigBuilderState): string {
     }
   }
 
+  if (config.dependencies.length > 0) {
+    lines.push("", "dependencies:");
+    config.dependencies.forEach((dependency, index) => {
+      appendDependencyYaml(lines, dependency, index);
+    });
+  }
+
   lines.push(
     "",
     "settings:",
@@ -32,6 +39,41 @@ export function generatePredeployYaml(config: ConfigBuilderState): string {
   );
 
   return lines.join("\n");
+}
+
+function appendDependencyYaml(lines: string[], dependency: DependencyDraft, index: number) {
+  if (index > 0) {
+    lines.push("");
+  }
+
+  lines.push(`  ${yamlKey(dependency.name)}:`);
+  lines.push(`    image: ${yamlScalar(dependency.image)}`);
+
+  if (dependency.port !== undefined && Number.isFinite(dependency.port) && dependency.port > 0) {
+    lines.push(`    port: ${normalizeNumber(dependency.port)}`);
+  }
+
+  const env = dependency.env.filter((item) => item.key.trim() !== "");
+  if (env.length > 0) {
+    lines.push("    env:");
+    for (const item of env) {
+      lines.push(`      ${yamlKey(item.key)}: ${yamlQuotedString(item.value)}`);
+    }
+  }
+
+  if (dependency.readiness.mode === "shell" && dependency.readiness.shell.trim() !== "") {
+    lines.push("    readiness:");
+    lines.push(`      shell: ${yamlQuotedString(dependency.readiness.shell)}`);
+    lines.push(`      intervalSeconds: ${normalizeNumber(dependency.readiness.intervalSeconds)}`);
+    lines.push(`      timeoutSeconds: ${normalizeNumber(dependency.readiness.timeoutSeconds)}`);
+  }
+
+  if (dependency.readiness.mode === "command" && dependency.readiness.command.trim() !== "") {
+    lines.push("    readiness:");
+    lines.push(`      command: ${yamlCommandArray(dependency.readiness.command)}`);
+    lines.push(`      intervalSeconds: ${normalizeNumber(dependency.readiness.intervalSeconds)}`);
+    lines.push(`      timeoutSeconds: ${normalizeNumber(dependency.readiness.timeoutSeconds)}`);
+  }
 }
 
 function normalizeNumber(value: number): string {
@@ -66,6 +108,11 @@ function yamlScalar(value: string): string {
 
 function yamlQuotedString(value: string): string {
   return JSON.stringify(value);
+}
+
+function yamlCommandArray(value: string): string {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  return `[${parts.map(yamlQuotedString).join(", ")}]`;
 }
 
 function isPlainSafeScalar(value: string): boolean {

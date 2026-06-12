@@ -412,6 +412,20 @@ tbody tr.selected-row {
   gap: 18px;
 }
 
+.builder-stack,
+.dependency-list,
+.dependency-card {
+  display: grid;
+  gap: 16px;
+}
+
+.dependency-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+  background: #fbfcfd;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
