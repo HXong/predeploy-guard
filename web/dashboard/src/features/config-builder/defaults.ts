@@ -1,8 +1,15 @@
-import type { ConfigBuilderState, DependencyDraft, EnvVarDraft, SmokeCheckDraft } from "./types";
+import type {
+  ConfigBuilderState,
+  DependencyDraft,
+  EnvVarDraft,
+  PerformanceEndpointDraft,
+  SmokeCheckDraft,
+} from "./types";
 
 let dependencySequence = 0;
 let envSequence = 0;
 let smokeCheckSequence = 0;
+let performanceEndpointSequence = 0;
 
 export const defaultConfigBuilderState: ConfigBuilderState = {
   runtime: {
@@ -29,11 +36,39 @@ export const defaultConfigBuilderState: ConfigBuilderState = {
   checks: {
     smoke: [createHealthCheck()],
   },
+  performance: {
+    enabled: true,
+    vus: 10,
+    duration: "15s",
+    thresholds: {
+      maxP95LatencyMs: 300,
+      maxErrorRate: 0.01,
+    },
+    endpoints: [createHealthPerformanceEndpoint()],
+  },
   settings: {
     cleanup: true,
     timeoutSeconds: 60,
   },
 };
+
+export function createBlankPerformanceEndpoint(): PerformanceEndpointDraft {
+  return {
+    id: nextPerformanceEndpointId(),
+    name: "",
+    method: "GET",
+    path: "",
+  };
+}
+
+export function createHealthPerformanceEndpoint(): PerformanceEndpointDraft {
+  return {
+    id: nextPerformanceEndpointId(),
+    name: "health check load",
+    method: "GET",
+    path: "/health",
+  };
+}
 
 export function createBlankSmokeCheck(): SmokeCheckDraft {
   return {
@@ -127,4 +162,9 @@ function nextDependencyId(prefix: string): string {
 function nextSmokeCheckId(): string {
   smokeCheckSequence += 1;
   return `smoke-${Date.now()}-${smokeCheckSequence}`;
+}
+
+function nextPerformanceEndpointId(): string {
+  performanceEndpointSequence += 1;
+  return `performance-endpoint-${Date.now()}-${performanceEndpointSequence}`;
 }

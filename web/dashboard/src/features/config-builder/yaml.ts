@@ -1,4 +1,10 @@
-import type { ConfigBuilderState, DependencyDraft, EnvVarDraft, SmokeCheckDraft } from "./types";
+import type {
+  ConfigBuilderState,
+  DependencyDraft,
+  EnvVarDraft,
+  PerformanceEndpointDraft,
+  SmokeCheckDraft,
+} from "./types";
 
 export function generatePredeployYaml(config: ConfigBuilderState): string {
   const lines = [
@@ -37,6 +43,8 @@ export function generatePredeployYaml(config: ConfigBuilderState): string {
     }
   }
 
+  appendPerformanceYaml(lines, config);
+
   lines.push(
     "",
     "settings:",
@@ -46,6 +54,34 @@ export function generatePredeployYaml(config: ConfigBuilderState): string {
   );
 
   return lines.join("\n");
+}
+
+function appendPerformanceYaml(lines: string[], config: ConfigBuilderState) {
+  lines.push("", "performance:");
+  lines.push(`  enabled: ${config.performance.enabled ? "true" : "false"}`);
+
+  if (!config.performance.enabled) {
+    return;
+  }
+
+  lines.push(`  vus: ${normalizeNumber(config.performance.vus)}`);
+  lines.push(`  duration: ${yamlScalar(config.performance.duration)}`);
+  lines.push("  thresholds:");
+  lines.push(`    maxP95LatencyMs: ${normalizeNumber(config.performance.thresholds.maxP95LatencyMs)}`);
+  lines.push(`    maxErrorRate: ${normalizeNumber(config.performance.thresholds.maxErrorRate)}`);
+
+  if (config.performance.endpoints.length > 0) {
+    lines.push("  endpoints:");
+    for (const endpoint of config.performance.endpoints) {
+      appendPerformanceEndpointYaml(lines, endpoint);
+    }
+  }
+}
+
+function appendPerformanceEndpointYaml(lines: string[], endpoint: PerformanceEndpointDraft) {
+  lines.push(`    - name: ${yamlScalar(endpoint.name)}`);
+  lines.push(`      method: ${endpoint.method}`);
+  lines.push(`      path: ${yamlScalar(endpoint.path)}`);
 }
 
 function appendSmokeCheckYaml(lines: string[], smokeCheck: SmokeCheckDraft) {

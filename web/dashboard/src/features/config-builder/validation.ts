@@ -1,4 +1,7 @@
-import type { ConfigBuilderState, ValidationError } from "./types";
+import type { ConfigBuilderState, HttpMethod, ValidationError } from "./types";
+
+const supportedHttpMethods: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+const positiveGoDurationPattern = /^(?:(?:\d+(?:\.\d+)?|\.\d+)(?:ns|us|µs|μs|ms|s|m|h))+$/;
 
 export function validateConfigBuilder(config: ConfigBuilderState): ValidationError[] {
   const errors: ValidationError[] = [];
@@ -40,8 +43,109 @@ export function validateConfigBuilder(config: ConfigBuilderState): ValidationErr
 
   validateDependencies(config, errors);
   validateSmokeChecks(config, errors);
+  validatePerformance(config, errors);
 
   return errors;
+}
+
+function validatePerformance(config: ConfigBuilderState, errors: ValidationError[]) {
+  const performance = config.performance;
+  if (!performance.enabled) {
+    return;
+  }
+
+  if (!Number.isInteger(performance.vus) || performance.vus <= 0) {
+    errors.push({ field: "performance.vus", message: "Performance VUs must be a positive integer." });
+  }
+
+  if (performance.duration.trim() === "") {
+    errors.push({ field: "performance.duration", message: "Performance duration is required." });
+  } else if (!isPositiveGoDuration(performance.duration.trim())) {
+    errors.push({
+      field: "performance.duration",
+      message: "Performance duration must be a positive duration such as 250ms, 15s, 1m, or 1m30s.",
+    });
+  }
+
+  if (
+    !Number.isFinite(performance.thresholds.maxP95LatencyMs) ||
+    performance.thresholds.maxP95LatencyMs <= 0
+  ) {
+    errors.push({
+      field: "performance.thresholds.maxP95LatencyMs",
+      message: "Maximum p95 latency must be greater than 0 milliseconds.",
+    });
+  }
+
+  if (
+    !Number.isFinite(performance.thresholds.maxErrorRate) ||
+    performance.thresholds.maxErrorRate <= 0 ||
+    performance.thresholds.maxErrorRate > 1
+  ) {
+    errors.push({
+      field: "performance.thresholds.maxErrorRate",
+      message: "Maximum error rate must be greater than 0 and at most 1.",
+    });
+  }
+
+  if (performance.endpoints.length === 0) {
+    if (config.checks.smoke.length === 0) {
+      errors.push({
+        field: "performance.endpoints",
+        message: "Add at least one performance endpoint or smoke check while performance testing is enabled.",
+      });
+    }
+    return;
+  }
+
+  const seenEndpointNames = new Set<string>();
+  performance.endpoints.forEach((endpoint, endpointIndex) => {
+    const name = endpoint.name.trim();
+    const label = name || String(endpointIndex + 1);
+
+    if (name === "") {
+      errors.push({
+        field: `performance.endpoints.${endpointIndex}.name`,
+        message: "Performance endpoint name is required.",
+      });
+    } else if (seenEndpointNames.has(name)) {
+      errors.push({
+        field: `performance.endpoints.${endpointIndex}.name`,
+        message: `Performance endpoint ${name} is duplicated.`,
+      });
+    }
+
+    if (name !== "") {
+      seenEndpointNames.add(name);
+    }
+
+    if (!isSupportedHttpMethod(endpoint.method)) {
+      errors.push({
+        field: `performance.endpoints.${endpointIndex}.method`,
+        message: `Performance endpoint ${label} uses an unsupported HTTP method.`,
+      });
+    }
+
+    if (endpoint.path.trim() === "" || !endpoint.path.trim().startsWith("/")) {
+      errors.push({
+        field: `performance.endpoints.${endpointIndex}.path`,
+        message: `Performance endpoint ${label} path should start with /.`,
+      });
+    }
+  });
+}
+
+function isPositiveGoDuration(value: string): boolean {
+  if (!positiveGoDurationPattern.test(value)) {
+    return false;
+  }
+
+  const numericParts = value.match(/\d+(?:\.\d+)?|\.\d+/g) ?? [];
+  return numericParts.some((part) => Number(part) > 0);
+}
+
+function isSupportedHttpMethod(value: string): value is HttpMethod {
+  return supportedHttpMethods.includes(value as HttpMethod);
 }
 
 function validateSmokeChecks(config: ConfigBuilderState, errors: ValidationError[]) {

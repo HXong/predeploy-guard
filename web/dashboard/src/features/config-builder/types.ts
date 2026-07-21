@@ -23,6 +23,24 @@ export type SmokeCheckDraft = {
   expectedStatus: number;
 };
 
+export type PerformanceEndpointDraft = {
+  id: string;
+  name: string;
+  method: HttpMethod;
+  path: string;
+};
+
+export type PerformanceConfigDraft = {
+  enabled: boolean;
+  vus: number;
+  duration: string;
+  thresholds: {
+    maxP95LatencyMs: number;
+    maxErrorRate: number;
+  };
+  endpoints: PerformanceEndpointDraft[];
+};
+
 export type ReadinessMode = "none" | "shell" | "command";
 
 export type DependencyReadinessDraft = {
@@ -61,6 +79,7 @@ export type ConfigBuilderState = {
   checks: {
     smoke: SmokeCheckDraft[];
   };
+  performance: PerformanceConfigDraft;
   settings: {
     cleanup: boolean;
     timeoutSeconds: number;

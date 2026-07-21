@@ -2,9 +2,11 @@ export { ConfigBuilderPage } from "./ConfigBuilderPage";
 export { DependencyBuilder } from "./components/DependencyBuilder";
 export { SmokeCheckBuilder } from "./components/SmokeCheckBuilder";
 export {
+  createBlankPerformanceEndpoint,
   createCustomDependency,
   createBlankSmokeCheck,
   createEnvVar,
+  createHealthPerformanceEndpoint,
   createHealthCheck,
   createPostgresDependency,
   createRedisDependency,
@@ -18,6 +20,8 @@ export type {
   DependencyReadinessDraft,
   EnvVarDraft,
   HttpMethod,
+  PerformanceConfigDraft,
+  PerformanceEndpointDraft,
   ReadinessMode,
   RuntimeType,
   SmokeCheckDraft,

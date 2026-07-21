@@ -70,11 +70,12 @@ Completed:
 - Service configuration form
 - Dependency wizard with PostgreSQL/Redis presets and readiness configuration
 - HTTP smoke check builder
+- Base k6 performance builder with thresholds and endpoint fallback
 - YAML preview panel
 - Copy/download generated `predeploy.yaml`
 
 Remaining:
-- Performance/k6 profile builder
+- Validation profile builder
 - Optional save-to-file flow through local API later
 
 ## Future Direction

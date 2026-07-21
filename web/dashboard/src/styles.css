@@ -416,13 +416,16 @@ tbody tr.selected-row {
 .dependency-list,
 .dependency-card,
 .smoke-check-list,
-.smoke-check-card {
+.smoke-check-card,
+.performance-endpoint-list,
+.performance-endpoint-card {
   display: grid;
   gap: 16px;
 }
 
 .dependency-card,
-.smoke-check-card {
+.smoke-check-card,
+.performance-endpoint-card {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 14px;

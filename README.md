@@ -597,7 +597,7 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 
 - Docker Compose runtime only
 - Kubernetes runtime not implemented yet
-- Guided config builder currently supports service, dependency, and HTTP smoke-check configuration; performance profiles and backend save are not implemented yet
+- Guided config builder currently supports service, dependency, HTTP smoke-check, and base k6 performance configuration; validation profiles and backend save are not implemented yet
 - No API gateway or ingress latency simulation yet
 - Dependency readiness depends on user-provided commands
 - Smoke checks currently support simple HTTP status validation
@@ -623,8 +623,8 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 ### Next
 
 - Phase 7: Guided config builder (in progress)
-  - completed: service configuration, dependency presets/readiness, HTTP smoke checks, YAML preview, copy, and download
-  - next: k6 performance/profile builder and optional backend save workflow
+  - completed: service configuration, dependency presets/readiness, HTTP smoke checks, base k6 performance configuration, YAML preview, copy, and download
+  - next: validation profile builder and optional backend save workflow
 
 ### Future
 
