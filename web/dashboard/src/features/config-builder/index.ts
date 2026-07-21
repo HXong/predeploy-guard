@@ -3,10 +3,11 @@ export { DependencyBuilder } from "./components/DependencyBuilder";
 export { SmokeCheckBuilder } from "./components/SmokeCheckBuilder";
 export {
   createCustomDependency,
+  createBlankSmokeCheck,
   createEnvVar,
+  createHealthCheck,
   createPostgresDependency,
   createRedisDependency,
-  createSmokeCheck,
   defaultConfigBuilderState,
 } from "./defaults";
 export { validateConfigBuilder } from "./validation";

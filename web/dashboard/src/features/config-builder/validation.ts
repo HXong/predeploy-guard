@@ -45,14 +45,26 @@ export function validateConfigBuilder(config: ConfigBuilderState): ValidationErr
 }
 
 function validateSmokeChecks(config: ConfigBuilderState, errors: ValidationError[]) {
-  config.checks.smoke.forEach((smokeCheck, smokeCheckIndex) => {
-    const label = smokeCheck.name.trim() || String(smokeCheckIndex + 1);
+  const seenSmokeCheckNames = new Set<string>();
 
-    if (smokeCheck.name.trim() === "") {
+  config.checks.smoke.forEach((smokeCheck, smokeCheckIndex) => {
+    const name = smokeCheck.name.trim();
+    const label = name || String(smokeCheckIndex + 1);
+
+    if (name === "") {
       errors.push({
         field: `checks.smoke.${smokeCheckIndex}.name`,
         message: "Smoke check name is required.",
       });
+    } else if (seenSmokeCheckNames.has(name)) {
+      errors.push({
+        field: `checks.smoke.${smokeCheckIndex}.name`,
+        message: `Smoke check ${name} is duplicated.`,
+      });
+    }
+
+    if (name !== "") {
+      seenSmokeCheckNames.add(name);
     }
 
     if (smokeCheck.path.trim() === "" || !smokeCheck.path.trim().startsWith("/")) {

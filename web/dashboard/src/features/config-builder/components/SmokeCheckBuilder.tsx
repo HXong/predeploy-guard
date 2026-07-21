@@ -1,5 +1,5 @@
 import type { ChangeEvent, FormEvent } from "react";
-import { createSmokeCheck } from "../defaults";
+import { createBlankSmokeCheck, createHealthCheck } from "../defaults";
 import type { ConfigBuilderState, HttpMethod, SmokeCheckDraft } from "../types";
 
 const httpMethods: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
@@ -20,8 +20,8 @@ export function SmokeCheckBuilder({ config, onChange }: SmokeCheckBuilderProps) 
     });
   }
 
-  function addSmokeCheck() {
-    updateSmokeChecks([...config.checks.smoke, createSmokeCheck()]);
+  function addSmokeCheck(smokeCheck: SmokeCheckDraft) {
+    updateSmokeChecks([...config.checks.smoke, smokeCheck]);
   }
 
   function removeSmokeCheck(id: string) {
@@ -50,8 +50,11 @@ export function SmokeCheckBuilder({ config, onChange }: SmokeCheckBuilderProps) 
   return (
     <form className="builder-form" onSubmit={handleSubmit}>
       <div className="panel-actions">
-        <button className="secondary-button" type="button" onClick={addSmokeCheck}>
+        <button className="secondary-button" type="button" onClick={() => addSmokeCheck(createBlankSmokeCheck())}>
           Add smoke check
+        </button>
+        <button className="secondary-button" type="button" onClick={() => addSmokeCheck(createHealthCheck())}>
+          Add health-check preset
         </button>
       </div>
 

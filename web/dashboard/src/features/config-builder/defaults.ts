@@ -27,7 +27,7 @@ export const defaultConfigBuilderState: ConfigBuilderState = {
   },
   dependencies: [],
   checks: {
-    smoke: [],
+    smoke: [createHealthCheck()],
   },
   settings: {
     cleanup: true,
@@ -35,10 +35,19 @@ export const defaultConfigBuilderState: ConfigBuilderState = {
   },
 };
 
-export function createSmokeCheck(): SmokeCheckDraft {
-  smokeCheckSequence += 1;
+export function createBlankSmokeCheck(): SmokeCheckDraft {
   return {
-    id: `smoke-${Date.now()}-${smokeCheckSequence}`,
+    id: nextSmokeCheckId(),
+    name: "",
+    method: "GET",
+    path: "",
+    expectedStatus: 200,
+  };
+}
+
+export function createHealthCheck(): SmokeCheckDraft {
+  return {
+    id: nextSmokeCheckId(),
     name: "health check",
     method: "GET",
     path: "/health",
@@ -113,4 +122,9 @@ export function createEnvVar(key = "", value = ""): EnvVarDraft {
 function nextDependencyId(prefix: string): string {
   dependencySequence += 1;
   return `${prefix}-${Date.now()}-${dependencySequence}`;
+}
+
+function nextSmokeCheckId(): string {
+  smokeCheckSequence += 1;
+  return `smoke-${Date.now()}-${smokeCheckSequence}`;
 }
