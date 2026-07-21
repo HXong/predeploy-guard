@@ -66,13 +66,15 @@ Completed:
 ### Phase 7: Guided Config Builder
 Goal: allow users to generate and edit `predeploy.yaml` through a guided UI instead of writing YAML manually.
 
-Planned:
+Completed:
 - Service configuration form
-- Dependency wizard
-- Smoke check builder
-- Performance/k6 profile builder
+- Dependency wizard with PostgreSQL/Redis presets and readiness configuration
+- HTTP smoke check builder
 - YAML preview panel
-- Export/download generated `predeploy.yaml`
+- Copy/download generated `predeploy.yaml`
+
+Remaining:
+- Performance/k6 profile builder
 - Optional save-to-file flow through local API later
 
 ## Future Direction

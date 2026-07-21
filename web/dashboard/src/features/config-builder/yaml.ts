@@ -1,4 +1,4 @@
-import type { ConfigBuilderState, DependencyDraft, EnvVarDraft } from "./types";
+import type { ConfigBuilderState, DependencyDraft, EnvVarDraft, SmokeCheckDraft } from "./types";
 
 export function generatePredeployYaml(config: ConfigBuilderState): string {
   const lines = [
@@ -30,6 +30,13 @@ export function generatePredeployYaml(config: ConfigBuilderState): string {
     });
   }
 
+  if (config.checks.smoke.length > 0) {
+    lines.push("", "checks:", "  smoke:");
+    for (const smokeCheck of config.checks.smoke) {
+      appendSmokeCheckYaml(lines, smokeCheck);
+    }
+  }
+
   lines.push(
     "",
     "settings:",
@@ -39,6 +46,13 @@ export function generatePredeployYaml(config: ConfigBuilderState): string {
   );
 
   return lines.join("\n");
+}
+
+function appendSmokeCheckYaml(lines: string[], smokeCheck: SmokeCheckDraft) {
+  lines.push(`    - name: ${yamlScalar(smokeCheck.name)}`);
+  lines.push(`      method: ${smokeCheck.method}`);
+  lines.push(`      path: ${yamlScalar(smokeCheck.path)}`);
+  lines.push(`      expectedStatus: ${normalizeNumber(smokeCheck.expectedStatus)}`);
 }
 
 function appendDependencyYaml(lines: string[], dependency: DependencyDraft, index: number) {

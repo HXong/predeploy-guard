@@ -6,6 +6,23 @@ export type EnvVarDraft = {
 
 export type RuntimeType = "docker-compose";
 
+export type HttpMethod =
+  | "GET"
+  | "POST"
+  | "PUT"
+  | "PATCH"
+  | "DELETE"
+  | "HEAD"
+  | "OPTIONS";
+
+export type SmokeCheckDraft = {
+  id: string;
+  name: string;
+  method: HttpMethod;
+  path: string;
+  expectedStatus: number;
+};
+
 export type ReadinessMode = "none" | "shell" | "command";
 
 export type DependencyReadinessDraft = {
@@ -41,6 +58,9 @@ export type ConfigBuilderState = {
     env: EnvVarDraft[];
   };
   dependencies: DependencyDraft[];
+  checks: {
+    smoke: SmokeCheckDraft[];
+  };
   settings: {
     cleanup: boolean;
     timeoutSeconds: number;

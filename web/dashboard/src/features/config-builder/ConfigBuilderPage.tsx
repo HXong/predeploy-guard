@@ -5,6 +5,7 @@ import { generatePredeployYaml } from "./yaml";
 import { validateConfigBuilder } from "./validation";
 import { DependencyBuilder } from "./components/DependencyBuilder";
 import { ServiceForm } from "./components/ServiceForm";
+import { SmokeCheckBuilder } from "./components/SmokeCheckBuilder";
 import { YamlPreview } from "./components/YamlPreview";
 
 export function ConfigBuilderPage() {
@@ -20,6 +21,9 @@ export function ConfigBuilderPage() {
         </Card>
         <Card title="Dependencies">
           <DependencyBuilder config={config} onChange={setConfig} />
+        </Card>
+        <Card title="Smoke Checks">
+          <SmokeCheckBuilder config={config} onChange={setConfig} />
         </Card>
       </div>
       <Card title="predeploy.yaml Preview">

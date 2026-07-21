@@ -414,12 +414,15 @@ tbody tr.selected-row {
 
 .builder-stack,
 .dependency-list,
-.dependency-card {
+.dependency-card,
+.smoke-check-list,
+.smoke-check-card {
   display: grid;
   gap: 16px;
 }
 
-.dependency-card {
+.dependency-card,
+.smoke-check-card {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 14px;

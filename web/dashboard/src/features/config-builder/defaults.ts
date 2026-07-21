@@ -1,7 +1,8 @@
-import type { ConfigBuilderState, DependencyDraft, EnvVarDraft } from "./types";
+import type { ConfigBuilderState, DependencyDraft, EnvVarDraft, SmokeCheckDraft } from "./types";
 
 let dependencySequence = 0;
 let envSequence = 0;
+let smokeCheckSequence = 0;
 
 export const defaultConfigBuilderState: ConfigBuilderState = {
   runtime: {
@@ -25,11 +26,25 @@ export const defaultConfigBuilderState: ConfigBuilderState = {
     ],
   },
   dependencies: [],
+  checks: {
+    smoke: [],
+  },
   settings: {
     cleanup: true,
     timeoutSeconds: 60,
   },
 };
+
+export function createSmokeCheck(): SmokeCheckDraft {
+  smokeCheckSequence += 1;
+  return {
+    id: `smoke-${Date.now()}-${smokeCheckSequence}`,
+    name: "health check",
+    method: "GET",
+    path: "/health",
+    expectedStatus: 200,
+  };
+}
 
 export function createCustomDependency(): DependencyDraft {
   return {

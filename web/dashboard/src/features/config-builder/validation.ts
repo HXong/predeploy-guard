@@ -39,8 +39,40 @@ export function validateConfigBuilder(config: ConfigBuilderState): ValidationErr
   });
 
   validateDependencies(config, errors);
+  validateSmokeChecks(config, errors);
 
   return errors;
+}
+
+function validateSmokeChecks(config: ConfigBuilderState, errors: ValidationError[]) {
+  config.checks.smoke.forEach((smokeCheck, smokeCheckIndex) => {
+    const label = smokeCheck.name.trim() || String(smokeCheckIndex + 1);
+
+    if (smokeCheck.name.trim() === "") {
+      errors.push({
+        field: `checks.smoke.${smokeCheckIndex}.name`,
+        message: "Smoke check name is required.",
+      });
+    }
+
+    if (smokeCheck.path.trim() === "" || !smokeCheck.path.trim().startsWith("/")) {
+      errors.push({
+        field: `checks.smoke.${smokeCheckIndex}.path`,
+        message: `Smoke check ${label} path should start with /.`,
+      });
+    }
+
+    if (
+      !Number.isInteger(smokeCheck.expectedStatus) ||
+      smokeCheck.expectedStatus < 100 ||
+      smokeCheck.expectedStatus > 599
+    ) {
+      errors.push({
+        field: `checks.smoke.${smokeCheckIndex}.expectedStatus`,
+        message: `Smoke check ${label} expected status must be between 100 and 599.`,
+      });
+    }
+  });
 }
 
 function validateDependencies(config: ConfigBuilderState, errors: ValidationError[]) {
