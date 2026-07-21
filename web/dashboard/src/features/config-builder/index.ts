@@ -4,12 +4,16 @@ export { SmokeCheckBuilder } from "./components/SmokeCheckBuilder";
 export {
   createBlankPerformanceEndpoint,
   createCustomDependency,
+  createCustomProfile,
   createBlankSmokeCheck,
   createEnvVar,
   createHealthPerformanceEndpoint,
   createHealthCheck,
   createPostgresDependency,
   createRedisDependency,
+  createLightLoadProfile,
+  createSmokeOnlyProfile,
+  createStressTestProfile,
   defaultConfigBuilderState,
 } from "./defaults";
 export { validateConfigBuilder } from "./validation";
@@ -25,5 +29,6 @@ export type {
   ReadinessMode,
   RuntimeType,
   SmokeCheckDraft,
+  ValidationProfileDraft,
   ValidationError,
 } from "./types";

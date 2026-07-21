@@ -71,11 +71,11 @@ Completed:
 - Dependency wizard with PostgreSQL/Redis presets and readiness configuration
 - HTTP smoke check builder
 - Base k6 performance builder with thresholds and endpoint fallback
+- Validation profile builder with performance presets and overrides
 - YAML preview panel
 - Copy/download generated `predeploy.yaml`
 
 Remaining:
-- Validation profile builder
 - Optional save-to-file flow through local API later
 
 ## Future Direction

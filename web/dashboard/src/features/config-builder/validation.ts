@@ -1,11 +1,26 @@
-import type { ConfigBuilderState, HttpMethod, ValidationError } from "./types";
+import type { ConfigBuilderState, HttpMethod, PerformanceConfigDraft, ValidationError } from "./types";
 
 const supportedHttpMethods: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
-const positiveGoDurationPattern = /^(?:(?:\d+(?:\.\d+)?|\.\d+)(?:ns|us|µs|μs|ms|s|m|h))+$/;
+const positiveGoDurationPattern = /^(?:(?:\d+(?:\.\d+)?|\.\d+)(?:ns|us|\u00b5s|\u03bcs|ms|s|m|h))+$/;
+const profileNamePattern = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
 export function validateConfigBuilder(config: ConfigBuilderState): ValidationError[] {
   const errors: ValidationError[] = [];
 
+  validateService(config, errors);
+  validateDependencies(config, errors);
+  validateSmokeChecks(config, errors);
+  validatePerformanceConfig(config.performance, config.checks.smoke.length, "performance", errors);
+  validateProfiles(config, errors);
+
+  if (!Number.isFinite(config.settings.timeoutSeconds) || config.settings.timeoutSeconds <= 0) {
+    errors.push({ field: "settings.timeoutSeconds", message: "Timeout must be a positive number of seconds." });
+  }
+
+  return errors;
+}
+
+function validateService(config: ConfigBuilderState, errors: ValidationError[]) {
   if (config.service.name.trim() === "") {
     errors.push({ field: "service.name", message: "Service name is required." });
   }
@@ -22,10 +37,6 @@ export function validateConfigBuilder(config: ConfigBuilderState): ValidationErr
     errors.push({ field: "service.healthPath", message: "Health path should start with /." });
   }
 
-  if (!Number.isFinite(config.settings.timeoutSeconds) || config.settings.timeoutSeconds <= 0) {
-    errors.push({ field: "settings.timeoutSeconds", message: "Timeout must be a positive number of seconds." });
-  }
-
   const seenEnvKeys = new Set<string>();
   config.service.env.forEach((item, index) => {
     const key = item.key.trim();
@@ -39,155 +50,6 @@ export function validateConfigBuilder(config: ConfigBuilderState): ValidationErr
     }
 
     seenEnvKeys.add(key);
-  });
-
-  validateDependencies(config, errors);
-  validateSmokeChecks(config, errors);
-  validatePerformance(config, errors);
-
-  return errors;
-}
-
-function validatePerformance(config: ConfigBuilderState, errors: ValidationError[]) {
-  const performance = config.performance;
-  if (!performance.enabled) {
-    return;
-  }
-
-  if (!Number.isInteger(performance.vus) || performance.vus <= 0) {
-    errors.push({ field: "performance.vus", message: "Performance VUs must be a positive integer." });
-  }
-
-  if (performance.duration.trim() === "") {
-    errors.push({ field: "performance.duration", message: "Performance duration is required." });
-  } else if (!isPositiveGoDuration(performance.duration.trim())) {
-    errors.push({
-      field: "performance.duration",
-      message: "Performance duration must be a positive duration such as 250ms, 15s, 1m, or 1m30s.",
-    });
-  }
-
-  if (
-    !Number.isFinite(performance.thresholds.maxP95LatencyMs) ||
-    performance.thresholds.maxP95LatencyMs <= 0
-  ) {
-    errors.push({
-      field: "performance.thresholds.maxP95LatencyMs",
-      message: "Maximum p95 latency must be greater than 0 milliseconds.",
-    });
-  }
-
-  if (
-    !Number.isFinite(performance.thresholds.maxErrorRate) ||
-    performance.thresholds.maxErrorRate <= 0 ||
-    performance.thresholds.maxErrorRate > 1
-  ) {
-    errors.push({
-      field: "performance.thresholds.maxErrorRate",
-      message: "Maximum error rate must be greater than 0 and at most 1.",
-    });
-  }
-
-  if (performance.endpoints.length === 0) {
-    if (config.checks.smoke.length === 0) {
-      errors.push({
-        field: "performance.endpoints",
-        message: "Add at least one performance endpoint or smoke check while performance testing is enabled.",
-      });
-    }
-    return;
-  }
-
-  const seenEndpointNames = new Set<string>();
-  performance.endpoints.forEach((endpoint, endpointIndex) => {
-    const name = endpoint.name.trim();
-    const label = name || String(endpointIndex + 1);
-
-    if (name === "") {
-      errors.push({
-        field: `performance.endpoints.${endpointIndex}.name`,
-        message: "Performance endpoint name is required.",
-      });
-    } else if (seenEndpointNames.has(name)) {
-      errors.push({
-        field: `performance.endpoints.${endpointIndex}.name`,
-        message: `Performance endpoint ${name} is duplicated.`,
-      });
-    }
-
-    if (name !== "") {
-      seenEndpointNames.add(name);
-    }
-
-    if (!isSupportedHttpMethod(endpoint.method)) {
-      errors.push({
-        field: `performance.endpoints.${endpointIndex}.method`,
-        message: `Performance endpoint ${label} uses an unsupported HTTP method.`,
-      });
-    }
-
-    if (endpoint.path.trim() === "" || !endpoint.path.trim().startsWith("/")) {
-      errors.push({
-        field: `performance.endpoints.${endpointIndex}.path`,
-        message: `Performance endpoint ${label} path should start with /.`,
-      });
-    }
-  });
-}
-
-function isPositiveGoDuration(value: string): boolean {
-  if (!positiveGoDurationPattern.test(value)) {
-    return false;
-  }
-
-  const numericParts = value.match(/\d+(?:\.\d+)?|\.\d+/g) ?? [];
-  return numericParts.some((part) => Number(part) > 0);
-}
-
-function isSupportedHttpMethod(value: string): value is HttpMethod {
-  return supportedHttpMethods.includes(value as HttpMethod);
-}
-
-function validateSmokeChecks(config: ConfigBuilderState, errors: ValidationError[]) {
-  const seenSmokeCheckNames = new Set<string>();
-
-  config.checks.smoke.forEach((smokeCheck, smokeCheckIndex) => {
-    const name = smokeCheck.name.trim();
-    const label = name || String(smokeCheckIndex + 1);
-
-    if (name === "") {
-      errors.push({
-        field: `checks.smoke.${smokeCheckIndex}.name`,
-        message: "Smoke check name is required.",
-      });
-    } else if (seenSmokeCheckNames.has(name)) {
-      errors.push({
-        field: `checks.smoke.${smokeCheckIndex}.name`,
-        message: `Smoke check ${name} is duplicated.`,
-      });
-    }
-
-    if (name !== "") {
-      seenSmokeCheckNames.add(name);
-    }
-
-    if (smokeCheck.path.trim() === "" || !smokeCheck.path.trim().startsWith("/")) {
-      errors.push({
-        field: `checks.smoke.${smokeCheckIndex}.path`,
-        message: `Smoke check ${label} path should start with /.`,
-      });
-    }
-
-    if (
-      !Number.isInteger(smokeCheck.expectedStatus) ||
-      smokeCheck.expectedStatus < 100 ||
-      smokeCheck.expectedStatus > 599
-    ) {
-      errors.push({
-        field: `checks.smoke.${smokeCheckIndex}.expectedStatus`,
-        message: `Smoke check ${label} expected status must be between 100 and 599.`,
-      });
-    }
   });
 }
 
@@ -298,4 +160,188 @@ function validateReadiness(
       message: `Dependency ${dependencyLabel} readiness command is required.`,
     });
   }
+}
+
+function validateSmokeChecks(config: ConfigBuilderState, errors: ValidationError[]) {
+  const seenSmokeCheckNames = new Set<string>();
+
+  config.checks.smoke.forEach((smokeCheck, smokeCheckIndex) => {
+    const name = smokeCheck.name.trim();
+    const label = name || String(smokeCheckIndex + 1);
+
+    if (name === "") {
+      errors.push({
+        field: `checks.smoke.${smokeCheckIndex}.name`,
+        message: "Smoke check name is required.",
+      });
+    } else if (seenSmokeCheckNames.has(name)) {
+      errors.push({
+        field: `checks.smoke.${smokeCheckIndex}.name`,
+        message: `Smoke check ${name} is duplicated.`,
+      });
+    }
+
+    if (name !== "") {
+      seenSmokeCheckNames.add(name);
+    }
+
+    if (smokeCheck.path.trim() === "" || !smokeCheck.path.trim().startsWith("/")) {
+      errors.push({
+        field: `checks.smoke.${smokeCheckIndex}.path`,
+        message: `Smoke check ${label} path should start with /.`,
+      });
+    }
+
+    if (
+      !Number.isInteger(smokeCheck.expectedStatus) ||
+      smokeCheck.expectedStatus < 100 ||
+      smokeCheck.expectedStatus > 599
+    ) {
+      errors.push({
+        field: `checks.smoke.${smokeCheckIndex}.expectedStatus`,
+        message: `Smoke check ${label} expected status must be between 100 and 599.`,
+      });
+    }
+  });
+}
+
+function validateProfiles(config: ConfigBuilderState, errors: ValidationError[]) {
+  const seenProfileNames = new Set<string>();
+
+  config.profiles.forEach((profile, profileIndex) => {
+    const name = profile.name.trim();
+    const nameField = `profiles.${profileIndex}.name`;
+
+    if (name === "") {
+      errors.push({ field: nameField, message: "Profile name is required." });
+    } else {
+      if (seenProfileNames.has(name)) {
+        errors.push({ field: nameField, message: `Profile ${name} is duplicated.` });
+      }
+
+      if (name === "base") {
+        errors.push({ field: nameField, message: "Profile name cannot be base." });
+      }
+
+      if (!profileNamePattern.test(name)) {
+        errors.push({
+          field: nameField,
+          message: "Profile name must start with a letter or number and contain only letters, numbers, underscores, or hyphens.",
+        });
+      }
+
+      seenProfileNames.add(name);
+    }
+
+    validatePerformanceConfig(
+      profile.performance,
+      config.checks.smoke.length,
+      `profiles.${profileIndex}.performance`,
+      errors,
+    );
+  });
+}
+
+function validatePerformanceConfig(
+  performance: PerformanceConfigDraft,
+  smokeCheckCount: number,
+  fieldPrefix: string,
+  errors: ValidationError[],
+) {
+  if (!performance.enabled) {
+    return;
+  }
+
+  if (!Number.isInteger(performance.vus) || performance.vus <= 0) {
+    errors.push({ field: `${fieldPrefix}.vus`, message: "Performance VUs must be a positive integer." });
+  }
+
+  if (performance.duration.trim() === "") {
+    errors.push({ field: `${fieldPrefix}.duration`, message: "Performance duration is required." });
+  } else if (!isPositiveGoDuration(performance.duration.trim())) {
+    errors.push({
+      field: `${fieldPrefix}.duration`,
+      message: "Performance duration must be a positive duration such as 250ms, 15s, 1m, or 1m30s.",
+    });
+  }
+
+  if (
+    !Number.isFinite(performance.thresholds.maxP95LatencyMs) ||
+    performance.thresholds.maxP95LatencyMs <= 0
+  ) {
+    errors.push({
+      field: `${fieldPrefix}.thresholds.maxP95LatencyMs`,
+      message: "Maximum p95 latency must be greater than 0 milliseconds.",
+    });
+  }
+
+  if (
+    !Number.isFinite(performance.thresholds.maxErrorRate) ||
+    performance.thresholds.maxErrorRate <= 0 ||
+    performance.thresholds.maxErrorRate > 1
+  ) {
+    errors.push({
+      field: `${fieldPrefix}.thresholds.maxErrorRate`,
+      message: "Maximum error rate must be greater than 0 and at most 1.",
+    });
+  }
+
+  if (performance.endpoints.length === 0) {
+    if (smokeCheckCount === 0) {
+      errors.push({
+        field: `${fieldPrefix}.endpoints`,
+        message: "Add at least one performance endpoint or smoke check while performance testing is enabled.",
+      });
+    }
+    return;
+  }
+
+  const seenEndpointNames = new Set<string>();
+  performance.endpoints.forEach((endpoint, endpointIndex) => {
+    const name = endpoint.name.trim();
+    const label = name || String(endpointIndex + 1);
+
+    if (name === "") {
+      errors.push({
+        field: `${fieldPrefix}.endpoints.${endpointIndex}.name`,
+        message: "Performance endpoint name is required.",
+      });
+    } else if (seenEndpointNames.has(name)) {
+      errors.push({
+        field: `${fieldPrefix}.endpoints.${endpointIndex}.name`,
+        message: `Performance endpoint ${name} is duplicated.`,
+      });
+    }
+
+    if (name !== "") {
+      seenEndpointNames.add(name);
+    }
+
+    if (!isSupportedHttpMethod(endpoint.method)) {
+      errors.push({
+        field: `${fieldPrefix}.endpoints.${endpointIndex}.method`,
+        message: `Performance endpoint ${label} uses an unsupported HTTP method.`,
+      });
+    }
+
+    if (endpoint.path.trim() === "" || !endpoint.path.trim().startsWith("/")) {
+      errors.push({
+        field: `${fieldPrefix}.endpoints.${endpointIndex}.path`,
+        message: `Performance endpoint ${label} path should start with /.`,
+      });
+    }
+  });
+}
+
+function isPositiveGoDuration(value: string): boolean {
+  if (!positiveGoDurationPattern.test(value)) {
+    return false;
+  }
+
+  const numericParts = value.match(/\d+(?:\.\d+)?|\.\d+/g) ?? [];
+  return numericParts.some((part) => Number(part) > 0);
+}
+
+function isSupportedHttpMethod(value: string): value is HttpMethod {
+  return supportedHttpMethods.includes(value as HttpMethod);
 }

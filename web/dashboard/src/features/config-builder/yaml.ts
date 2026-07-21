@@ -2,8 +2,10 @@ import type {
   ConfigBuilderState,
   DependencyDraft,
   EnvVarDraft,
+  PerformanceConfigDraft,
   PerformanceEndpointDraft,
   SmokeCheckDraft,
+  ValidationProfileDraft,
 } from "./types";
 
 export function generatePredeployYaml(config: ConfigBuilderState): string {
@@ -43,7 +45,12 @@ export function generatePredeployYaml(config: ConfigBuilderState): string {
     }
   }
 
-  appendPerformanceYaml(lines, config);
+  lines.push("");
+  appendPerformanceYaml(lines, config.performance, "");
+
+  if (config.profiles.length > 0) {
+    appendProfilesYaml(lines, config.profiles);
+  }
 
   lines.push(
     "",
@@ -56,32 +63,46 @@ export function generatePredeployYaml(config: ConfigBuilderState): string {
   return lines.join("\n");
 }
 
-function appendPerformanceYaml(lines: string[], config: ConfigBuilderState) {
-  lines.push("", "performance:");
-  lines.push(`  enabled: ${config.performance.enabled ? "true" : "false"}`);
+function appendProfilesYaml(lines: string[], profiles: ValidationProfileDraft[]) {
+  lines.push("", "profiles:");
 
-  if (!config.performance.enabled) {
+  profiles.forEach((profile, index) => {
+    if (index > 0) {
+      lines.push("");
+    }
+
+    lines.push(`  ${yamlKey(profile.name)}:`);
+    appendPerformanceYaml(lines, profile.performance, "    ");
+  });
+}
+
+function appendPerformanceYaml(lines: string[], performance: PerformanceConfigDraft, indent: string) {
+  const fieldIndent = `${indent}  `;
+  lines.push(`${indent}performance:`);
+  lines.push(`${fieldIndent}enabled: ${performance.enabled ? "true" : "false"}`);
+
+  if (!performance.enabled) {
     return;
   }
 
-  lines.push(`  vus: ${normalizeNumber(config.performance.vus)}`);
-  lines.push(`  duration: ${yamlScalar(config.performance.duration)}`);
-  lines.push("  thresholds:");
-  lines.push(`    maxP95LatencyMs: ${normalizeNumber(config.performance.thresholds.maxP95LatencyMs)}`);
-  lines.push(`    maxErrorRate: ${normalizeNumber(config.performance.thresholds.maxErrorRate)}`);
+  lines.push(`${fieldIndent}vus: ${normalizeNumber(performance.vus)}`);
+  lines.push(`${fieldIndent}duration: ${yamlScalar(performance.duration)}`);
+  lines.push(`${fieldIndent}thresholds:`);
+  lines.push(`${fieldIndent}  maxP95LatencyMs: ${normalizeNumber(performance.thresholds.maxP95LatencyMs)}`);
+  lines.push(`${fieldIndent}  maxErrorRate: ${normalizeNumber(performance.thresholds.maxErrorRate)}`);
 
-  if (config.performance.endpoints.length > 0) {
-    lines.push("  endpoints:");
-    for (const endpoint of config.performance.endpoints) {
-      appendPerformanceEndpointYaml(lines, endpoint);
+  if (performance.endpoints.length > 0) {
+    lines.push(`${fieldIndent}endpoints:`);
+    for (const endpoint of performance.endpoints) {
+      appendPerformanceEndpointYaml(lines, endpoint, `${fieldIndent}  `);
     }
   }
 }
 
-function appendPerformanceEndpointYaml(lines: string[], endpoint: PerformanceEndpointDraft) {
-  lines.push(`    - name: ${yamlScalar(endpoint.name)}`);
-  lines.push(`      method: ${endpoint.method}`);
-  lines.push(`      path: ${yamlScalar(endpoint.path)}`);
+function appendPerformanceEndpointYaml(lines: string[], endpoint: PerformanceEndpointDraft, indent: string) {
+  lines.push(`${indent}- name: ${yamlScalar(endpoint.name)}`);
+  lines.push(`${indent}  method: ${endpoint.method}`);
+  lines.push(`${indent}  path: ${yamlScalar(endpoint.path)}`);
 }
 
 function appendSmokeCheckYaml(lines: string[], smokeCheck: SmokeCheckDraft) {
@@ -136,7 +157,7 @@ function normalizeNumber(value: number): string {
 
 function yamlKey(value: string): string {
   const trimmed = value.trim();
-  if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(trimmed)) {
+  if (/^[A-Za-z_][A-Za-z0-9_-]*$/.test(trimmed) && isPlainSafeScalar(trimmed)) {
     return trimmed;
   }
 

@@ -5,6 +5,7 @@ import { generatePredeployYaml } from "./yaml";
 import { validateConfigBuilder } from "./validation";
 import { DependencyBuilder } from "./components/DependencyBuilder";
 import { PerformanceBuilder } from "./components/PerformanceBuilder";
+import { ProfileBuilder } from "./components/ProfileBuilder";
 import { ServiceForm } from "./components/ServiceForm";
 import { SmokeCheckBuilder } from "./components/SmokeCheckBuilder";
 import { YamlPreview } from "./components/YamlPreview";
@@ -28,6 +29,9 @@ export function ConfigBuilderPage() {
         </Card>
         <Card title="Performance Checks">
           <PerformanceBuilder config={config} onChange={setConfig} />
+        </Card>
+        <Card title="Validation Profiles">
+          <ProfileBuilder config={config} onChange={setConfig} />
         </Card>
       </div>
       <Card title="predeploy.yaml Preview">

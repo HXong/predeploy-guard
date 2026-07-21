@@ -41,6 +41,12 @@ export type PerformanceConfigDraft = {
   endpoints: PerformanceEndpointDraft[];
 };
 
+export type ValidationProfileDraft = {
+  id: string;
+  name: string;
+  performance: PerformanceConfigDraft;
+};
+
 export type ReadinessMode = "none" | "shell" | "command";
 
 export type DependencyReadinessDraft = {
@@ -80,6 +86,7 @@ export type ConfigBuilderState = {
     smoke: SmokeCheckDraft[];
   };
   performance: PerformanceConfigDraft;
+  profiles: ValidationProfileDraft[];
   settings: {
     cleanup: boolean;
     timeoutSeconds: number;

@@ -418,14 +418,17 @@ tbody tr.selected-row {
 .smoke-check-list,
 .smoke-check-card,
 .performance-endpoint-list,
-.performance-endpoint-card {
+.performance-endpoint-card,
+.profile-list,
+.profile-card {
   display: grid;
   gap: 16px;
 }
 
 .dependency-card,
 .smoke-check-card,
-.performance-endpoint-card {
+.performance-endpoint-card,
+.profile-card {
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 14px;
@@ -439,7 +442,8 @@ tbody tr.selected-row {
 }
 
 .form-grid label,
-.env-row label {
+.env-row label,
+.profile-name-field {
   display: grid;
   gap: 6px;
 }

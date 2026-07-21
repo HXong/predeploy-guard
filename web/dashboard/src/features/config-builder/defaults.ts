@@ -2,14 +2,17 @@ import type {
   ConfigBuilderState,
   DependencyDraft,
   EnvVarDraft,
+  PerformanceConfigDraft,
   PerformanceEndpointDraft,
   SmokeCheckDraft,
+  ValidationProfileDraft,
 } from "./types";
 
 let dependencySequence = 0;
 let envSequence = 0;
 let smokeCheckSequence = 0;
 let performanceEndpointSequence = 0;
+let profileSequence = 0;
 
 export const defaultConfigBuilderState: ConfigBuilderState = {
   runtime: {
@@ -46,11 +49,44 @@ export const defaultConfigBuilderState: ConfigBuilderState = {
     },
     endpoints: [createHealthPerformanceEndpoint()],
   },
+  profiles: [],
   settings: {
     cleanup: true,
     timeoutSeconds: 60,
   },
 };
+
+export function createCustomProfile(basePerformance: PerformanceConfigDraft): ValidationProfileDraft {
+  return {
+    id: nextProfileId("profile"),
+    name: "",
+    performance: clonePerformanceConfig(basePerformance),
+  };
+}
+
+export function createSmokeOnlyProfile(): ValidationProfileDraft {
+  return {
+    id: nextProfileId("smoke-only"),
+    name: "smoke-only",
+    performance: createPerformanceConfig(false, 10, "15s", 300, 0.01, []),
+  };
+}
+
+export function createLightLoadProfile(): ValidationProfileDraft {
+  return {
+    id: nextProfileId("light-load"),
+    name: "light-load",
+    performance: createPerformanceConfig(true, 10, "15s", 300, 0.01, [createProfileHealthEndpoint()]),
+  };
+}
+
+export function createStressTestProfile(): ValidationProfileDraft {
+  return {
+    id: nextProfileId("stress-test"),
+    name: "stress-test",
+    performance: createPerformanceConfig(true, 50, "30s", 800, 0.05, [createProfileHealthEndpoint()]),
+  };
+}
 
 export function createBlankPerformanceEndpoint(): PerformanceEndpointDraft {
   return {
@@ -167,4 +203,54 @@ function nextSmokeCheckId(): string {
 function nextPerformanceEndpointId(): string {
   performanceEndpointSequence += 1;
   return `performance-endpoint-${Date.now()}-${performanceEndpointSequence}`;
+}
+
+function nextProfileId(prefix: string): string {
+  profileSequence += 1;
+  return `${prefix}-${Date.now()}-${profileSequence}`;
+}
+
+function clonePerformanceConfig(performance: PerformanceConfigDraft): PerformanceConfigDraft {
+  return {
+    enabled: performance.enabled,
+    vus: performance.vus,
+    duration: performance.duration,
+    thresholds: {
+      maxP95LatencyMs: performance.thresholds.maxP95LatencyMs,
+      maxErrorRate: performance.thresholds.maxErrorRate,
+    },
+    endpoints: performance.endpoints.map((endpoint) => ({
+      ...endpoint,
+      id: nextPerformanceEndpointId(),
+    })),
+  };
+}
+
+function createPerformanceConfig(
+  enabled: boolean,
+  vus: number,
+  duration: string,
+  maxP95LatencyMs: number,
+  maxErrorRate: number,
+  endpoints: PerformanceEndpointDraft[],
+): PerformanceConfigDraft {
+  return {
+    enabled,
+    vus,
+    duration,
+    thresholds: {
+      maxP95LatencyMs,
+      maxErrorRate,
+    },
+    endpoints,
+  };
+}
+
+function createProfileHealthEndpoint(): PerformanceEndpointDraft {
+  return {
+    id: nextPerformanceEndpointId(),
+    name: "health load",
+    method: "GET",
+    path: "/health",
+  };
 }
