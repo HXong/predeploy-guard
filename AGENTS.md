@@ -35,6 +35,7 @@ The next direction is richer, config-driven deployment experiments across Docker
 - Keep Docker/k6/filesystem details inside adapter-style packages:
   - `internal/builder`
   - `internal/sandbox`
+  - `internal/runtime`
   - `internal/loadtest`
   - `internal/report`
   - `internal/history`
@@ -42,6 +43,10 @@ The next direction is richer, config-driven deployment experiments across Docker
 ### Runtime and Experiment Guidance
 
 - Keep Docker Compose supported as the default local runtime.
+- `internal/runtime` owns runtime-facing lifecycle types and adapter interfaces.
+- `internal/runtime/factory` owns runtime adapter selection.
+- `internal/runtime/compose` is the only implemented runtime adapter and delegates to the existing Docker Compose sandbox behavior.
+- Add future Kubernetes support as a new runtime adapter; do not scatter Kubernetes logic through `internal/runner`.
 - Do not hardcode Minikube-specific behavior.
 - Future Kubernetes support should use existing kubeconfig contexts and allow Minikube, kind, k3s, and other local development clusters.
 - Prefer runtime adapter boundaries over scattering Docker or Kubernetes logic through the runner.
@@ -82,6 +87,9 @@ The next direction is richer, config-driven deployment experiments across Docker
 - `internal/config`: load, validate, resolve paths, apply profiles.
 - `internal/scaffold`: generate starter `predeploy.yaml` and dependency presets.
 - `internal/runner`: orchestrate full validation runs.
+- `internal/runtime`: define runtime-neutral lifecycle types and adapter interfaces.
+- `internal/runtime/factory`: select the configured runtime adapter.
+- `internal/runtime/compose`: adapt the existing Docker Compose sandbox lifecycle, readiness, diagnostics, and cleanup behavior.
 - `internal/history`: manage `reports/history.json`.
 - `internal/report`: write Markdown and JSON reports.
 - `internal/server`: local API server for dashboard.
@@ -193,4 +201,5 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 5 completed: local API server, safe config endpoints, API-triggered async runs, status polling, basic task logs.
 - Phase 6 completed: local React dashboard, run task UI, run details view, report preview, component refactor.
 - Phase 7 completed: guided config builder with service, dependency, smoke-check, performance, profile, and YAML export workflows.
-- Phase 8A current: runtime and experiment model alignment for the deployment experiment sandbox, with Docker Compose remaining the default supported runtime and Kubernetes/local-cluster support reserved for future subphases.
+- Phase 8A completed: runtime and experiment model alignment.
+- Phase 8B current: runtime adapter foundation, with Docker Compose as the only implemented runtime and Kubernetes/local-cluster support reserved for Phase 8C.

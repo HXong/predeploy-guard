@@ -80,17 +80,20 @@ Goal: allow developers to define and run local deployment experiments from `pred
 
 PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It is not a production deployment platform.
 
-#### Phase 8A: Runtime and Experiment Model Alignment
-- Define experiment and runtime terminology
-- Document the current Docker Compose runtime as the default supported runtime
-- Document the future Kubernetes/local-cluster direction
-- Identify backend boundaries that should evolve into runtime adapters
-- No Kubernetes implementation yet
+#### Phase 8A: Runtime and Experiment Model Alignment (Completed)
+- Clarify the runtime abstraction direction
+- Keep Docker Compose as the default runtime
+- Define how deployment experiments differ from normal validation runs
+- Document intended support for future Kubernetes and local-cluster execution
+- Do not implement Kubernetes in this subphase
 
-#### Phase 8B: Runtime Adapter Foundation
-- Introduce runtime adapter boundaries gradually
-- Preserve Docker Compose behavior
-- Avoid a big-bang runner rewrite
+#### Phase 8B: Runtime Adapter Foundation (Current)
+- Introduce runtime-neutral lifecycle types and an adapter interface
+- Add runtime adapter selection with Docker Compose as the default and only implemented runtime
+- Adapt the existing Docker Compose sandbox lifecycle without duplicating it
+- Keep high-level validation orchestration, checks, reports, and history in their existing packages
+- Preserve existing Docker Compose behavior
+- Avoid a big-bang refactor
 
 #### Phase 8C: Kubernetes Local Runtime MVP
 - Use existing kubeconfig contexts

@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -9,13 +10,16 @@ import (
 	"github.com/HXong/predeploy-guard/internal/config"
 	"github.com/HXong/predeploy-guard/internal/loadtest"
 	"github.com/HXong/predeploy-guard/internal/report"
-	"github.com/HXong/predeploy-guard/internal/sandbox"
+	runtimefactory "github.com/HXong/predeploy-guard/internal/runtime/factory"
 )
 
 func Run(cfg *config.Config) error {
-	if cfg.Runtime.Type != "docker-compose" {
-		return fmt.Errorf("unsupported runtime: %s", cfg.Runtime.Type)
+	ctx := context.Background()
+	runtimeAdapter, err := runtimefactory.NewAdapter(cfg.Runtime.Type)
+	if err != nil {
+		return err
 	}
+	runtimeName := string(runtimeAdapter.Type())
 
 	startedAt := time.Now()
 
@@ -34,7 +38,7 @@ func Run(cfg *config.Config) error {
 			reportData := report.ReportData{
 				ServiceName: cfg.Service.Name,
 				Image:       cfg.Service.Image,
-				Runtime:     cfg.Runtime.Type,
+				Runtime:     runtimeName,
 				BaseURL:     "-",
 				StartedAt:   startedAt,
 				FinishedAt:  finishedAt,
@@ -66,48 +70,43 @@ func Run(cfg *config.Config) error {
 
 	fmt.Println("Creating Docker Compose sandbox...")
 
-	sb, err := sandbox.NewComposeSandbox(cfg)
+	env, err := runtimeAdapter.Prepare(ctx, cfg)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Sandbox directory: %s\n", sb.WorkDir)
+	fmt.Printf("Sandbox directory: %s\n", env.WorkDir)
 
+	startAttempted := false
+	startFailed := false
 	if cfg.Settings.Cleanup {
 		defer func() {
+			if startAttempted {
+				if startFailed {
+					fmt.Println("Stopping Docker Compose sandbox after start failure...")
+				} else {
+					fmt.Println("Stopping Docker Compose sandbox...")
+				}
+			}
+
+			cleanupErr := runtimeAdapter.Cleanup(ctx, env, cfg)
 			fmt.Println("Removing sandbox files...")
 
-			if err := sb.RemoveFiles(); err != nil {
-				fmt.Printf("Failed to remove sandbox files: %v\n", err)
+			if cleanupErr != nil {
+				fmt.Printf("Failed to clean up sandbox: %v\n", cleanupErr)
 			}
 		}()
 	}
 
 	fmt.Println("Starting service with Docker Compose...")
 
-	if err := sb.Start(); err != nil {
-		if cfg.Settings.Cleanup {
-			fmt.Println("Stopping Docker Compose sandbox after start failure...")
-
-			if stopErr := sb.Stop(); stopErr != nil {
-				fmt.Printf("Failed to stop sandbox after start failure: %v\n", stopErr)
-			}
-		}
-
+	startAttempted = true
+	if err := runtimeAdapter.Start(ctx, env, cfg); err != nil {
+		startFailed = true
 		return err
 	}
 
-	if cfg.Settings.Cleanup {
-		defer func() {
-			fmt.Println("Stopping Docker Compose sandbox...")
-
-			if err := sb.Stop(); err != nil {
-				fmt.Printf("Failed to stop sandbox: %v\n", err)
-			}
-		}()
-	}
-
-	fmt.Printf("Service base URL: %s\n", sb.BaseURL())
+	fmt.Printf("Service base URL: %s\n", env.BaseURL)
 
 	readinessResults := make([]report.ReadinessResult, 0)
 	dependencyErr := error(nil)
@@ -115,18 +114,13 @@ func Run(cfg *config.Config) error {
 	if len(cfg.Dependencies) > 0 {
 		fmt.Println("Waiting for dependency readiness...")
 
-		dependencyResults, err := sb.WaitForDependencies(cfg)
+		dependencyResults, err := runtimeAdapter.WaitReady(ctx, env, cfg)
 		dependencyErr = err
 
 		for _, result := range dependencyResults {
-			statusName := "dependency readiness"
-			if result.Skipped {
-				statusName = "dependency readiness (skipped)"
-			}
-
 			readinessResults = append(readinessResults, report.ReadinessResult{
-				Name:   statusName,
-				Target: result.Name,
+				Name:   result.Name,
+				Target: result.Target,
 				Passed: result.Passed,
 				Error:  result.Error,
 			})
@@ -139,7 +133,7 @@ func Run(cfg *config.Config) error {
 
 	serviceReadiness := report.ReadinessResult{
 		Name:   "service readiness",
-		Target: joinURL(sb.BaseURL(), cfg.Service.HealthPath),
+		Target: joinURL(env.BaseURL, cfg.Service.HealthPath),
 	}
 
 	performanceResult := loadtest.K6Result{
@@ -156,7 +150,7 @@ func Run(cfg *config.Config) error {
 		fmt.Println("Waiting for service readiness...")
 
 		readinessErr = checker.WaitUntilReady(
-			sb.BaseURL(),
+			env.BaseURL,
 			cfg.Service.HealthPath,
 			cfg.Settings.TimeoutSeconds,
 		)
@@ -172,7 +166,7 @@ func Run(cfg *config.Config) error {
 
 			fmt.Println("Running smoke checks...")
 
-			results = checker.RunSmokeChecks(sb.BaseURL(), cfg.Checks.Smoke)
+			results = checker.RunSmokeChecks(env.BaseURL, cfg.Checks.Smoke)
 
 			for _, result := range results {
 				printSmokeResult(result)
@@ -183,7 +177,7 @@ func Run(cfg *config.Config) error {
 			if smokePassed && cfg.Performance.Enabled {
 				fmt.Println("Running performance checks with k6...")
 
-				performanceResult = loadtest.RunK6IfEnabled(cfg, sb.K6BaseURL(), sb.WorkDir)
+				performanceResult = loadtest.RunK6IfEnabled(cfg, env.WorkloadBaseURL, env.WorkDir)
 
 				if performanceResult.Enabled {
 					if performanceResult.Passed {
@@ -200,7 +194,7 @@ func Run(cfg *config.Config) error {
 
 	logs := ""
 	if dependencyErr != nil || readinessErr != nil || !passed {
-		logs = collectLogsSafely(sb)
+		logs = collectDiagnosticsSafely(ctx, runtimeAdapter, env, cfg)
 	}
 
 	finishedAt := time.Now()
@@ -209,8 +203,8 @@ func Run(cfg *config.Config) error {
 		ServiceName:   cfg.Service.Name,
 		ActiveProfile: cfg.ActiveProfile,
 		Image:         cfg.Service.Image,
-		Runtime:       cfg.Runtime.Type,
-		BaseURL:       sb.BaseURL(),
+		Runtime:       runtimeName,
+		BaseURL:       env.BaseURL,
 		StartedAt:     startedAt,
 		FinishedAt:    finishedAt,
 		BuildResult: report.BuildResult{

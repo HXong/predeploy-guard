@@ -1,18 +1,31 @@
 package runner
 
 import (
+	"context"
 	"fmt"
+	"strings"
 
-	"github.com/HXong/predeploy-guard/internal/sandbox"
+	"github.com/HXong/predeploy-guard/internal/config"
+	predeployruntime "github.com/HXong/predeploy-guard/internal/runtime"
 )
 
-func collectLogsSafely(sb *sandbox.ComposeSandbox) string {
+func collectDiagnosticsSafely(
+	ctx context.Context,
+	adapter predeployruntime.Adapter,
+	env *predeployruntime.Environment,
+	cfg *config.Config,
+) string {
 	fmt.Println("Collecting container logs...")
 
-	logs, err := sb.Logs()
-	if err != nil {
-		return fmt.Sprintf("Failed to collect logs: %v\n\nPartial output:\n%s", err, logs)
+	diagnostics, err := adapter.CollectDiagnostics(ctx, env, cfg)
+	details := ""
+	if diagnostics != nil {
+		details = strings.Join(diagnostics.Details, "\n")
 	}
 
-	return logs
+	if err != nil {
+		return fmt.Sprintf("Failed to collect logs: %v\n\nPartial output:\n%s", err, details)
+	}
+
+	return details
 }
