@@ -5,9 +5,9 @@
 ![React](https://img.shields.io/badge/React-Dashboard-61DAFB?logo=react&logoColor=black)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white)
 
-> Local-first deployment validation platform for backend services.
+> Local-first pre-deployment validation and experiment sandbox for backend services.
 
-PreDeploy Guard helps backend developers catch deployment issues before release by spinning up temporary Docker Compose sandboxes, validating dependencies, running smoke checks, executing k6 performance tests, and generating Markdown/JSON safety reports.
+PreDeploy Guard helps backend developers catch deployment issues before release by spinning up temporary Docker Compose sandboxes, validating dependencies, running smoke checks, executing k6 performance tests, and generating Markdown/JSON safety reports. Its next direction is config-driven local deployment experiments for testing services, infrastructure components, and workloads before real deployment.
 
 It is designed for developers, small teams, and student teams that do not have a full multi-stage deployment setup. Instead of deploying directly after building a service, developers can run PreDeploy Guard locally to create a temporary sandbox, start the service with its dependencies, run readiness, smoke, and performance checks, then generate deployment safety reports.
 
@@ -84,7 +84,7 @@ PreDeploy Guard Local Server
 Config Summary + Run History + Reports + API-triggered Runs
 ```
 
-The long-term direction is to keep the CLI as the core engine and evolve toward a GDP-inspired local platform for guided configuration, validation, and reporting.
+The long-term direction is to keep the CLI as the core engine and evolve the local sandbox toward richer deployment experiments. Docker Compose remains the supported default runtime; future Kubernetes support will target existing kubeconfig contexts, including local clusters such as Minikube, kind, and k3s.
 
 ---
 
@@ -92,7 +92,9 @@ The long-term direction is to keep the CLI as the core engine and evolve toward 
 
 PreDeploy Guard is best described as:
 
-> A local-first pre-deployment validation platform that creates temporary Docker Compose sandboxes for backend services, validates dependency readiness, service readiness, smoke checks, and performance thresholds, then generates human-readable and machine-readable deployment safety reports with run history, comparison, API support, and a local dashboard.
+> A local-first pre-deployment validation and experiment sandbox that creates isolated environments for backend services, validates readiness, smoke checks, and performance thresholds, and produces human-readable and machine-readable reports.
+
+PreDeploy Guard is intended for local testing and experimentation, not production deployment orchestration.
 
 This project demonstrates backend engineering, developer tooling, Docker-based workflows, performance validation, CI readiness, reliability thinking, local API design, frontend dashboard development, and early platform engineering concepts.
 
@@ -622,13 +624,15 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 
 ### Next
 
-- Phase 8: GitHub Actions workflow generator
+- Phase 8: Deployment Experiment Sandbox
+  - align runtime and experiment models while preserving Docker Compose
+  - prepare runtime adapter boundaries
+  - add future kubeconfig-based local-cluster execution, generic experiment workloads, and experiment reporting incrementally
 
 ### Future
 
-- GDP-inspired GUI/platform mode
 - Optional safe config save-to-file workflow
-- Kubernetes runtime
+- GitHub Actions workflow generator
 - Helm chart support
 - API gateway and ingress testing
 

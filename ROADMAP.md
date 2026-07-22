@@ -75,23 +75,49 @@ Completed:
 
 ## Current Phase
 
-### Phase 8: GitHub Actions Workflow Generator
-- Generate workflow YAML from dashboard
-- Suggest CI validation commands
-- Link generated workflow to selected profile
+### Phase 8: Deployment Experiment Sandbox
+Goal: allow developers to define and run local deployment experiments from `predeploy.yaml`, using the existing Docker Compose runtime first while preparing for future Kubernetes and local-cluster runtimes.
+
+PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It is not a production deployment platform.
+
+#### Phase 8A: Runtime and Experiment Model Alignment
+- Clarify the runtime abstraction direction
+- Keep Docker Compose as the default runtime
+- Define how deployment experiments differ from normal validation runs
+- Document intended support for future Kubernetes and local-cluster execution
+- Do not implement Kubernetes in this subphase
+
+#### Phase 8B: Runtime Adapter Foundation
+- Prepare backend boundaries so Docker Compose and future Kubernetes runtimes can share orchestration concepts
+- Preserve existing Docker Compose behavior
+- Avoid a big-bang refactor
+
+#### Phase 8C: Kubernetes Local Runtime MVP
+- Use existing kubeconfig contexts
+- Support local clusters such as Minikube, kind, and k3s without becoming specific to one distribution
+- Create temporary, clearly prefixed namespaces
+- Deploy the service and dependencies
+- Wait for readiness and run smoke checks
+- Collect basic logs and events
+- Clean up temporary resources safely
+
+#### Phase 8D: Experiment Workloads
+- Support optional workloads such as HTTP load generation, log or file replay, worker jobs, and message producers
+- Keep the workload model generic and reusable
+- Treat Fluent Bit with Kafka as one possible experiment, not as the architecture's defining workflow
+
+#### Phase 8E: Experiment Reports
+- Record deployment timings and readiness results
+- Record workload results, logs, and runtime diagnostics
+- Extend existing Markdown and JSON reports without breaking validation reports
 
 ## Future Enhancements
 
 - Optional safe save-to-file flow through the local API
+- GitHub Actions workflow generator for selected configurations and profiles
 
 ## Future Direction
 
-### Phase 9: Kubernetes Runtime
-- Existing cluster support
-- Temporary namespace creation
-- Manifest deployment
-- Helm chart support
-
-### Phase 10: API Gateway / Ingress Testing
+### Phase 9: API Gateway / Ingress Testing
 - Gateway config support
 - Direct service vs gateway latency comparison

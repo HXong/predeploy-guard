@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-PreDeploy Guard is a local-first pre-deployment validation platform for backend services.
+PreDeploy Guard is a local-first pre-deployment validation and experiment sandbox for backend services.
 
 The CLI validates services by:
 1. Loading `predeploy.yaml`
@@ -15,9 +15,9 @@ The CLI validates services by:
 8. Writing Markdown/JSON reports
 9. Recording run history
 
-The project also exposes a local API server and React dashboard for future GUI/platform workflows.
+The project also exposes a local API server and React dashboard. It helps developers define services and dependencies, run readiness/smoke/performance checks, and generate local configuration through a guided UI.
 
-Future direction: GDP-inspired local platform mode built on top of the CLI engine.
+The next direction is richer, config-driven deployment experiments across Docker Compose and future Kubernetes-style local runtimes. PreDeploy Guard remains a local sandbox and experiment runner, not a production deployment platform.
 
 ## Architecture Rules
 
@@ -39,6 +39,23 @@ Future direction: GDP-inspired local platform mode built on top of the CLI engin
   - `internal/report`
   - `internal/history`
 
+### Runtime and Experiment Guidance
+
+- Keep Docker Compose supported as the default local runtime.
+- Do not hardcode Minikube-specific behavior.
+- Future Kubernetes support should use existing kubeconfig contexts and allow Minikube, kind, k3s, and other local development clusters.
+- Prefer runtime adapter boundaries over scattering Docker or Kubernetes logic through the runner.
+- Preserve existing Docker Compose validation behavior while runtime boundaries evolve.
+- Avoid a big-bang runtime refactor.
+- Keep cleanup safety as a first-class concern.
+- Prefix temporary namespaces and resources clearly, and delete only resources owned by the active run.
+- Do not install Minikube, Kubernetes, or cluster tooling automatically.
+- Do not make destructive cluster-wide changes.
+- Keep production deployment out of scope.
+- Keep experiment workloads generic across API load, black-box HTTP checks, dependency integration checks, log or file replay, message producers, and background worker testing.
+- Fluent Bit with Kafka may be an example experiment, but do not make the runtime, workload, or configuration architecture specific to Fluent Bit, Kafka, or any one integration.
+- Avoid niche one-off configuration fields unless they generalize to reusable experiment concepts.
+
 ### Frontend
 
 - Keep dashboard frontend under `web/dashboard`.
@@ -46,6 +63,7 @@ Future direction: GDP-inspired local platform mode built on top of the CLI engin
 - Keep `web/dashboard/src/app/App.tsx` thin.
 - Keep feature-owned API, types, components, and hooks under `web/dashboard/src/features/`.
 - Keep config-builder state, validation, YAML generation, and UI inside `web/dashboard/src/features/config-builder/`.
+- Extend the existing config-builder feature for future experiment configuration UI.
 - Keep reusable HTTP, component, and utility code under `web/dashboard/src/shared/`.
 - Preserve strict TypeScript practices: do not use `React.FC` or `any`, and use explicit prop and event types.
 - Do not expose raw backend config through the API.
@@ -173,4 +191,4 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 5 completed: local API server, safe config endpoints, API-triggered async runs, status polling, basic task logs.
 - Phase 6 completed: local React dashboard, run task UI, run details view, report preview, component refactor.
 - Phase 7 completed: guided config builder with service, dependency, smoke-check, performance, profile, and YAML export workflows.
-- Phase 8 current/next: GitHub Actions workflow generator.
+- Phase 8 current/next: deployment experiment sandbox, starting with model alignment and runtime adapter boundaries while preserving Docker Compose.
