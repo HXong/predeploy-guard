@@ -49,11 +49,12 @@ The next direction is richer, config-driven deployment experiments across Docker
 - Avoid a big-bang runtime refactor.
 - Keep cleanup safety as a first-class concern.
 - Prefix temporary namespaces and resources clearly, and delete only resources owned by the active run.
-- Do not install Minikube, Kubernetes, or cluster tooling automatically.
+- Do not install Docker, Kubernetes, Minikube, or cluster dependencies automatically.
+- Do not install or start Minikube automatically.
 - Do not make destructive cluster-wide changes.
 - Keep production deployment out of scope.
-- Keep experiment workloads generic across API load, black-box HTTP checks, dependency integration checks, log or file replay, message producers, and background worker testing.
-- Fluent Bit with Kafka may be an example experiment, but do not make the runtime, workload, or configuration architecture specific to Fluent Bit, Kafka, or any one integration.
+- Keep experiment workloads generic across HTTP load generation, black-box checks, dependency integration checks, file/log replay, background worker jobs, and message producer/consumer experiments.
+- Fluent Bit with Kafka may be an example experiment, but do not make the runtime, workload, or configuration architecture specific to Fluent Bit, Kafka, Locust, or any one tool or integration.
 - Avoid niche one-off configuration fields unless they generalize to reusable experiment concepts.
 
 ### Frontend
@@ -67,7 +68,8 @@ The next direction is richer, config-driven deployment experiments across Docker
 - Keep reusable HTTP, component, and utility code under `web/dashboard/src/shared/`.
 - Preserve strict TypeScript practices: do not use `React.FC` or `any`, and use explicit prop and event types.
 - Do not expose raw backend config through the API.
-- Prefer generated YAML preview, copy, and download over backend filesystem writes unless explicitly implementing a safe save flow.
+- Prefer generated YAML preview, copy, and download over backend filesystem writes.
+- Any save-to-file flow must be explicit and safe.
 - Do not add a UI library unless explicitly requested.
 - Keep CSS in `src/styles.css` for now.
 
@@ -191,4 +193,4 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 5 completed: local API server, safe config endpoints, API-triggered async runs, status polling, basic task logs.
 - Phase 6 completed: local React dashboard, run task UI, run details view, report preview, component refactor.
 - Phase 7 completed: guided config builder with service, dependency, smoke-check, performance, profile, and YAML export workflows.
-- Phase 8 current/next: deployment experiment sandbox, starting with model alignment and runtime adapter boundaries while preserving Docker Compose.
+- Phase 8A current: runtime and experiment model alignment for the deployment experiment sandbox, with Docker Compose remaining the default supported runtime and Kubernetes/local-cluster support reserved for future subphases.

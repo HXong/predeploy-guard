@@ -7,7 +7,9 @@
 
 > Local-first pre-deployment validation and experiment sandbox for backend services.
 
-PreDeploy Guard helps backend developers catch deployment issues before release by spinning up temporary Docker Compose sandboxes, validating dependencies, running smoke checks, executing k6 performance tests, and generating Markdown/JSON safety reports. Its next direction is config-driven local deployment experiments for testing services, infrastructure components, and workloads before real deployment.
+PreDeploy Guard helps backend developers catch deployment issues before release by spinning up temporary Docker Compose sandboxes, validating dependencies, running smoke checks, executing k6 performance tests, and generating Markdown/JSON safety reports.
+
+PreDeploy Guard is moving toward config-driven local deployment experiments across Docker Compose and future Kubernetes/local-cluster runtimes. Docker Compose is the only supported runtime today; Kubernetes runtime support is future work.
 
 It is designed for developers, small teams, and student teams that do not have a full multi-stage deployment setup. Instead of deploying directly after building a service, developers can run PreDeploy Guard locally to create a temporary sandbox, start the service with its dependencies, run readiness, smoke, and performance checks, then generate deployment safety reports.
 
