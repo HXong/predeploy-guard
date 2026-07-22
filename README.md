@@ -462,31 +462,30 @@ Current dashboard capabilities:
 - View run details
 - Open Markdown/JSON report links
 - Preview raw Markdown report content
+- Switch between the dashboard and guided Config Builder
+
+### Guided Config Builder
+
+The dashboard Config Builder provides forms for service configuration, dependencies and readiness, HTTP smoke checks, k6 performance checks, and named validation profiles. The generated `predeploy.yaml` preview updates as the configuration changes and can be copied or downloaded for local use.
+
+The builder exports YAML in the browser. It does not write configuration files through the local API.
 
 Frontend structure:
 
 ```txt
 web/dashboard/src/
-├── api/
-│   └── client.ts
-├── components/
-│   ├── Card.tsx
-│   ├── ConfigSummaryCard.tsx
-│   ├── ExecutionPlanCard.tsx
-│   ├── Header.tsx
-│   ├── HealthCard.tsx
-│   ├── RunDetailsPanel.tsx
-│   ├── RunHistoryTable.tsx
-│   ├── RunTasksTable.tsx
-│   ├── StatusBadge.tsx
-│   ├── TaskLogsPanel.tsx
-│   └── TriggerRunPanel.tsx
-├── types/
-│   └── api.ts
-├── utils/
-│   ├── format.ts
-│   └── reports.ts
-├── App.tsx
+├── app/
+│   ├── App.tsx
+│   └── AppShell.tsx
+├── features/
+│   ├── config/
+│   ├── config-builder/
+│   ├── dashboard/
+│   └── runs/
+├── shared/
+│   ├── api/
+│   ├── components/
+│   └── utils/
 ├── main.tsx
 └── styles.css
 ```
@@ -597,7 +596,7 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 
 - Docker Compose runtime only
 - Kubernetes runtime not implemented yet
-- Guided config builder supports service, dependency, HTTP smoke-check, base k6 performance, and validation profile configuration; backend save is not implemented yet
+- Guided config builder previews and exports YAML in the browser; it does not write configuration files through the backend
 - No API gateway or ingress latency simulation yet
 - Dependency readiness depends on user-provided commands
 - Smoke checks currently support simple HTTP status validation
@@ -619,17 +618,16 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 - Phase 4: Run history and comparison
 - Phase 5: Local API and GUI groundwork
 - Phase 6: Local dashboard UI
+- Phase 7: Guided config builder
 
 ### Next
 
-- Phase 7: Guided config builder (in progress)
-  - completed: service configuration, dependency presets/readiness, HTTP smoke checks, base k6 performance configuration, validation profiles, YAML preview, copy, and download
-  - next: optional backend save workflow
+- Phase 8: GitHub Actions workflow generator
 
 ### Future
 
 - GDP-inspired GUI/platform mode
-- GitHub Actions workflow generator
+- Optional safe config save-to-file workflow
 - Kubernetes runtime
 - Helm chart support
 - API gateway and ingress testing

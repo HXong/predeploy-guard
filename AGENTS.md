@@ -43,12 +43,13 @@ Future direction: GDP-inspired local platform mode built on top of the CLI engin
 
 - Keep dashboard frontend under `web/dashboard`.
 - Use React + TypeScript + Vite.
-- Keep API calls in `web/dashboard/src/api/client.ts`.
-- Keep API response types in `web/dashboard/src/types/api.ts`.
-- Keep reusable formatting helpers in `web/dashboard/src/utils/`.
-- Keep page sections as components under `web/dashboard/src/components/`.
-- Do not put all dashboard UI into `App.tsx`.
-- `App.tsx` should mainly compose components and manage high-level state.
+- Keep `web/dashboard/src/app/App.tsx` thin.
+- Keep feature-owned API, types, components, and hooks under `web/dashboard/src/features/`.
+- Keep config-builder state, validation, YAML generation, and UI inside `web/dashboard/src/features/config-builder/`.
+- Keep reusable HTTP, component, and utility code under `web/dashboard/src/shared/`.
+- Preserve strict TypeScript practices: do not use `React.FC` or `any`, and use explicit prop and event types.
+- Do not expose raw backend config through the API.
+- Prefer generated YAML preview, copy, and download over backend filesystem writes unless explicitly implementing a safe save flow.
 - Do not add a UI library unless explicitly requested.
 - Keep CSS in `src/styles.css` for now.
 
@@ -71,10 +72,9 @@ Future direction: GDP-inspired local platform mode built on top of the CLI engin
 
 ### Frontend
 
-- `web/dashboard/src/api`: API client.
-- `web/dashboard/src/components`: dashboard UI components.
-- `web/dashboard/src/types`: TypeScript API DTOs.
-- `web/dashboard/src/utils`: formatting/report helper functions.
+- `web/dashboard/src/app`: thin application shell and top-level view selection.
+- `web/dashboard/src/features`: feature-owned dashboard, run, config, and config-builder code.
+- `web/dashboard/src/shared`: reusable HTTP, component, and utility code.
 
 ## Local API Rules
 
@@ -172,4 +172,5 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 4 completed: run history, show, compare.
 - Phase 5 completed: local API server, safe config endpoints, API-triggered async runs, status polling, basic task logs.
 - Phase 6 completed: local React dashboard, run task UI, run details view, report preview, component refactor.
-- Phase 7 current/next: guided config builder.
+- Phase 7 completed: guided config builder with service, dependency, smoke-check, performance, profile, and YAML export workflows.
+- Phase 8 current/next: GitHub Actions workflow generator.

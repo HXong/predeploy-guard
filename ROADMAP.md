@@ -61,8 +61,6 @@ Completed:
 - Dashboard component refactor
 - Frontend API client and typed DTOs
 
-## Current Phase
-
 ### Phase 7: Guided Config Builder
 Goal: allow users to generate and edit `predeploy.yaml` through a guided UI instead of writing YAML manually.
 
@@ -75,15 +73,18 @@ Completed:
 - YAML preview panel
 - Copy/download generated `predeploy.yaml`
 
-Remaining:
-- Optional save-to-file flow through local API later
-
-## Future Direction
+## Current Phase
 
 ### Phase 8: GitHub Actions Workflow Generator
 - Generate workflow YAML from dashboard
 - Suggest CI validation commands
 - Link generated workflow to selected profile
+
+## Future Enhancements
+
+- Optional safe save-to-file flow through the local API
+
+## Future Direction
 
 ### Phase 9: Kubernetes Runtime
 - Existing cluster support

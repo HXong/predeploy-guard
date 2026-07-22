@@ -219,7 +219,7 @@ function validateProfiles(config: ConfigBuilderState, errors: ValidationError[])
         errors.push({ field: nameField, message: `Profile ${name} is duplicated.` });
       }
 
-      if (name === "base") {
+      if (name.toLowerCase() === "base") {
         errors.push({ field: nameField, message: "Profile name cannot be base." });
       }
 
