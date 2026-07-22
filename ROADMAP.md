@@ -76,40 +76,38 @@ Completed:
 ## Current Phase
 
 ### Phase 8: Deployment Experiment Sandbox
-Goal: allow developers to define and run local deployment experiments from `predeploy.yaml`, using the existing Docker Compose runtime first while preparing for future Kubernetes and local-cluster runtimes.
+Goal: allow developers to define and run local deployment experiments from `predeploy.yaml`, using Docker Compose first and preparing the architecture for future Kubernetes/local-cluster runtimes.
 
 PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It is not a production deployment platform.
 
 #### Phase 8A: Runtime and Experiment Model Alignment
-- Clarify the runtime abstraction direction
-- Keep Docker Compose as the default runtime
-- Define how deployment experiments differ from normal validation runs
-- Document intended support for future Kubernetes and local-cluster execution
-- Do not implement Kubernetes in this subphase
+- Define experiment and runtime terminology
+- Document the current Docker Compose runtime as the default supported runtime
+- Document the future Kubernetes/local-cluster direction
+- Identify backend boundaries that should evolve into runtime adapters
+- No Kubernetes implementation yet
 
 #### Phase 8B: Runtime Adapter Foundation
-- Prepare backend boundaries so Docker Compose and future Kubernetes runtimes can share orchestration concepts
-- Preserve existing Docker Compose behavior
-- Avoid a big-bang refactor
+- Introduce runtime adapter boundaries gradually
+- Preserve Docker Compose behavior
+- Avoid a big-bang runner rewrite
 
 #### Phase 8C: Kubernetes Local Runtime MVP
 - Use existing kubeconfig contexts
-- Support local clusters such as Minikube, kind, and k3s without becoming specific to one distribution
-- Create temporary, clearly prefixed namespaces
-- Deploy the service and dependencies
-- Wait for readiness and run smoke checks
-- Collect basic logs and events
-- Clean up temporary resources safely
+- Support local clusters such as Minikube, kind, or k3s
+- Create temporary namespaces
+- Deploy service/dependencies
+- Wait for readiness
+- Run smoke checks
+- Collect basic logs/events
+- Clean up safely
 
 #### Phase 8D: Experiment Workloads
-- Support optional workloads such as HTTP load generation, log or file replay, worker jobs, and message producers
-- Keep the workload model generic and reusable
-- Treat Fluent Bit with Kafka as one possible experiment, not as the architecture's defining workflow
+- Support generic workloads such as HTTP load, log/file replay, message producers, worker jobs, or custom commands
+- Do not specialize around Fluent Bit/Kafka only
 
 #### Phase 8E: Experiment Reports
-- Record deployment timings and readiness results
-- Record workload results, logs, and runtime diagnostics
-- Extend existing Markdown and JSON reports without breaking validation reports
+- Extend reports with deployment timings, readiness results, workload results, logs, and runtime diagnostics
 
 ## Future Enhancements
 
