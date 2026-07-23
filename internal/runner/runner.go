@@ -68,7 +68,7 @@ func Run(cfg *config.Config) error {
 		fmt.Println("No target image build configured")
 	}
 
-	fmt.Println("Creating Docker Compose sandbox...")
+	fmt.Printf("Preparing %s runtime sandbox...\n", runtimeName)
 
 	env, err := runtimeAdapter.Prepare(ctx, cfg)
 	if err != nil {
@@ -83,14 +83,14 @@ func Run(cfg *config.Config) error {
 		defer func() {
 			if startAttempted {
 				if startFailed {
-					fmt.Println("Stopping Docker Compose sandbox after start failure...")
+					fmt.Printf("Stopping %s runtime sandbox after start failure...\n", runtimeName)
 				} else {
-					fmt.Println("Stopping Docker Compose sandbox...")
+					fmt.Printf("Stopping %s runtime sandbox...\n", runtimeName)
 				}
 			}
 
 			cleanupErr := runtimeAdapter.Cleanup(ctx, env, cfg)
-			fmt.Println("Removing sandbox files...")
+			fmt.Println("Removing runtime sandbox files...")
 
 			if cleanupErr != nil {
 				fmt.Printf("Failed to clean up sandbox: %v\n", cleanupErr)
@@ -98,7 +98,7 @@ func Run(cfg *config.Config) error {
 		}()
 	}
 
-	fmt.Println("Starting service with Docker Compose...")
+	fmt.Printf("Starting service with %s runtime...\n", runtimeName)
 
 	startAttempted = true
 	if err := runtimeAdapter.Start(ctx, env, cfg); err != nil {
@@ -109,22 +109,16 @@ func Run(cfg *config.Config) error {
 	fmt.Printf("Service base URL: %s\n", env.BaseURL)
 
 	readinessResults := make([]report.ReadinessResult, 0)
-	dependencyErr := error(nil)
+	fmt.Printf("Waiting for %s runtime readiness...\n", runtimeName)
 
-	if len(cfg.Dependencies) > 0 {
-		fmt.Println("Waiting for dependency readiness...")
-
-		dependencyResults, err := runtimeAdapter.WaitReady(ctx, env, cfg)
-		dependencyErr = err
-
-		for _, result := range dependencyResults {
-			readinessResults = append(readinessResults, report.ReadinessResult{
-				Name:   result.Name,
-				Target: result.Target,
-				Passed: result.Passed,
-				Error:  result.Error,
-			})
-		}
+	runtimeReadinessResults, runtimeReadinessErr := runtimeAdapter.WaitReady(ctx, env, cfg)
+	for _, result := range runtimeReadinessResults {
+		readinessResults = append(readinessResults, report.ReadinessResult{
+			Name:   result.Name,
+			Target: result.Target,
+			Passed: result.Passed,
+			Error:  result.Error,
+		})
 	}
 
 	var results []checker.SmokeResult
@@ -141,10 +135,10 @@ func Run(cfg *config.Config) error {
 		Passed:  !cfg.Performance.Enabled,
 	}
 
-	if dependencyErr != nil {
-		fmt.Printf("Dependency readiness failed: %v\n", dependencyErr)
+	if runtimeReadinessErr != nil {
+		fmt.Printf("Runtime readiness failed: %v\n", runtimeReadinessErr)
 		serviceReadiness.Passed = false
-		serviceReadiness.Error = "service readiness skipped because dependency readiness failed"
+		serviceReadiness.Error = "service readiness skipped because runtime readiness failed"
 		readinessResults = append(readinessResults, serviceReadiness)
 	} else {
 		fmt.Println("Waiting for service readiness...")
@@ -193,7 +187,7 @@ func Run(cfg *config.Config) error {
 	}
 
 	logs := ""
-	if dependencyErr != nil || readinessErr != nil || !passed {
+	if runtimeReadinessErr != nil || readinessErr != nil || !passed {
 		logs = collectDiagnosticsSafely(ctx, runtimeAdapter, env, cfg)
 	}
 
@@ -252,10 +246,10 @@ func Run(cfg *config.Config) error {
 		return reportErr
 	}
 
-	if dependencyErr != nil {
+	if runtimeReadinessErr != nil {
 		fmt.Println("Result: FAIL")
 		printReportPaths(paths)
-		return dependencyErr
+		return runtimeReadinessErr
 	}
 
 	if readinessErr != nil {

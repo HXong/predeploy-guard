@@ -25,6 +25,9 @@ func printValidationSummary(cfg *config.Config) {
 
 	fmt.Println("Runtime")
 	fmt.Printf("  Type: %s\n", cfg.Runtime.Type)
+	if cfg.Runtime.Context != "" {
+		fmt.Printf("  Context: %s\n", cfg.Runtime.Context)
+	}
 	fmt.Println()
 
 	fmt.Println("Service")

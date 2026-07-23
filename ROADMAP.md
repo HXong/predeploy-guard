@@ -76,7 +76,7 @@ Completed:
 ## Current Phase
 
 ### Phase 8: Deployment Experiment Sandbox
-Goal: allow developers to define and run local deployment experiments from `predeploy.yaml`, using Docker Compose first and preparing the architecture for future Kubernetes/local-cluster runtimes.
+Goal: allow developers to define and run local deployment experiments from `predeploy.yaml`, using Docker Compose by default and existing Kubernetes/local-cluster contexts through the runtime adapter architecture.
 
 PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It is not a production deployment platform.
 
@@ -87,23 +87,25 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Document intended support for future Kubernetes and local-cluster execution
 - Do not implement Kubernetes in this subphase
 
-#### Phase 8B: Runtime Adapter Foundation (Current)
+#### Phase 8B: Runtime Adapter Foundation (Completed)
 - Introduce runtime-neutral lifecycle types and an adapter interface
-- Add runtime adapter selection with Docker Compose as the default and only implemented runtime
+- Add runtime adapter selection with Docker Compose as the first and default implementation
 - Adapt the existing Docker Compose sandbox lifecycle without duplicating it
 - Keep high-level validation orchestration, checks, reports, and history in their existing packages
 - Preserve existing Docker Compose behavior
 - Avoid a big-bang refactor
 
-#### Phase 8C: Kubernetes Local Runtime MVP
+#### Phase 8C: Kubernetes Local Runtime MVP (Current)
 - Use existing kubeconfig contexts
 - Support local clusters such as Minikube, kind, or k3s
-- Create temporary namespaces
-- Deploy service/dependencies
-- Wait for readiness
-- Run smoke checks
-- Collect basic logs/events
-- Clean up safely
+- Use `kubectl` without adding Kubernetes client dependencies
+- Create clearly owned temporary namespaces
+- Generate and apply service/dependency manifests
+- Wait for deployment readiness and start a local port-forward
+- Run the existing smoke and performance checks through the forwarded URL
+- Collect basic logs and runtime diagnostics
+- Clean up only the owned namespace and temporary files
+- Require users to make configured images accessible to the selected cluster
 
 #### Phase 8D: Experiment Workloads
 - Support generic workloads such as HTTP load, log/file replay, message producers, worker jobs, or custom commands

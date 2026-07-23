@@ -29,8 +29,19 @@ func TestNewAdapterReturnsDockerCompose(t *testing.T) {
 	}
 }
 
+func TestNewAdapterReturnsKubernetes(t *testing.T) {
+	adapter, err := NewAdapter(string(predeployruntime.TypeKubernetes))
+	if err != nil {
+		t.Fatalf("NewAdapter: %v", err)
+	}
+
+	if adapter.Type() != predeployruntime.TypeKubernetes {
+		t.Fatalf("adapter type = %q, want %q", adapter.Type(), predeployruntime.TypeKubernetes)
+	}
+}
+
 func TestNewAdapterRejectsUnsupportedRuntime(t *testing.T) {
-	adapter, err := NewAdapter("kubernetes")
+	adapter, err := NewAdapter("production")
 	if err == nil {
 		t.Fatal("NewAdapter error = nil, want unsupported runtime error")
 	}
@@ -39,8 +50,8 @@ func TestNewAdapterRejectsUnsupportedRuntime(t *testing.T) {
 	}
 
 	wantParts := []string{
-		`unsupported runtime.type "kubernetes"`,
-		`supported runtimes: docker-compose`,
+		`unsupported runtime.type "production"`,
+		`supported runtimes: docker-compose, kubernetes`,
 	}
 	for _, want := range wantParts {
 		if !strings.Contains(err.Error(), want) {

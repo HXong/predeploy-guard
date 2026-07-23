@@ -28,17 +28,34 @@ PreDeploy Guard should provide a config-driven way to create isolated local depl
 - becoming specific to Kafka, Fluent Bit, Locust, or any single tool
 - performing destructive cluster-wide operations
 
-## Current Runtime
+## Current Runtimes
 
-Docker Compose is the current and default supported runtime. It builds the target image, creates a temporary sandbox, starts dependencies and the target service, waits for readiness, runs smoke and Dockerized k6 performance checks, writes Markdown and JSON reports, records history, and cleans up.
+Docker Compose remains the default supported runtime. It builds the target image, creates a temporary sandbox, starts dependencies and the target service, waits for readiness, runs smoke and Dockerized k6 performance checks, writes Markdown and JSON reports, records history, and cleans up.
 
 Phase 8 must preserve this behavior while runtime boundaries evolve incrementally.
 
-## Future Runtime Direction
+Phase 8C introduces a Kubernetes local runtime MVP for existing developer-managed clusters. It creates an owned temporary namespace, applies generated service and dependency resources, waits for deployment rollouts, starts a local port-forward, reuses the existing checks and reports, collects basic diagnostics, and deletes only resources owned by the run.
 
-Future Kubernetes support should use kubeconfig contexts already configured and controlled by the user. It should work with local targets such as Minikube, kind, k3s, and other local development clusters without assuming that any one distribution is the default.
+## Kubernetes Local Runtime Requirements
 
-PreDeploy Guard should not install or start a cluster automatically. A future Kubernetes runtime should create clearly owned, temporary resources, operate within an explicitly selected context, and clean up only resources created for the active run.
+The Kubernetes runtime uses `kubectl` and kubeconfig contexts already configured and controlled by the user. The user must have:
+
+- a working Kubernetes cluster and kubeconfig
+- `kubectl` installed and available on `PATH`
+- permission to create and delete the temporary namespace
+- service and dependency images that the selected cluster can access
+
+If `runtime.context` is omitted, `kubectl` uses the current kubeconfig context. An explicit context can target Minikube, kind, k3s, Docker Desktop Kubernetes, or another local development cluster without making any one distribution the default.
+
+```yaml
+runtime:
+  type: kubernetes
+  context: kind-local
+```
+
+PreDeploy Guard does not install or start clusters. It also does not load locally built images into Minikube, kind, or other clusters. If `service.build.context` builds a local image, the user is responsible for making it available to the selected cluster. Automatic image-loading helpers remain future work.
+
+To support Dockerized k6, the temporary port-forward binds its randomly allocated port on the host interfaces. Cleanup stops that process before deleting the owned namespace and temporary files.
 
 ## Conceptual Model
 
@@ -49,11 +66,11 @@ The execution backend that creates and manages the sandbox.
 Examples:
 
 - `docker-compose`, the current supported runtime
-- `kubernetes`, a future runtime using an existing kubeconfig context
+- `kubernetes`, a local-cluster runtime using an existing kubeconfig context
 
 ### Validation Run
 
-The existing flow that validates a service through dependency and service readiness, smoke checks, and optional performance checks. A validation run uses the current Docker Compose runtime and produces the established reports and history records.
+The existing flow that validates a service through dependency and service readiness, smoke checks, and optional performance checks. A validation run uses the configured local runtime and produces the established reports and history records.
 
 ### Deployment Experiment
 
@@ -105,6 +122,7 @@ The first adapter work should wrap proven Docker Compose behavior rather than re
 - introduce runtime adapter boundaries gradually
 - preserve Docker Compose behavior
 - avoid a big-bang runner rewrite
+- completed with Docker Compose as the first adapter and runtime selection in place
 
 ### 8C: Kubernetes Local Runtime MVP
 
@@ -112,6 +130,7 @@ The first adapter work should wrap proven Docker Compose behavior rather than re
 - support local clusters such as Minikube, kind, and k3s
 - create prefixed temporary namespaces and resources
 - deploy services and dependencies, wait for readiness, run smoke checks, collect basic diagnostics, and clean up safely
+- use `kubectl` for the MVP and require images to be accessible to the selected cluster
 
 ### 8D: Experiment Workloads
 
@@ -131,11 +150,12 @@ The first adapter work should wrap proven Docker Compose behavior rather than re
 - prefix temporary namespaces and resources clearly
 - let the user control the kubeconfig and selected context
 - prefer dry-run or preview behavior when possible
+- never install clusters or load images implicitly
 
 ## Open Questions
 
 - Should experiment workloads be top-level YAML concepts or part of checks?
-- Should Kubernetes manifests be generated for review or applied directly?
+- Should a future mode expose generated Kubernetes manifests for review or dry-run before applying them?
 - Should the dashboard preview Kubernetes resources before applying them?
 - How should logs and replay workloads be modeled generically across files, streams, and protocols?
-- Should Phase 8B introduce a runtime adapter interface immediately or evolve the boundary gradually from the existing runner?
+- How should the runtime adapter contract evolve as experiment workloads and richer diagnostics are added?

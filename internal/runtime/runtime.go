@@ -10,6 +10,7 @@ type Type string
 
 const (
 	TypeDockerCompose Type = "docker-compose"
+	TypeKubernetes    Type = "kubernetes"
 )
 
 type Environment struct {

@@ -257,8 +257,18 @@ func (s *ConfigService) explainProfile() ConfigExplanationStep {
 
 func (s *ConfigService) explainRuntime() ConfigExplanationStep {
 	detail := fmt.Sprintf("PreDeploy Guard will use runtime %q.", s.cfg.Runtime.Type)
-	if s.cfg.Runtime.Type == "docker-compose" {
+	switch s.cfg.Runtime.Type {
+	case "docker-compose":
 		detail = "PreDeploy Guard will use Docker Compose to create a temporary local sandbox."
+	case "kubernetes":
+		if s.cfg.Runtime.Context == "" {
+			detail = "PreDeploy Guard will use the current kubeconfig context to create a temporary Kubernetes namespace."
+		} else {
+			detail = fmt.Sprintf(
+				"PreDeploy Guard will use kubeconfig context %q to create a temporary Kubernetes namespace.",
+				s.cfg.Runtime.Context,
+			)
+		}
 	}
 
 	return ConfigExplanationStep{
@@ -277,7 +287,7 @@ func (s *ConfigService) explainService() ConfigExplanationStep {
 	if s.cfg.Service.Build.Context != "" {
 		details = append(details, fmt.Sprintf("PreDeploy Guard will build the image from %q using %q.", s.cfg.Service.Build.Context, s.cfg.Service.Build.Dockerfile))
 	} else {
-		details = append(details, "No build context is configured, so PreDeploy Guard will use the existing Docker image.")
+		details = append(details, "No build context is configured, so PreDeploy Guard will use the configured image.")
 	}
 
 	details = append(details, fmt.Sprintf("The service listens on container port %d.", s.cfg.Service.Port))
@@ -399,10 +409,20 @@ func (s *ConfigService) explainReports() ConfigExplanationStep {
 
 func (s *ConfigService) explainCleanup() ConfigExplanationStep {
 	details := []string{"Cleanup is enabled. The temporary Docker Compose sandbox will be removed after the run."}
+	if s.cfg.Runtime.Type == "kubernetes" {
+		details = []string{"Cleanup is enabled. The temporary Kubernetes namespace and local runtime files will be removed after the run."}
+	}
 	if !s.cfg.Settings.Cleanup {
-		details = []string{
-			"Cleanup is disabled. The temporary Docker Compose sandbox will be kept after the run.",
-			"This is useful for debugging but may leave containers, networks, and files behind.",
+		if s.cfg.Runtime.Type == "kubernetes" {
+			details = []string{
+				"Cleanup is disabled. The temporary Kubernetes namespace and local runtime files will be kept after the run.",
+				"This is useful for debugging but may leave cluster resources, port-forward processes, and files behind.",
+			}
+		} else {
+			details = []string{
+				"Cleanup is disabled. The temporary Docker Compose sandbox will be kept after the run.",
+				"This is useful for debugging but may leave containers, networks, and files behind.",
+			}
 		}
 	}
 

@@ -48,6 +48,15 @@ func printExplainRuntime(cfg *config.Config) {
 	switch cfg.Runtime.Type {
 	case "docker-compose":
 		fmt.Println("   PreDeploy Guard will use Docker Compose to create a temporary local sandbox.")
+	case "kubernetes":
+		if cfg.Runtime.Context == "" {
+			fmt.Println("   PreDeploy Guard will use the current kubeconfig context to create a temporary Kubernetes namespace.")
+		} else {
+			fmt.Printf(
+				"   PreDeploy Guard will use kubeconfig context `%s` to create a temporary Kubernetes namespace.\n",
+				cfg.Runtime.Context,
+			)
+		}
 	default:
 		fmt.Printf("   PreDeploy Guard will use runtime: %s.\n", cfg.Runtime.Type)
 	}
@@ -67,7 +76,7 @@ func printExplainService(cfg *config.Config) {
 			cfg.Service.Build.Dockerfile,
 		)
 	} else {
-		fmt.Println("   No build context is configured, so PreDeploy Guard will use the existing Docker image.")
+		fmt.Println("   No build context is configured, so PreDeploy Guard will use the configured image.")
 	}
 
 	fmt.Printf("   The service listens on container port `%d`.\n", cfg.Service.Port)
@@ -115,7 +124,7 @@ func printExplainDependencies(cfg *config.Config) {
 		if dependencyHasReadiness(dependency.Readiness) {
 			fmt.Printf("     Readiness: %s\n", describeReadiness(dependency.Readiness))
 		} else {
-			fmt.Println("     Readiness: not configured; PreDeploy Guard only waits for the container to start.")
+			fmt.Println("     Readiness: not configured; PreDeploy Guard waits for the runtime to report the dependency ready.")
 		}
 	}
 
@@ -201,10 +210,16 @@ func printExplainCleanup(cfg *config.Config) {
 	fmt.Println("8. Cleanup")
 
 	if cfg.Settings.Cleanup {
-		fmt.Println("   Cleanup is enabled. The temporary Docker Compose sandbox will be removed after the run.")
+		fmt.Printf(
+			"   Cleanup is enabled. The temporary %s runtime sandbox will be removed after the run.\n",
+			cfg.Runtime.Type,
+		)
 	} else {
-		fmt.Println("   Cleanup is disabled. The temporary Docker Compose sandbox will be kept after the run.")
-		fmt.Println("   This is useful for debugging but may leave containers, networks, and files behind.")
+		fmt.Printf(
+			"   Cleanup is disabled. The temporary %s runtime sandbox will be kept after the run.\n",
+			cfg.Runtime.Type,
+		)
+		fmt.Println("   This is useful for debugging but may leave runtime resources and files behind.")
 	}
 
 	fmt.Println()

@@ -9,7 +9,7 @@
 
 PreDeploy Guard helps backend developers catch deployment issues before release by spinning up temporary Docker Compose sandboxes, validating dependencies, running smoke checks, executing k6 performance tests, and generating Markdown/JSON safety reports.
 
-PreDeploy Guard is moving toward config-driven local deployment experiments across Docker Compose and future Kubernetes/local-cluster runtimes. Docker Compose is the only supported runtime today; Kubernetes runtime support is future work.
+PreDeploy Guard supports config-driven local deployment experiments with Docker Compose as the default runtime and an early Kubernetes local-cluster runtime through existing kubeconfig contexts. The Kubernetes runtime is intended for developer-managed clusters, not production deployment.
 
 It is designed for developers, small teams, and student teams that do not have a full multi-stage deployment setup. Instead of deploying directly after building a service, developers can run PreDeploy Guard locally to create a temporary sandbox, start the service with its dependencies, run readiness, smoke, and performance checks, then generate deployment safety reports.
 
@@ -86,7 +86,7 @@ PreDeploy Guard Local Server
 Config Summary + Run History + Reports + API-triggered Runs
 ```
 
-The long-term direction is to keep the CLI as the core engine and evolve the local sandbox toward richer deployment experiments. Docker Compose remains the supported default runtime; future Kubernetes support will target existing kubeconfig contexts, including local clusters such as Minikube, kind, and k3s.
+The long-term direction is to keep the CLI as the core engine and evolve the local sandbox toward richer deployment experiments. Docker Compose remains the supported default runtime. The Kubernetes local runtime MVP targets existing kubeconfig contexts, including local clusters such as Minikube, kind, k3s, and Docker Desktop Kubernetes.
 
 ---
 
@@ -110,6 +110,8 @@ This project demonstrates backend engineering, developer tooling, Docker-based w
 - YAML-based configuration
 - Docker image build support
 - Temporary Docker Compose sandbox
+- Kubernetes local-cluster sandbox through existing kubeconfig contexts and `kubectl`
+- Temporary Kubernetes namespace, rollout readiness, port-forwarding, diagnostics, and owned cleanup
 - Automatic free host port allocation
 - Dependency service support
 - Dependency readiness checks
@@ -172,7 +174,7 @@ This project demonstrates backend engineering, developer tooling, Docker-based w
 |---|---|
 | CLI / Core Tool | Go |
 | Config | YAML |
-| Sandbox Runtime | Docker Compose |
+| Sandbox Runtime | Docker Compose; Kubernetes local-cluster MVP via `kubectl` |
 | Service Build | Docker |
 | Smoke Checks | Go `net/http` |
 | Performance Checks | Dockerized k6 |
@@ -254,6 +256,7 @@ Main package boundaries:
 | `internal/scaffold` | Starter config and dependency preset generation |
 | `internal/builder` | Docker image build execution |
 | `internal/sandbox` | Docker Compose sandbox creation and cleanup |
+| `internal/runtime` | Runtime lifecycle interfaces and Docker Compose/Kubernetes adapter selection |
 | `internal/checker` | HTTP smoke/readiness checks |
 | `internal/loadtest` | Dockerized k6 execution and metric parsing |
 | `internal/report` | Markdown and JSON report generation |
@@ -271,6 +274,14 @@ Backend:
 - Go
 - Docker
 - Docker Compose
+
+Kubernetes local runtime (optional):
+
+- `kubectl`
+- An existing working cluster and kubeconfig context
+- Service and dependency images accessible to that cluster
+
+PreDeploy Guard does not install or start a cluster, and it does not automatically load locally built images into Minikube, kind, or other local clusters.
 
 Dashboard:
 
@@ -598,8 +609,9 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 
 ## Current Limitations
 
-- Docker Compose runtime only
-- Kubernetes runtime not implemented yet
+- Docker Compose remains the default runtime
+- Kubernetes support is an early local-cluster MVP that requires an existing working cluster, kubeconfig, and `kubectl`
+- Kubernetes image loading is not implemented; configured service and dependency images must already be accessible to the selected cluster
 - Guided config builder previews and exports YAML in the browser; it does not write configuration files through the backend
 - No API gateway or ingress latency simulation yet
 - Dependency readiness depends on user-provided commands
@@ -627,9 +639,10 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 ### Next
 
 - Phase 8: Deployment Experiment Sandbox
-  - align runtime and experiment models while preserving Docker Compose
-  - prepare runtime adapter boundaries
-  - add future kubeconfig-based local-cluster execution, generic experiment workloads, and experiment reporting incrementally
+  - completed runtime and experiment model alignment
+  - completed the runtime adapter foundation
+  - current: add kubeconfig-based local-cluster execution through `kubectl`
+  - next: generic experiment workloads and experiment reporting
 
 ### Future
 

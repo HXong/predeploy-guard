@@ -7,7 +7,7 @@ PreDeploy Guard is a local-first pre-deployment validation and experiment sandbo
 The CLI validates services by:
 1. Loading `predeploy.yaml`
 2. Building the target image
-3. Creating a temporary Docker Compose sandbox
+3. Preparing the selected local runtime sandbox
 4. Starting dependencies and target service
 5. Running readiness checks
 6. Running smoke checks
@@ -17,7 +17,7 @@ The CLI validates services by:
 
 The project also exposes a local API server and React dashboard. It helps developers define services and dependencies, run readiness/smoke/performance checks, and generate local configuration through a guided UI.
 
-The next direction is richer, config-driven deployment experiments across Docker Compose and future Kubernetes-style local runtimes. PreDeploy Guard remains a local sandbox and experiment runner, not a production deployment platform.
+The next direction is richer, config-driven deployment experiments across Docker Compose and Kubernetes-style local runtimes. PreDeploy Guard remains a local sandbox and experiment runner, not a production deployment platform.
 
 ## Architecture Rules
 
@@ -45,10 +45,12 @@ The next direction is richer, config-driven deployment experiments across Docker
 - Keep Docker Compose supported as the default local runtime.
 - `internal/runtime` owns runtime-facing lifecycle types and adapter interfaces.
 - `internal/runtime/factory` owns runtime adapter selection.
-- `internal/runtime/compose` is the only implemented runtime adapter and delegates to the existing Docker Compose sandbox behavior.
-- Add future Kubernetes support as a new runtime adapter; do not scatter Kubernetes logic through `internal/runner`.
+- `internal/runtime/compose` delegates to the existing Docker Compose sandbox behavior.
+- `internal/runtime/kubernetes` implements the local-cluster Kubernetes adapter through `kubectl`.
+- Keep Kubernetes logic inside its runtime adapter; do not scatter it through `internal/runner`.
 - Do not hardcode Minikube-specific behavior.
-- Future Kubernetes support should use existing kubeconfig contexts and allow Minikube, kind, k3s, and other local development clusters.
+- Kubernetes support must use existing kubeconfig contexts and remain generic across Minikube, kind, k3s, Docker Desktop Kubernetes, and other local development clusters.
+- Kubernetes image loading is not implemented. Users must make configured images accessible to the selected cluster.
 - Prefer runtime adapter boundaries over scattering Docker or Kubernetes logic through the runner.
 - Preserve existing Docker Compose validation behavior while runtime boundaries evolve.
 - Avoid a big-bang runtime refactor.
@@ -90,6 +92,7 @@ The next direction is richer, config-driven deployment experiments across Docker
 - `internal/runtime`: define runtime-neutral lifecycle types and adapter interfaces.
 - `internal/runtime/factory`: select the configured runtime adapter.
 - `internal/runtime/compose`: adapt the existing Docker Compose sandbox lifecycle, readiness, diagnostics, and cleanup behavior.
+- `internal/runtime/kubernetes`: manage temporary local-cluster namespaces, manifests, rollout readiness, port-forwarding, diagnostics, and owned cleanup through `kubectl`.
 - `internal/history`: manage `reports/history.json`.
 - `internal/report`: write Markdown and JSON reports.
 - `internal/server`: local API server for dashboard.
@@ -202,4 +205,5 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 6 completed: local React dashboard, run task UI, run details view, report preview, component refactor.
 - Phase 7 completed: guided config builder with service, dependency, smoke-check, performance, profile, and YAML export workflows.
 - Phase 8A completed: runtime and experiment model alignment.
-- Phase 8B current: runtime adapter foundation, with Docker Compose as the only implemented runtime and Kubernetes/local-cluster support reserved for Phase 8C.
+- Phase 8B completed: runtime adapter foundation.
+- Phase 8C current: Kubernetes local runtime MVP through existing kubeconfig contexts and developer-managed local clusters.

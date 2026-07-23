@@ -24,7 +24,8 @@ type Config struct {
 }
 
 type RuntimeConfig struct {
-	Type string `yaml:"type"`
+	Type    string `yaml:"type"`
+	Context string `yaml:"context"`
 }
 
 type ServiceConfig struct {
@@ -140,8 +141,13 @@ func (c *Config) Validate() error {
 		c.Runtime.Type = "docker-compose"
 	}
 
-	if c.Runtime.Type != "docker-compose" {
-		return fmt.Errorf("unsupported runtime.type: %s", c.Runtime.Type)
+	switch c.Runtime.Type {
+	case "docker-compose", "kubernetes":
+	default:
+		return fmt.Errorf(
+			"unsupported runtime.type %q; supported runtimes: docker-compose, kubernetes",
+			c.Runtime.Type,
+		)
 	}
 	if c.Service.Name == "" {
 		return fmt.Errorf("service.name is required")
