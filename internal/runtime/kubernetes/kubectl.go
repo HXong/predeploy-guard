@@ -73,7 +73,9 @@ func (p *execRunningProcess) Stop() error {
 		return err
 	}
 
-	<-p.done
+	// command.Wait is already running in the Start goroutine and will reap the
+	// process asynchronously. Waiting for it here can stall on Windows even
+	// after Process.Kill succeeds.
 	return nil
 }
 

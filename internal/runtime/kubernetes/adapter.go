@@ -14,19 +14,23 @@ import (
 	predeployruntime "github.com/HXong/predeploy-guard/internal/runtime"
 )
 
-const manifestFileName = "resources.yaml"
+const (
+	manifestFileName              = "resources.yaml"
+	defaultPortForwardStopTimeout = 3 * time.Second
+)
 
 type Adapter struct {
 	kubectl kubectlRunner
 
-	environment      *predeployruntime.Environment
-	workDir          string
-	manifestPath     string
-	namespace        string
-	serviceName      string
-	localPort        int
-	namespaceCreated bool
-	portForward      runningProcess
+	environment            *predeployruntime.Environment
+	workDir                string
+	manifestPath           string
+	namespace              string
+	serviceName            string
+	localPort              int
+	namespaceCreated       bool
+	portForward            runningProcess
+	portForwardStopTimeout time.Duration
 }
 
 var _ predeployruntime.Adapter = (*Adapter)(nil)
@@ -36,7 +40,10 @@ func New() *Adapter {
 }
 
 func newWithKubectlRunner(runner kubectlRunner) *Adapter {
-	return &Adapter{kubectl: runner}
+	return &Adapter{
+		kubectl:                runner,
+		portForwardStopTimeout: defaultPortForwardStopTimeout,
+	}
 }
 
 func (a *Adapter) Type() predeployruntime.Type {
@@ -236,7 +243,7 @@ func (a *Adapter) WaitReady(
 		accessResult.Error = err.Error()
 		results = append(results, accessResult)
 		output := process.Output()
-		_ = process.Stop()
+		_ = stopProcessWithTimeout(process, a.portForwardStopTimeout)
 		a.portForward = nil
 		if output != "" {
 			return results, fmt.Errorf("%w\nOutput:\n%s", err, output)
@@ -310,6 +317,7 @@ func (a *Adapter) Cleanup(
 	ctx context.Context,
 	env *predeployruntime.Environment,
 	cfg *config.Config,
+	progress predeployruntime.ProgressReporter,
 ) error {
 	if err := a.validateEnvironment(env); err != nil {
 		return err
@@ -317,13 +325,19 @@ func (a *Adapter) Cleanup(
 
 	var cleanupErrors []error
 	if a.portForward != nil {
-		if err := a.portForward.Stop(); err != nil {
+		if progress != nil {
+			progress("Stopping kubectl port-forward...")
+		}
+		if err := stopProcessWithTimeout(a.portForward, a.portForwardStopTimeout); err != nil {
 			cleanupErrors = append(cleanupErrors, fmt.Errorf("stop kubectl port-forward: %w", err))
 		}
 		a.portForward = nil
 	}
 
 	if a.namespaceCreated {
+		if progress != nil {
+			progress(fmt.Sprintf("Deleting Kubernetes namespace %s...", a.namespace))
+		}
 		output, err := a.kubectl.Run(
 			ctx,
 			kubectlArgs(
@@ -345,6 +359,9 @@ func (a *Adapter) Cleanup(
 	}
 
 	if a.workDir != "" {
+		if progress != nil {
+			progress("Removing runtime sandbox files...")
+		}
 		if err := os.RemoveAll(a.workDir); err != nil {
 			cleanupErrors = append(cleanupErrors, fmt.Errorf("remove Kubernetes work directory: %w", err))
 		}
@@ -428,6 +445,27 @@ func runtimeTimeoutSeconds(cfg *config.Config) int {
 	}
 
 	return 60
+}
+
+func stopProcessWithTimeout(process runningProcess, timeout time.Duration) error {
+	if timeout <= 0 {
+		timeout = defaultPortForwardStopTimeout
+	}
+
+	result := make(chan error, 1)
+	go func() {
+		result <- process.Stop()
+	}()
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	select {
+	case err := <-result:
+		return err
+	case <-timer.C:
+		return fmt.Errorf("timed out after %s", timeout)
+	}
 }
 
 func waitForLocalPort(

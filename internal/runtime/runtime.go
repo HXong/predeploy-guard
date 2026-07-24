@@ -33,6 +33,8 @@ type Diagnostics struct {
 	Details []string
 }
 
+type ProgressReporter func(message string)
+
 type Adapter interface {
 	Type() Type
 
@@ -40,5 +42,10 @@ type Adapter interface {
 	Start(ctx context.Context, env *Environment, cfg *config.Config) error
 	WaitReady(ctx context.Context, env *Environment, cfg *config.Config) ([]ReadinessResult, error)
 	CollectDiagnostics(ctx context.Context, env *Environment, cfg *config.Config) (*Diagnostics, error)
-	Cleanup(ctx context.Context, env *Environment, cfg *config.Config) error
+	Cleanup(
+		ctx context.Context,
+		env *Environment,
+		cfg *config.Config,
+		progress ProgressReporter,
+	) error
 }

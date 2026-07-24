@@ -89,8 +89,9 @@ func Run(cfg *config.Config) error {
 				}
 			}
 
-			cleanupErr := runtimeAdapter.Cleanup(ctx, env, cfg)
-			fmt.Println("Removing runtime sandbox files...")
+			cleanupErr := runtimeAdapter.Cleanup(ctx, env, cfg, func(message string) {
+				fmt.Println(message)
+			})
 
 			if cleanupErr != nil {
 				fmt.Printf("Failed to clean up sandbox: %v\n", cleanupErr)

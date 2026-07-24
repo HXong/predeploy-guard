@@ -100,7 +100,12 @@ func (a *Adapter) CollectDiagnostics(_ context.Context, env *predeployruntime.En
 	return diagnostics, logsErr
 }
 
-func (a *Adapter) Cleanup(_ context.Context, env *predeployruntime.Environment, _ *config.Config) error {
+func (a *Adapter) Cleanup(
+	_ context.Context,
+	env *predeployruntime.Environment,
+	_ *config.Config,
+	progress predeployruntime.ProgressReporter,
+) error {
 	sb, err := a.sandboxFor(env)
 	if err != nil {
 		return err
@@ -113,6 +118,9 @@ func (a *Adapter) Cleanup(_ context.Context, env *predeployruntime.Environment, 
 		}
 	}
 
+	if progress != nil {
+		progress("Removing runtime sandbox files...")
+	}
 	if err := sb.RemoveFiles(); err != nil {
 		cleanupErrors = append(cleanupErrors, fmt.Errorf("remove sandbox files: %w", err))
 	}
