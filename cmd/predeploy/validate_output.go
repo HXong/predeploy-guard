@@ -85,6 +85,28 @@ func printValidationSummary(cfg *config.Config) {
 	}
 
 	fmt.Println()
+	fmt.Println("Experiment Workloads")
+	if len(cfg.Workloads) == 0 {
+		fmt.Println("  None")
+	} else {
+		for _, workload := range cfg.Workloads {
+			enabled := workload.Enabled == nil || *workload.Enabled
+			fmt.Printf(
+				"  - %s: enabled=%t type=%s target=%s %s rate=%d/s duration=%s expect=%d policy=%s\n",
+				workload.Name,
+				enabled,
+				workload.Type,
+				workload.Method,
+				workload.Path,
+				workload.RatePerSecond,
+				workload.Duration,
+				workload.ExpectedStatus,
+				workload.FailurePolicy,
+			)
+		}
+	}
+
+	fmt.Println()
 	fmt.Println("Performance")
 	fmt.Printf("  Enabled: %t\n", cfg.Performance.Enabled)
 

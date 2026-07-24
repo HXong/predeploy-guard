@@ -7,7 +7,7 @@
 
 > Local-first pre-deployment validation and experiment sandbox for backend services.
 
-PreDeploy Guard helps backend developers catch deployment issues before release by spinning up temporary Docker Compose sandboxes, validating dependencies, running smoke checks, executing k6 performance tests, and generating Markdown/JSON safety reports.
+PreDeploy Guard helps backend developers catch deployment issues before release by spinning up temporary local sandboxes, validating dependencies, running smoke checks and experiment workloads, executing k6 performance tests, and generating Markdown/JSON safety reports.
 
 PreDeploy Guard supports config-driven local deployment experiments with Docker Compose as the default runtime and an early Kubernetes local-cluster runtime through existing kubeconfig contexts. The Kubernetes runtime is intended for developer-managed clusters, not production deployment.
 
@@ -117,6 +117,7 @@ This project demonstrates backend engineering, developer tooling, Docker-based w
 - Dependency readiness checks
 - Service readiness checks
 - HTTP smoke checks
+- Runtime-neutral HTTP experiment workloads with configurable rate, duration, expected status, and failure policy
 - Dockerized k6 performance checks
 - Performance thresholds for p95 latency and error rate
 - Rich performance metrics
@@ -177,6 +178,7 @@ This project demonstrates backend engineering, developer tooling, Docker-based w
 | Sandbox Runtime | Docker Compose; Kubernetes local-cluster MVP via `kubectl` |
 | Service Build | Docker |
 | Smoke Checks | Go `net/http` |
+| Experiment Workloads | Go `net/http` HTTP traffic MVP |
 | Performance Checks | Dockerized k6 |
 | Reports | Markdown, JSON |
 | History | JSON index |
@@ -258,6 +260,7 @@ Main package boundaries:
 | `internal/sandbox` | Docker Compose sandbox creation and cleanup |
 | `internal/runtime` | Runtime lifecycle interfaces and Docker Compose/Kubernetes adapter selection |
 | `internal/checker` | HTTP smoke/readiness checks |
+| `internal/workload` | Runtime-neutral experiment workload execution |
 | `internal/loadtest` | Dockerized k6 execution and metric parsing |
 | `internal/report` | Markdown and JSON report generation |
 | `internal/history` | Run history index, lookup, and comparison helpers |
@@ -554,6 +557,17 @@ checks:
       path: /health
       expectedStatus: 200
 
+workloads:
+  - name: warmup-traffic
+    type: http
+    enabled: true
+    method: GET
+    path: /health
+    duration: 10s
+    ratePerSecond: 5
+    expectedStatus: 200
+    failurePolicy: fail
+
 performance:
   enabled: true
   vus: 10
@@ -612,6 +626,7 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 - Docker Compose remains the default runtime
 - Kubernetes support is an early local-cluster MVP that requires an existing working cluster, kubeconfig, and `kubectl`
 - Kubernetes image loading is not implemented; configured service and dependency images must already be accessible to the selected cluster
+- HTTP is the first implemented experiment workload; file/log replay, message producers/consumers, background jobs, custom commands, and Kubernetes Jobs remain future work
 - Guided config builder previews and exports YAML in the browser; it does not write configuration files through the backend
 - No API gateway or ingress latency simulation yet
 - Dependency readiness depends on user-provided commands
@@ -641,8 +656,9 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 - Phase 8: Deployment Experiment Sandbox
   - completed runtime and experiment model alignment
   - completed the runtime adapter foundation
-  - current: add kubeconfig-based local-cluster execution through `kubectl`
-  - next: generic experiment workloads and experiment reporting
+  - completed kubeconfig-based local-cluster execution through `kubectl`
+  - current: runtime-neutral HTTP experiment workloads
+  - next: richer experiment reporting and additional generic workload types
 
 ### Future
 

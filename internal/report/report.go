@@ -8,6 +8,7 @@ import (
 
 	"github.com/HXong/predeploy-guard/internal/checker"
 	"github.com/HXong/predeploy-guard/internal/config"
+	"github.com/HXong/predeploy-guard/internal/workload"
 )
 
 type ReportData struct {
@@ -21,6 +22,7 @@ type ReportData struct {
 	BuildResult       BuildResult
 	ReadinessResults  []ReadinessResult
 	Results           []checker.SmokeResult
+	WorkloadResults   []workload.Result
 	PerformanceResult PerformanceResult
 	Passed            bool
 	Logs              string

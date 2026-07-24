@@ -18,6 +18,7 @@ func printExplainSummary(cfg *config.Config) {
 	printExplainDependencies(cfg)
 	printExplainReadiness(cfg)
 	printExplainSmokeChecks(cfg)
+	printExplainWorkloads(cfg)
 	printExplainPerformance(cfg)
 	printExplainReports(cfg)
 	printExplainCleanup(cfg)
@@ -165,7 +166,7 @@ func printExplainSmokeChecks(cfg *config.Config) {
 }
 
 func printExplainPerformance(cfg *config.Config) {
-	fmt.Println("6. Performance Checks")
+	fmt.Println("7. Performance Checks")
 
 	if !cfg.Performance.Enabled {
 		fmt.Println("   Performance checks are disabled.")
@@ -173,7 +174,7 @@ func printExplainPerformance(cfg *config.Config) {
 		return
 	}
 
-	fmt.Println("   Dockerized k6 will run after all smoke checks pass.")
+	fmt.Println("   Dockerized k6 will run after smoke checks and experiment workloads complete.")
 	fmt.Printf("   Virtual users: `%d`\n", cfg.Performance.VUs)
 	fmt.Printf("   Duration: `%s`\n", cfg.Performance.Duration)
 	fmt.Printf("   Failure threshold: p95 latency must be <= `%.2fms`.\n",
@@ -198,8 +199,41 @@ func printExplainPerformance(cfg *config.Config) {
 	fmt.Println()
 }
 
+func printExplainWorkloads(cfg *config.Config) {
+	fmt.Println("6. Experiment Workloads")
+
+	if len(cfg.Workloads) == 0 {
+		fmt.Println("   No experiment workloads are configured.")
+		fmt.Println()
+		return
+	}
+
+	fmt.Printf("   `%d` experiment workload(s) are configured to run after smoke checks:\n", len(cfg.Workloads))
+	for _, workload := range cfg.Workloads {
+		enabled := workload.Enabled == nil || *workload.Enabled
+		state := "enabled"
+		if !enabled {
+			state = "disabled"
+		}
+
+		fmt.Printf(
+			"   - `%s` (%s): %s %s at %d request(s)/second for %s; expects HTTP %d; failure policy `%s`\n",
+			workload.Name,
+			state,
+			workload.Method,
+			workload.Path,
+			workload.RatePerSecond,
+			workload.Duration,
+			workload.ExpectedStatus,
+			workload.FailurePolicy,
+		)
+	}
+
+	fmt.Println()
+}
+
 func printExplainReports(cfg *config.Config) {
-	fmt.Println("7. Reports")
+	fmt.Println("8. Reports")
 	fmt.Printf("   Markdown and JSON reports will be written under `%s/reports`.\n", cfg.ConfigDir)
 	fmt.Println("   Markdown is intended for humans.")
 	fmt.Println("   JSON is intended for automation and CI/CD.")
@@ -207,7 +241,7 @@ func printExplainReports(cfg *config.Config) {
 }
 
 func printExplainCleanup(cfg *config.Config) {
-	fmt.Println("8. Cleanup")
+	fmt.Println("9. Cleanup")
 
 	if cfg.Settings.Cleanup {
 		fmt.Printf(

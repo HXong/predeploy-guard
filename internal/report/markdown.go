@@ -7,6 +7,7 @@ import (
 
 	"github.com/HXong/predeploy-guard/internal/checker"
 	"github.com/HXong/predeploy-guard/internal/config"
+	"github.com/HXong/predeploy-guard/internal/workload"
 )
 
 func buildMarkdown(cfg *config.Config, data ReportData) string {
@@ -62,11 +63,13 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 	writeBuildSection(&builder, data.BuildResult)
 	writeReadinessSection(&builder, data.ReadinessResults)
 	writeSmokeSection(&builder, data.Results)
+	writeWorkloadSection(&builder, data.WorkloadResults, len(cfg.Workloads))
 	writePerformanceSection(&builder, data.PerformanceResult)
 
 	fmt.Fprintf(&builder, "## Check Summary\n\n")
 	fmt.Fprintf(&builder, "- Readiness checks: %d total, %d passed, %d failed\n", totalReadiness, passedReadiness, failedReadiness)
 	fmt.Fprintf(&builder, "- Smoke checks: %d total, %d passed, %d failed\n", totalSmoke, passedSmoke, failedSmoke)
+	fmt.Fprintf(&builder, "- Experiment workloads: %d configured\n", len(cfg.Workloads))
 	fmt.Fprintf(&builder, "\n")
 
 	fmt.Fprintf(&builder, "## Configuration\n\n")
@@ -192,6 +195,74 @@ func writeSmokeSection(builder *strings.Builder, results []checker.SmokeResult) 
 	}
 
 	fmt.Fprintf(builder, "\n")
+}
+
+func writeWorkloadSection(builder *strings.Builder, results []workload.Result, configuredCount int) {
+	fmt.Fprintf(builder, "## Experiment Workloads\n\n")
+
+	if len(results) == 0 {
+		if configuredCount == 0 {
+			fmt.Fprintf(builder, "No experiment workloads were configured.\n\n")
+		} else {
+			fmt.Fprintf(builder, "No experiment workloads were executed.\n\n")
+		}
+		return
+	}
+
+	fmt.Fprintf(builder, "| Name | Type | Policy | Target | Requests | Success | Failed | Result |\n")
+	fmt.Fprintf(builder, "|---|---|---|---|---:|---:|---:|---|\n")
+
+	for _, result := range results {
+		status := "FAIL"
+		switch {
+		case !result.Enabled:
+			status = "SKIPPED"
+		case result.Passed:
+			status = "PASS"
+		case result.FailurePolicy == "warn":
+			status = "WARN"
+		}
+
+		fmt.Fprintf(
+			builder,
+			"| %s | %s | %s | %s %s | %d | %d | %d | %s |\n",
+			escapeMarkdownTable(result.Name),
+			escapeMarkdownTable(result.Type),
+			escapeMarkdownTable(result.FailurePolicy),
+			escapeMarkdownTable(result.Method),
+			escapeMarkdownTable(result.Path),
+			result.RequestCount,
+			result.SuccessCount,
+			result.FailureCount,
+			status,
+		)
+	}
+
+	fmt.Fprintf(builder, "\n")
+
+	for _, result := range results {
+		if result.Error != "" {
+			fmt.Fprintf(
+				builder,
+				"- **%s:** %s\n",
+				escapeMarkdownTable(result.Name),
+				escapeMarkdownTable(result.Error),
+			)
+		}
+	}
+	if hasWorkloadErrors(results) {
+		fmt.Fprintf(builder, "\n")
+	}
+}
+
+func hasWorkloadErrors(results []workload.Result) bool {
+	for _, result := range results {
+		if result.Error != "" {
+			return true
+		}
+	}
+
+	return false
 }
 
 func writePerformanceSection(builder *strings.Builder, result PerformanceResult) {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -16,6 +18,7 @@ type Config struct {
 	Service      ServiceConfig               `yaml:"service"`
 	Dependencies map[string]DependencyConfig `yaml:"dependencies"`
 	Checks       ChecksConfig                `yaml:"checks"`
+	Workloads    []WorkloadConfig            `yaml:"workloads"`
 	Performance  PerformanceConfig           `yaml:"performance"`
 	Settings     SettingsConfig              `yaml:"settings"`
 
@@ -65,6 +68,18 @@ type SmokeCheck struct {
 	Method         string `yaml:"method"`
 	Path           string `yaml:"path"`
 	ExpectedStatus int    `yaml:"expectedStatus"`
+}
+
+type WorkloadConfig struct {
+	Name           string `yaml:"name"`
+	Type           string `yaml:"type"`
+	Enabled        *bool  `yaml:"enabled"`
+	Method         string `yaml:"method"`
+	Path           string `yaml:"path"`
+	Duration       string `yaml:"duration"`
+	RatePerSecond  int    `yaml:"ratePerSecond"`
+	ExpectedStatus int    `yaml:"expectedStatus"`
+	FailurePolicy  string `yaml:"failurePolicy"`
 }
 
 type PerformanceConfig struct {
@@ -202,6 +217,85 @@ func (c *Config) Validate() error {
 			c.Dependencies[name] = dependency
 		}
 	}
+	workloadNames := make(map[string]struct{}, len(c.Workloads))
+	for i := range c.Workloads {
+		workload := &c.Workloads[i]
+
+		if workload.Name == "" {
+			return fmt.Errorf("workloads[%d].name is required", i)
+		}
+		if _, exists := workloadNames[workload.Name]; exists {
+			return fmt.Errorf("workloads[%d].name %q must be unique", i, workload.Name)
+		}
+		workloadNames[workload.Name] = struct{}{}
+
+		if workload.Type == "" {
+			return fmt.Errorf("workloads[%d].type is required", i)
+		}
+		workload.Type = strings.ToLower(workload.Type)
+		if workload.Type != "http" {
+			return fmt.Errorf(
+				"unsupported workloads[%d].type %q; supported workload types: http",
+				i,
+				workload.Type,
+			)
+		}
+
+		if workload.Enabled == nil {
+			workload.Enabled = boolPointer(true)
+		}
+		if workload.Method == "" {
+			workload.Method = "GET"
+		} else {
+			workload.Method = strings.ToUpper(workload.Method)
+		}
+		if workload.Path == "" {
+			return fmt.Errorf("workloads[%d].path is required for HTTP workloads", i)
+		}
+		if !strings.HasPrefix(workload.Path, "/") {
+			return fmt.Errorf("workloads[%d].path must start with /", i)
+		}
+
+		if workload.Duration == "" {
+			workload.Duration = "10s"
+		}
+		duration, err := time.ParseDuration(workload.Duration)
+		if err != nil {
+			return fmt.Errorf("workloads[%d].duration must be a valid Go duration: %w", i, err)
+		}
+		if duration <= 0 {
+			return fmt.Errorf("workloads[%d].duration must be greater than 0", i)
+		}
+
+		if workload.RatePerSecond == 0 {
+			workload.RatePerSecond = 1
+		}
+		if workload.RatePerSecond < 0 {
+			return fmt.Errorf("workloads[%d].ratePerSecond must be greater than 0", i)
+		}
+
+		if workload.ExpectedStatus == 0 {
+			workload.ExpectedStatus = 200
+		}
+		if workload.ExpectedStatus < 100 || workload.ExpectedStatus > 599 {
+			return fmt.Errorf("workloads[%d].expectedStatus must be between 100 and 599", i)
+		}
+
+		if workload.FailurePolicy == "" {
+			workload.FailurePolicy = "fail"
+		} else {
+			workload.FailurePolicy = strings.ToLower(workload.FailurePolicy)
+		}
+		switch workload.FailurePolicy {
+		case "fail", "warn":
+		default:
+			return fmt.Errorf(
+				"unsupported workloads[%d].failurePolicy %q; supported failure policies: fail, warn",
+				i,
+				workload.FailurePolicy,
+			)
+		}
+	}
 	if c.Performance.Enabled {
 		if c.Performance.VUs <= 0 {
 			c.Performance.VUs = 10
@@ -253,4 +347,8 @@ func (c *Config) Validate() error {
 		c.Settings.TimeoutSeconds = 60
 	}
 	return nil
+}
+
+func boolPointer(value bool) *bool {
+	return &value
 }

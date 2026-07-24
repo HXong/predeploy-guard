@@ -11,6 +11,7 @@ import (
 	"github.com/HXong/predeploy-guard/internal/loadtest"
 	"github.com/HXong/predeploy-guard/internal/report"
 	runtimefactory "github.com/HXong/predeploy-guard/internal/runtime/factory"
+	"github.com/HXong/predeploy-guard/internal/workload"
 )
 
 func Run(cfg *config.Config) error {
@@ -123,6 +124,7 @@ func Run(cfg *config.Config) error {
 	}
 
 	var results []checker.SmokeResult
+	var workloadResults []workload.Result
 	passed := false
 	readinessErr := error(nil)
 
@@ -168,6 +170,19 @@ func Run(cfg *config.Config) error {
 			}
 
 			smokePassed := len(results) > 0 && checker.AllPassed(results)
+			workloadsPassed := true
+
+			if smokePassed && len(cfg.Workloads) > 0 {
+				if workload.HasEnabled(cfg) {
+					fmt.Println("Running experiment workloads...")
+				}
+
+				workloadResults = workload.RunAll(ctx, cfg, env.BaseURL)
+				for _, result := range workloadResults {
+					printWorkloadResult(result)
+				}
+				workloadsPassed = !workload.ShouldFailRun(workloadResults)
+			}
 
 			if smokePassed && cfg.Performance.Enabled {
 				fmt.Println("Running performance checks with k6...")
@@ -183,7 +198,7 @@ func Run(cfg *config.Config) error {
 				}
 			}
 
-			passed = smokePassed && performanceResult.Passed
+			passed = smokePassed && workloadsPassed && performanceResult.Passed
 		}
 	}
 
@@ -213,6 +228,7 @@ func Run(cfg *config.Config) error {
 		},
 		ReadinessResults: readinessResults,
 		Results:          results,
+		WorkloadResults:  workloadResults,
 		PerformanceResult: report.PerformanceResult{
 			Enabled:  performanceResult.Enabled,
 			Passed:   performanceResult.Passed,

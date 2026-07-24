@@ -82,6 +82,140 @@ func TestValidateRejectsUnsupportedRuntime(t *testing.T) {
 	}
 }
 
+func TestValidateAcceptsHTTPWorkload(t *testing.T) {
+	enabled := false
+	cfg := validTestConfig()
+	cfg.Workloads = []WorkloadConfig{{
+		Name:           "warmup-traffic",
+		Type:           "http",
+		Enabled:        &enabled,
+		Method:         "POST",
+		Path:           "/warmup",
+		Duration:       "2s",
+		RatePerSecond:  5,
+		ExpectedStatus: 202,
+		FailurePolicy:  "warn",
+	}}
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+
+	workload := cfg.Workloads[0]
+	if workload.Enabled == nil || *workload.Enabled {
+		t.Fatalf("enabled = %v, want false", workload.Enabled)
+	}
+	if workload.Method != "POST" {
+		t.Fatalf("method = %q, want POST", workload.Method)
+	}
+}
+
+func TestLoadParsesHTTPWorkload(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "predeploy.yaml")
+	content := []byte(`
+service:
+  name: test-service
+  image: example/test-service:latest
+  port: 8080
+workloads:
+  - name: warmup-traffic
+    type: http
+    path: /ready
+    duration: 1s
+    ratePerSecond: 3
+    expectedStatus: 204
+    failurePolicy: warn
+`)
+	if err := os.WriteFile(configPath, content, 0600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	cfg, err := Load(configPath)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(cfg.Workloads) != 1 {
+		t.Fatalf("workload count = %d, want 1", len(cfg.Workloads))
+	}
+
+	workload := cfg.Workloads[0]
+	if workload.Name != "warmup-traffic" ||
+		workload.Path != "/ready" ||
+		workload.RatePerSecond != 3 ||
+		workload.ExpectedStatus != 204 ||
+		workload.FailurePolicy != "warn" {
+		t.Fatalf("workload = %#v, want parsed HTTP workload", workload)
+	}
+}
+
+func TestValidateDefaultsHTTPWorkload(t *testing.T) {
+	cfg := validTestConfig()
+	cfg.Workloads = []WorkloadConfig{{
+		Name: "warmup-traffic",
+		Type: "http",
+		Path: "/",
+	}}
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+
+	workload := cfg.Workloads[0]
+	if workload.Enabled == nil || !*workload.Enabled {
+		t.Fatalf("enabled = %v, want true", workload.Enabled)
+	}
+	if workload.Method != "GET" {
+		t.Fatalf("method = %q, want GET", workload.Method)
+	}
+	if workload.Duration != "10s" {
+		t.Fatalf("duration = %q, want 10s", workload.Duration)
+	}
+	if workload.RatePerSecond != 1 {
+		t.Fatalf("rate per second = %d, want 1", workload.RatePerSecond)
+	}
+	if workload.ExpectedStatus != 200 {
+		t.Fatalf("expected status = %d, want 200", workload.ExpectedStatus)
+	}
+	if workload.FailurePolicy != "fail" {
+		t.Fatalf("failure policy = %q, want fail", workload.FailurePolicy)
+	}
+}
+
+func TestValidateRejectsUnsupportedWorkloadType(t *testing.T) {
+	cfg := validTestConfig()
+	cfg.Workloads = []WorkloadConfig{{
+		Name: "broker-traffic",
+		Type: "kafka",
+		Path: "/",
+	}}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("Validate error = nil, want unsupported workload type error")
+	}
+
+	want := `unsupported workloads[0].type "kafka"; supported workload types: http`
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("Validate error = %q, want it to contain %q", err, want)
+	}
+}
+
+func TestValidateRejectsDuplicateWorkloadNames(t *testing.T) {
+	cfg := validTestConfig()
+	cfg.Workloads = []WorkloadConfig{
+		{Name: "warmup-traffic", Type: "http", Path: "/"},
+		{Name: "warmup-traffic", Type: "http", Path: "/health"},
+	}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("Validate error = nil, want duplicate workload name error")
+	}
+	if !strings.Contains(err.Error(), `workloads[1].name "warmup-traffic" must be unique`) {
+		t.Fatalf("Validate error = %q, want duplicate workload name error", err)
+	}
+}
+
 func validTestConfig() Config {
 	return Config{
 		Service: ServiceConfig{

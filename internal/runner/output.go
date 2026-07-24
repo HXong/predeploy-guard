@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/HXong/predeploy-guard/internal/checker"
+	"github.com/HXong/predeploy-guard/internal/workload"
 )
 
 func printSmokeResult(result checker.SmokeResult) {
@@ -32,6 +33,29 @@ func printSmokeResult(result checker.SmokeResult) {
 		result.URL,
 		result.ExpectedStatus,
 		result.ActualStatus,
+		result.Duration,
+	)
+}
+
+func printWorkloadResult(result workload.Result) {
+	if !result.Enabled {
+		return
+	}
+
+	status := "FAIL"
+	if result.Passed {
+		status = "PASS"
+	} else if result.FailurePolicy == "warn" {
+		status = "WARN"
+	}
+
+	fmt.Printf(
+		"[%s] %s requests=%d success=%d failed=%d duration=%s\n",
+		status,
+		result.Name,
+		result.RequestCount,
+		result.SuccessCount,
+		result.FailureCount,
 		result.Duration,
 	)
 }

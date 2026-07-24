@@ -95,7 +95,7 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Preserve existing Docker Compose behavior
 - Avoid a big-bang refactor
 
-#### Phase 8C: Kubernetes Local Runtime MVP (Current)
+#### Phase 8C: Kubernetes Local Runtime MVP (Completed)
 - Use existing kubeconfig contexts
 - Support local clusters such as Minikube, kind, or k3s
 - Use `kubectl` without adding Kubernetes client dependencies
@@ -107,9 +107,13 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Clean up only the owned namespace and temporary files
 - Require users to make configured images accessible to the selected cluster
 
-#### Phase 8D: Experiment Workloads
-- Support generic workloads such as HTTP load, log/file replay, message producers, worker jobs, or custom commands
-- Do not specialize around Fluent Bit/Kafka only
+#### Phase 8D: Experiment Workloads (Current)
+- Implement runtime-neutral HTTP workloads first
+- Support configurable method, path, duration, request rate, expected status, and `fail` or `warn` failure policy
+- Run workloads through the runtime-provided base URL after smoke checks and before k6
+- Include structured workload results in Markdown and JSON reports
+- Keep log/file replay, message producers/consumers, worker jobs, custom commands, and Kubernetes Jobs as future extensions
+- Do not specialize around Fluent Bit, Kafka, Locust, or any single tool
 
 #### Phase 8E: Experiment Reports
 - Extend reports with deployment timings, readiness results, workload results, logs, and runtime diagnostics

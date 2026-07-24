@@ -11,9 +11,10 @@ The CLI validates services by:
 4. Starting dependencies and target service
 5. Running readiness checks
 6. Running smoke checks
-7. Running Dockerized k6 performance checks
-8. Writing Markdown/JSON reports
-9. Recording run history
+7. Running configured experiment workloads
+8. Running Dockerized k6 performance checks
+9. Writing Markdown/JSON reports
+10. Recording run history
 
 The project also exposes a local API server and React dashboard. It helps developers define services and dependencies, run readiness/smoke/performance checks, and generate local configuration through a guided UI.
 
@@ -36,6 +37,7 @@ The next direction is richer, config-driven deployment experiments across Docker
   - `internal/builder`
   - `internal/sandbox`
   - `internal/runtime`
+  - `internal/workload`
   - `internal/loadtest`
   - `internal/report`
   - `internal/history`
@@ -61,6 +63,10 @@ The next direction is richer, config-driven deployment experiments across Docker
 - Do not make destructive cluster-wide changes.
 - Keep production deployment out of scope.
 - Keep experiment workloads generic across HTTP load generation, black-box checks, dependency integration checks, file/log replay, background worker jobs, and message producer/consumer experiments.
+- `internal/workload` owns runtime-neutral workload execution and result types.
+- HTTP traffic is the first implemented workload type and must run through the runtime-provided service base URL.
+- Keep workloads runtime-neutral where possible so Docker Compose and Kubernetes reuse the same execution path.
+- File/log replay, message producers/consumers, background jobs, arbitrary custom commands, and Kubernetes Jobs remain future workload extensions.
 - Fluent Bit with Kafka may be an example experiment, but do not make the runtime, workload, or configuration architecture specific to Fluent Bit, Kafka, Locust, or any one tool or integration.
 - Avoid niche one-off configuration fields unless they generalize to reusable experiment concepts.
 
@@ -99,6 +105,7 @@ The next direction is richer, config-driven deployment experiments across Docker
 - `internal/builder`: Docker image build logic.
 - `internal/sandbox`: Docker Compose sandbox lifecycle.
 - `internal/checker`: readiness and smoke checks.
+- `internal/workload`: run runtime-neutral experiment workloads; HTTP traffic is the first implemented type.
 - `internal/loadtest`: Dockerized k6 execution.
 
 ### Frontend
@@ -206,4 +213,5 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 7 completed: guided config builder with service, dependency, smoke-check, performance, profile, and YAML export workflows.
 - Phase 8A completed: runtime and experiment model alignment.
 - Phase 8B completed: runtime adapter foundation.
-- Phase 8C current: Kubernetes local runtime MVP through existing kubeconfig contexts and developer-managed local clusters.
+- Phase 8C completed: Kubernetes local runtime MVP through existing kubeconfig contexts and developer-managed local clusters.
+- Phase 8D current: runtime-neutral HTTP experiment workloads, with additional generic workload types reserved for future extensions.

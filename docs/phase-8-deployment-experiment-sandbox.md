@@ -88,6 +88,8 @@ An optional actor that exercises the sandbox or supplies representative input. E
 
 Workloads should be modeled generically so that core abstractions are not tied to a particular product or protocol.
 
+Phase 8D starts with a runtime-neutral HTTP workload. It sends repeated requests through the base URL supplied by the selected runtime, so the same workload works with Docker Compose and Kubernetes. The HTTP MVP supports method, path, duration, request rate, expected status, and `fail` or `warn` failure policies. File/log replay, message producers and consumers, background jobs, custom commands, and Kubernetes Job execution remain future extensions.
+
 ### Checks
 
 Assertions that evaluate sandbox health or behavior, including readiness, smoke, black-box, input validation, and performance checks. Checks produce pass/fail evidence; workloads generate activity and may have their own result data.
@@ -103,7 +105,8 @@ Phase 8 should evolve the existing package boundaries gradually instead of repla
 - `internal/runner` should continue to orchestrate the use case without accumulating runtime-specific Docker or Kubernetes commands.
 - `internal/sandbox` is the clearest starting point for a runtime lifecycle boundary: create, start, inspect, and clean up an owned sandbox.
 - `internal/builder` should remain responsible for image build details while allowing future runtimes to consume the resulting image through their own mechanisms.
-- `internal/checker` and `internal/loadtest` should remain focused on checks and workload execution rather than sandbox provisioning.
+- `internal/checker` and `internal/loadtest` should remain focused on validation checks rather than sandbox provisioning.
+- `internal/workload` should own runtime-neutral experiment workload execution and consume the base URL supplied by the selected runtime.
 - `internal/report` and `internal/history` should consume runtime-neutral results, with runtime diagnostics added incrementally.
 
 The first adapter work should wrap proven Docker Compose behavior rather than rewrite it. Interface extraction should follow concrete needs discovered during Phase 8B and preserve existing CLI, API, report, and cleanup behavior.
@@ -124,7 +127,7 @@ The first adapter work should wrap proven Docker Compose behavior rather than re
 - avoid a big-bang runner rewrite
 - completed with Docker Compose as the first adapter and runtime selection in place
 
-### 8C: Kubernetes Local Runtime MVP
+### 8C: Kubernetes Local Runtime MVP (Completed)
 
 - use existing kubeconfig contexts
 - support local clusters such as Minikube, kind, and k3s
@@ -132,9 +135,13 @@ The first adapter work should wrap proven Docker Compose behavior rather than re
 - deploy services and dependencies, wait for readiness, run smoke checks, collect basic diagnostics, and clean up safely
 - use `kubectl` for the MVP and require images to be accessible to the selected cluster
 
-### 8D: Experiment Workloads
+### 8D: Experiment Workloads (Current)
 
-- support generic HTTP load, log/file replay, message producer, worker, and custom command workloads
+- introduce runtime-neutral HTTP traffic workloads first
+- run workloads after smoke checks and before Dockerized k6
+- capture request, success, failure, and HTTP status counts in reports
+- support blocking `fail` and non-blocking `warn` failure policies
+- keep log/file replay, message producer/consumer, worker, custom command, and Kubernetes Job workloads as future extensions
 - keep workload concepts independent of any single tool or integration
 
 ### 8E: Experiment Reports

@@ -23,6 +23,7 @@ type ConfigSummary struct {
 	Build             BuildSummary        `json:"build"`
 	Dependencies      []DependencySummary `json:"dependencies"`
 	SmokeChecks       []SmokeCheckSummary `json:"smokeChecks"`
+	Workloads         []WorkloadSummary   `json:"workloads"`
 	Performance       PerformanceSummary  `json:"performance"`
 	Settings          SettingsSummary     `json:"settings"`
 	Reports           ReportsSummary      `json:"reports"`
@@ -63,6 +64,18 @@ type SmokeCheckSummary struct {
 	ExpectedStatus int    `json:"expectedStatus"`
 }
 
+type WorkloadSummary struct {
+	Name           string `json:"name"`
+	Type           string `json:"type"`
+	Enabled        bool   `json:"enabled"`
+	Method         string `json:"method"`
+	Path           string `json:"path"`
+	Duration       string `json:"duration"`
+	RatePerSecond  int    `json:"ratePerSecond"`
+	ExpectedStatus int    `json:"expectedStatus"`
+	FailurePolicy  string `json:"failurePolicy"`
+}
+
 type PerformanceSummary struct {
 	Enabled         bool    `json:"enabled"`
 	VUs             int     `json:"vus,omitempty"`
@@ -89,6 +102,7 @@ type ConfigCounts struct {
 	Dependencies         int `json:"dependencies"`
 	DependenciesReady    int `json:"dependenciesWithReadiness"`
 	SmokeChecks          int `json:"smokeChecks"`
+	Workloads            int `json:"workloads"`
 	PerformanceEndpoints int `json:"performanceEndpoints"`
 	Profiles             int `json:"profiles"`
 }
@@ -121,6 +135,7 @@ func (s *ConfigService) LoadWithProfile(path string, profile string) (*config.Co
 func (s *ConfigService) Summary() ConfigSummary {
 	dependencies := s.dependencySummaries()
 	smokeChecks := s.smokeCheckSummaries()
+	workloads := s.workloadSummaries()
 	performanceEndpoints := len(s.cfg.Performance.Endpoints)
 	dependenciesWithReadiness := 0
 
@@ -152,6 +167,7 @@ func (s *ConfigService) Summary() ConfigSummary {
 		},
 		Dependencies: dependencies,
 		SmokeChecks:  smokeChecks,
+		Workloads:    workloads,
 		Performance: PerformanceSummary{
 			Enabled:         s.cfg.Performance.Enabled,
 			VUs:             s.cfg.Performance.VUs,
@@ -175,6 +191,7 @@ func (s *ConfigService) Summary() ConfigSummary {
 			Dependencies:         len(dependencies),
 			DependenciesReady:    dependenciesWithReadiness,
 			SmokeChecks:          len(smokeChecks),
+			Workloads:            len(workloads),
 			PerformanceEndpoints: performanceEndpoints,
 			Profiles:             len(s.cfg.Profiles),
 		},
@@ -191,6 +208,7 @@ func (s *ConfigService) Explain() ConfigExplanation {
 			s.explainDependencies(),
 			s.explainServiceReadiness(),
 			s.explainSmokeChecks(),
+			s.explainWorkloads(),
 			s.explainPerformance(),
 			s.explainReports(),
 			s.explainCleanup(),
@@ -232,6 +250,27 @@ func (s *ConfigService) smokeCheckSummaries() []SmokeCheckSummary {
 			Method:         strings.ToUpper(check.Method),
 			Path:           check.Path,
 			ExpectedStatus: check.ExpectedStatus,
+		})
+	}
+
+	return summaries
+}
+
+func (s *ConfigService) workloadSummaries() []WorkloadSummary {
+	summaries := make([]WorkloadSummary, 0, len(s.cfg.Workloads))
+
+	for _, workload := range s.cfg.Workloads {
+		enabled := workload.Enabled == nil || *workload.Enabled
+		summaries = append(summaries, WorkloadSummary{
+			Name:           workload.Name,
+			Type:           workload.Type,
+			Enabled:        enabled,
+			Method:         strings.ToUpper(workload.Method),
+			Path:           workload.Path,
+			Duration:       workload.Duration,
+			RatePerSecond:  workload.RatePerSecond,
+			ExpectedStatus: workload.ExpectedStatus,
+			FailurePolicy:  workload.FailurePolicy,
 		})
 	}
 
@@ -368,14 +407,14 @@ func (s *ConfigService) explainSmokeChecks() ConfigExplanationStep {
 func (s *ConfigService) explainPerformance() ConfigExplanationStep {
 	if !s.cfg.Performance.Enabled {
 		return ConfigExplanationStep{
-			Number:  6,
+			Number:  7,
 			Title:   "Performance Checks",
 			Details: []string{"Performance checks are disabled."},
 		}
 	}
 
 	details := []string{
-		"Dockerized k6 will run after all smoke checks pass.",
+		"Dockerized k6 will run after smoke checks and experiment workloads complete.",
 		fmt.Sprintf("Virtual users: %d.", s.cfg.Performance.VUs),
 		fmt.Sprintf("Duration: %s.", s.cfg.Performance.Duration),
 		fmt.Sprintf("Failure threshold: p95 latency must be <= %.2fms.", s.cfg.Performance.Thresholds.MaxP95LatencyMs),
@@ -387,8 +426,48 @@ func (s *ConfigService) explainPerformance() ConfigExplanationStep {
 	}
 
 	return ConfigExplanationStep{
-		Number:  6,
+		Number:  7,
 		Title:   "Performance Checks",
+		Details: details,
+	}
+}
+
+func (s *ConfigService) explainWorkloads() ConfigExplanationStep {
+	if len(s.cfg.Workloads) == 0 {
+		return ConfigExplanationStep{
+			Number:  6,
+			Title:   "Experiment Workloads",
+			Details: []string{"No experiment workloads are configured."},
+		}
+	}
+
+	details := []string{
+		fmt.Sprintf("%d experiment workload(s) are configured to run after smoke checks.", len(s.cfg.Workloads)),
+	}
+	for _, workload := range s.workloadSummaries() {
+		state := "enabled"
+		if !workload.Enabled {
+			state = "disabled"
+		}
+		details = append(
+			details,
+			fmt.Sprintf(
+				"%q (%s): %s %s at %d request(s)/second for %s; expects HTTP %d; failure policy %s.",
+				workload.Name,
+				state,
+				workload.Method,
+				workload.Path,
+				workload.RatePerSecond,
+				workload.Duration,
+				workload.ExpectedStatus,
+				workload.FailurePolicy,
+			),
+		)
+	}
+
+	return ConfigExplanationStep{
+		Number:  6,
+		Title:   "Experiment Workloads",
 		Details: details,
 	}
 }
@@ -397,7 +476,7 @@ func (s *ConfigService) explainReports() ConfigExplanationStep {
 	reportsDir := filepath.Join(s.cfg.ConfigDir, "reports")
 
 	return ConfigExplanationStep{
-		Number: 7,
+		Number: 8,
 		Title:  "Reports",
 		Details: []string{
 			fmt.Sprintf("Markdown and JSON reports will be written under %q.", reportsDir),
@@ -427,7 +506,7 @@ func (s *ConfigService) explainCleanup() ConfigExplanationStep {
 	}
 
 	return ConfigExplanationStep{
-		Number:  8,
+		Number:  9,
 		Title:   "Cleanup",
 		Details: details,
 	}
