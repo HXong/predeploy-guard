@@ -480,6 +480,8 @@ func (s *ConfigService) explainReports() ConfigExplanationStep {
 		Title:  "Reports",
 		Details: []string{
 			fmt.Sprintf("Markdown and JSON reports will be written under %q.", reportsDir),
+			"Reports include a runtime environment summary and phase timeline.",
+			"Runtime diagnostics are included when collected for a failed or incomplete run.",
 			"Markdown is intended for humans.",
 			"JSON is intended for automation and CI/CD.",
 		},

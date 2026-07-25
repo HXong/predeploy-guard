@@ -128,6 +128,9 @@ This project demonstrates backend engineering, developer tooling, Docker-based w
 
 - Markdown report generation for humans
 - JSON report generation for automation and CI/CD
+- Runtime environment summaries for Docker Compose and Kubernetes sandboxes
+- Run phase timelines with passed, failed, and skipped phases plus durations
+- Runtime diagnostics for failed or incomplete local experiments
 - Reports written next to the `predeploy.yaml` file under `reports/`
 - `reports/history.json` run history index
 - `predeploy history` to list previous runs
@@ -657,8 +660,9 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
   - completed runtime and experiment model alignment
   - completed the runtime adapter foundation
   - completed kubeconfig-based local-cluster execution through `kubectl`
-  - current: runtime-neutral HTTP experiment workloads
-  - next: richer experiment reporting and additional generic workload types
+  - completed runtime-neutral HTTP experiment workloads
+  - completed runtime environment, phase timeline, and diagnostics report enhancements
+  - future: additional generic workload types
 
 ### Future
 

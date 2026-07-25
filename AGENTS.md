@@ -69,6 +69,10 @@ The next direction is richer, config-driven deployment experiments across Docker
 - File/log replay, message producers/consumers, background jobs, arbitrary custom commands, and Kubernetes Jobs remain future workload extensions.
 - Fluent Bit with Kafka may be an example experiment, but do not make the runtime, workload, or configuration architecture specific to Fluent Bit, Kafka, Locust, or any one tool or integration.
 - Avoid niche one-off configuration fields unless they generalize to reusable experiment concepts.
+- Keep report models and phase names runtime-neutral across Docker Compose and Kubernetes.
+- Use “Runtime Diagnostics” instead of Docker-only wording such as “Container Logs” for combined failure output.
+- Preserve existing JSON report field names and shapes when adding new report data.
+- Additive report fields must not expose environment variables, sensitive config, or cluster-wide data.
 
 ### Frontend
 
@@ -214,4 +218,5 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 8A completed: runtime and experiment model alignment.
 - Phase 8B completed: runtime adapter foundation.
 - Phase 8C completed: Kubernetes local runtime MVP through existing kubeconfig contexts and developer-managed local clusters.
-- Phase 8D current: runtime-neutral HTTP experiment workloads, with additional generic workload types reserved for future extensions.
+- Phase 8D completed: runtime-neutral HTTP experiment workloads.
+- Phase 8E completed: runtime environment summaries, run phase timelines, and runtime diagnostics reporting.

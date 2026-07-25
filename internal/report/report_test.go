@@ -28,8 +28,29 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 		ServiceName: "test-service",
 		Runtime:     "docker-compose",
 		BaseURL:     "http://127.0.0.1:8080",
-		StartedAt:   startedAt,
-		FinishedAt:  startedAt.Add(time.Second),
+		RuntimeEnvironment: RuntimeEnvironment{
+			Runtime:         "docker-compose",
+			Name:            "test-service",
+			BaseURL:         "http://127.0.0.1:8080",
+			WorkloadBaseURL: "http://host.docker.internal:8080",
+		},
+		RunPhases: []RunPhase{
+			{
+				Name:       PhaseImageBuild,
+				Status:     PhaseStatusSkipped,
+				StartedAt:  startedAt,
+				FinishedAt: startedAt,
+			},
+			{
+				Name:       PhaseExperimentWorkloads,
+				Status:     PhaseStatusPassed,
+				StartedAt:  startedAt,
+				FinishedAt: startedAt.Add(10 * time.Second),
+				Duration:   10 * time.Second,
+			},
+		},
+		StartedAt:  startedAt,
+		FinishedAt: startedAt.Add(time.Second),
 		WorkloadResults: []workload.Result{{
 			Name:          "warmup-traffic",
 			Type:          "http",
@@ -42,16 +63,51 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 			SuccessCount:  5,
 		}},
 		Passed: true,
+		Logs:   "runtime diagnostic output",
 	}
 
 	markdown := buildMarkdown(cfg, data)
 	for _, want := range []string{
+		"## Runtime Environment",
+		"| Runtime | docker-compose |",
+		"| Environment | test-service |",
+		"| Workload Base URL | http://host.docker.internal:8080 |",
+		"## Run Timeline",
+		"| image-build | skipped | 0ms | - |",
+		"| experiment-workloads | passed | 10s | - |",
 		"## Experiment Workloads",
 		"| warmup-traffic | http | fail | GET / | 5 | 5 | 0 | PASS |",
+		"## Runtime Diagnostics",
+		"runtime diagnostic output",
 	} {
 		if !strings.Contains(markdown, want) {
 			t.Fatalf("markdown does not contain %q:\n%s", want, markdown)
 		}
+	}
+	if strings.Contains(markdown, "## Container Logs") {
+		t.Fatalf("markdown contains legacy Container Logs heading:\n%s", markdown)
+	}
+
+	sectionOrder := []string{
+		"## Summary",
+		"## Runtime Environment",
+		"## Run Timeline",
+		"## Build Check",
+		"## Readiness Checks",
+		"## Smoke Checks",
+		"## Experiment Workloads",
+		"## Performance Check",
+		"## Check Summary",
+		"## Configuration",
+		"## Runtime Diagnostics",
+	}
+	previousIndex := -1
+	for _, section := range sectionOrder {
+		index := strings.Index(markdown, section)
+		if index <= previousIndex {
+			t.Fatalf("section %q is out of order in markdown:\n%s", section, markdown)
+		}
+		previousIndex = index
 	}
 
 	jsonPath, err := WriteJSON(cfg, data)
@@ -67,11 +123,38 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 	if err := json.Unmarshal(content, &decoded); err != nil {
 		t.Fatalf("unmarshal JSON report: %v", err)
 	}
+	for _, existingField := range []string{
+		"ServiceName",
+		"Runtime",
+		"BaseURL",
+		"WorkloadResults",
+		"Logs",
+	} {
+		if _, exists := decoded[existingField]; !exists {
+			t.Fatalf("JSON report is missing existing field %q", existingField)
+		}
+	}
 	var workloads []workload.Result
 	if err := json.Unmarshal(decoded["WorkloadResults"], &workloads); err != nil {
 		t.Fatalf("unmarshal workloads: %v", err)
 	}
 	if len(workloads) != 1 || workloads[0].Name != "warmup-traffic" {
 		t.Fatalf("workloads = %#v, want warmup-traffic result", workloads)
+	}
+
+	var environment RuntimeEnvironment
+	if err := json.Unmarshal(decoded["runtimeEnvironment"], &environment); err != nil {
+		t.Fatalf("unmarshal runtimeEnvironment: %v", err)
+	}
+	if environment.Runtime != "docker-compose" || environment.Name != "test-service" {
+		t.Fatalf("runtimeEnvironment = %#v, want Docker Compose test-service", environment)
+	}
+
+	var phases []RunPhase
+	if err := json.Unmarshal(decoded["runPhases"], &phases); err != nil {
+		t.Fatalf("unmarshal runPhases: %v", err)
+	}
+	if len(phases) != 2 || phases[1].Name != PhaseExperimentWorkloads {
+		t.Fatalf("runPhases = %#v, want workload phase", phases)
 	}
 }

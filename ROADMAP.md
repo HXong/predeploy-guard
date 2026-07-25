@@ -107,7 +107,7 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Clean up only the owned namespace and temporary files
 - Require users to make configured images accessible to the selected cluster
 
-#### Phase 8D: Experiment Workloads (Current)
+#### Phase 8D: Experiment Workloads (Completed)
 - Implement runtime-neutral HTTP workloads first
 - Support configurable method, path, duration, request rate, expected status, and `fail` or `warn` failure policy
 - Run workloads through the runtime-provided base URL after smoke checks and before k6
@@ -115,8 +115,13 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Keep log/file replay, message producers/consumers, worker jobs, custom commands, and Kubernetes Jobs as future extensions
 - Do not specialize around Fluent Bit, Kafka, Locust, or any single tool
 
-#### Phase 8E: Experiment Reports
-- Extend reports with deployment timings, readiness results, workload results, logs, and runtime diagnostics
+#### Phase 8E: Experiment Reports (Completed)
+- Add a runtime-neutral phase timeline with passed, failed, and skipped statuses
+- Record phase durations and failure details without changing runtime execution behavior
+- Add a runtime environment summary with the owned sandbox name and runtime-provided URLs
+- Preserve existing readiness, smoke, workload, performance, and history data
+- Use runtime-neutral diagnostics wording across Docker Compose and Kubernetes reports
+- Keep existing JSON report fields stable while adding `runtimeEnvironment` and `runPhases`
 
 ## Future Enhancements
 

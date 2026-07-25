@@ -60,6 +60,8 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 	fmt.Fprintf(&builder, "- **Total Duration:** %s\n", duration.Round(time.Millisecond))
 	fmt.Fprintf(&builder, "\n")
 
+	writeRuntimeEnvironmentSection(&builder, data)
+	writeRunTimelineSection(&builder, data.RunPhases)
 	writeBuildSection(&builder, data.BuildResult)
 	writeReadinessSection(&builder, data.ReadinessResults)
 	writeSmokeSection(&builder, data.Results)
@@ -79,13 +81,78 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 	fmt.Fprintf(&builder, "\n")
 
 	if data.Logs != "" {
-		fmt.Fprintf(&builder, "## Container Logs\n\n")
+		fmt.Fprintf(&builder, "## Runtime Diagnostics\n\n")
+		fmt.Fprintf(
+			&builder,
+			"Runtime diagnostics were collected to help debug the failed or incomplete experiment.\n\n",
+		)
 		fmt.Fprintf(&builder, "```txt\n")
 		fmt.Fprintf(&builder, "%s", data.Logs)
 		fmt.Fprintf(&builder, "\n```\n\n")
 	}
 
 	return builder.String()
+}
+
+func writeRuntimeEnvironmentSection(builder *strings.Builder, data ReportData) {
+	environment := data.RuntimeEnvironment
+	if environment.Runtime == "" {
+		environment.Runtime = data.Runtime
+	}
+	if environment.BaseURL == "" && data.BaseURL != "-" {
+		environment.BaseURL = data.BaseURL
+	}
+
+	fmt.Fprintf(builder, "## Runtime Environment\n\n")
+	fmt.Fprintf(builder, "| Field | Value |\n")
+	fmt.Fprintf(builder, "|---|---|\n")
+	fmt.Fprintf(builder, "| Runtime | %s |\n", markdownValue(environment.Runtime))
+	fmt.Fprintf(builder, "| Environment | %s |\n", markdownValue(environment.Name))
+	fmt.Fprintf(builder, "| Base URL | %s |\n", markdownValue(environment.BaseURL))
+	fmt.Fprintf(builder, "| Workload Base URL | %s |\n\n", markdownValue(environment.WorkloadBaseURL))
+}
+
+func writeRunTimelineSection(builder *strings.Builder, phases []RunPhase) {
+	fmt.Fprintf(builder, "## Run Timeline\n\n")
+
+	if len(phases) == 0 {
+		fmt.Fprintf(builder, "No run phase timings were recorded.\n\n")
+		return
+	}
+
+	fmt.Fprintf(builder, "| Phase | Status | Duration | Error |\n")
+	fmt.Fprintf(builder, "|---|---|---:|---|\n")
+	for _, phase := range phases {
+		errorText := phase.Error
+		if errorText == "" {
+			errorText = "-"
+		}
+
+		fmt.Fprintf(
+			builder,
+			"| %s | %s | %s | %s |\n",
+			escapeMarkdownTable(phase.Name),
+			escapeMarkdownTable(phase.Status),
+			formatPhaseDuration(phase.Duration),
+			escapeMarkdownTable(errorText),
+		)
+	}
+	fmt.Fprintf(builder, "\n")
+}
+
+func markdownValue(value string) string {
+	if value == "" {
+		return "-"
+	}
+	return escapeMarkdownTable(value)
+}
+
+func formatPhaseDuration(duration time.Duration) string {
+	rounded := duration.Round(time.Millisecond)
+	if rounded == 0 {
+		return "0ms"
+	}
+	return rounded.String()
 }
 
 func writeBuildSection(builder *strings.Builder, result BuildResult) {

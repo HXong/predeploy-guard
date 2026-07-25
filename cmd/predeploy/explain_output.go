@@ -235,6 +235,8 @@ func printExplainWorkloads(cfg *config.Config) {
 func printExplainReports(cfg *config.Config) {
 	fmt.Println("8. Reports")
 	fmt.Printf("   Markdown and JSON reports will be written under `%s/reports`.\n", cfg.ConfigDir)
+	fmt.Println("   Reports include a runtime environment summary and phase timeline.")
+	fmt.Println("   Runtime diagnostics are included when collected for a failed or incomplete run.")
 	fmt.Println("   Markdown is intended for humans.")
 	fmt.Println("   JSON is intended for automation and CI/CD.")
 	fmt.Println()

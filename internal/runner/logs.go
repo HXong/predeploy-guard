@@ -14,7 +14,7 @@ func collectDiagnosticsSafely(
 	adapter predeployruntime.Adapter,
 	env *predeployruntime.Environment,
 	cfg *config.Config,
-) string {
+) (string, error) {
 	fmt.Println("Collecting runtime diagnostics...")
 
 	diagnostics, err := adapter.CollectDiagnostics(ctx, env, cfg)
@@ -24,8 +24,8 @@ func collectDiagnosticsSafely(
 	}
 
 	if err != nil {
-		return fmt.Sprintf("Failed to collect runtime diagnostics: %v\n\nPartial output:\n%s", err, details)
+		return fmt.Sprintf("Failed to collect runtime diagnostics: %v\n\nPartial output:\n%s", err, details), err
 	}
 
-	return details
+	return details, nil
 }

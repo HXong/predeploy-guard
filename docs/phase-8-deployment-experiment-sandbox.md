@@ -96,7 +96,7 @@ Assertions that evaluate sandbox health or behavior, including readiness, smoke,
 
 ### Reports
 
-The existing Markdown and JSON output, together with future deployment timings, workload results, logs, events, and runtime diagnostics. Report evolution should preserve existing validation report behavior and run history.
+The existing Markdown and JSON output now includes runtime environment details, an ordered phase timeline, workload results, and runtime diagnostics when collected. These additions support debugging local experiments across Docker Compose and Kubernetes while preserving existing validation report fields and run history.
 
 ## Backend Boundary Direction
 
@@ -135,7 +135,7 @@ The first adapter work should wrap proven Docker Compose behavior rather than re
 - deploy services and dependencies, wait for readiness, run smoke checks, collect basic diagnostics, and clean up safely
 - use `kubectl` for the MVP and require images to be accessible to the selected cluster
 
-### 8D: Experiment Workloads (Current)
+### 8D: Experiment Workloads (Completed)
 
 - introduce runtime-neutral HTTP traffic workloads first
 - run workloads after smoke checks and before Dockerized k6
@@ -144,9 +144,14 @@ The first adapter work should wrap proven Docker Compose behavior rather than re
 - keep log/file replay, message producer/consumer, worker, custom command, and Kubernetes Job workloads as future extensions
 - keep workload concepts independent of any single tool or integration
 
-### 8E: Experiment Reports
+### 8E: Experiment Reports (Completed)
 
-- extend Markdown and JSON reports with deployment timings, readiness results, workload results, logs, and runtime diagnostics
+- add a runtime-neutral timeline for build, runtime lifecycle, readiness, checks, workloads, performance, and diagnostics
+- record passed, failed, and skipped phase statuses with durations and failure details
+- include the owned runtime environment name and runtime-provided base URLs
+- preserve readiness, smoke, workload, performance, and history output
+- label combined Docker Compose and Kubernetes failure output as runtime diagnostics
+- preserve existing JSON fields while adding `runtimeEnvironment` and `runPhases`
 
 ## Safety Principles
 

@@ -12,20 +12,38 @@ import (
 )
 
 type ReportData struct {
-	ServiceName       string
-	ActiveProfile     string `json:"activeProfile,omitempty"`
-	Image             string
-	Runtime           string
-	BaseURL           string
-	StartedAt         time.Time
-	FinishedAt        time.Time
-	BuildResult       BuildResult
-	ReadinessResults  []ReadinessResult
-	Results           []checker.SmokeResult
-	WorkloadResults   []workload.Result
-	PerformanceResult PerformanceResult
-	Passed            bool
-	Logs              string
+	ServiceName        string
+	ActiveProfile      string `json:"activeProfile,omitempty"`
+	Image              string
+	Runtime            string
+	BaseURL            string
+	RuntimeEnvironment RuntimeEnvironment `json:"runtimeEnvironment"`
+	RunPhases          []RunPhase         `json:"runPhases"`
+	StartedAt          time.Time
+	FinishedAt         time.Time
+	BuildResult        BuildResult
+	ReadinessResults   []ReadinessResult
+	Results            []checker.SmokeResult
+	WorkloadResults    []workload.Result
+	PerformanceResult  PerformanceResult
+	Passed             bool
+	Logs               string
+}
+
+type RuntimeEnvironment struct {
+	Runtime         string `json:"runtime"`
+	Name            string `json:"name,omitempty"`
+	BaseURL         string `json:"baseUrl,omitempty"`
+	WorkloadBaseURL string `json:"workloadBaseUrl,omitempty"`
+}
+
+type RunPhase struct {
+	Name       string        `json:"name"`
+	Status     string        `json:"status"`
+	StartedAt  time.Time     `json:"startedAt"`
+	FinishedAt time.Time     `json:"finishedAt"`
+	Duration   time.Duration `json:"duration"`
+	Error      string        `json:"error,omitempty"`
 }
 
 type BuildResult struct {
