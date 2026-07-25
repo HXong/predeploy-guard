@@ -1,0 +1,24 @@
+runtime:
+  type: kubernetes
+  context: minikube
+
+service:
+  name: local-nginx-demo
+  image: predeploy-local-nginx:dev
+  port: 80
+  healthPath: /
+
+checks:
+  smoke:
+    - name: local nginx homepage
+      method: GET
+      path: /
+      expectedStatus: 200
+
+performance:
+  enabled: false
+
+settings:
+  namespacePrefix: predeploy
+  cleanup: true
+  timeoutSeconds: 120

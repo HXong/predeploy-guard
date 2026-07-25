@@ -1,0 +1,35 @@
+runtime:
+  type: kubernetes
+  context: minikube
+
+service:
+  name: nginx-demo
+  image: nginx:1.27-alpine
+  port: 80
+  healthPath: /
+
+checks:
+  smoke:
+    - name: nginx homepage
+      method: GET
+      path: /
+      expectedStatus: 200
+
+performance:
+  enabled: false
+
+workloads:
+  - name: nginx repeated traffic
+    type: http
+    enabled: true
+    method: GET
+    path: /
+    duration: 10s
+    ratePerSecond: 5
+    expectedStatus: 200
+    failurePolicy: fail
+
+settings:
+  namespacePrefix: predeploy
+  cleanup: true
+  timeoutSeconds: 120
