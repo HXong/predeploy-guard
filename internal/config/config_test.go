@@ -216,6 +216,80 @@ func TestValidateRejectsDuplicateWorkloadNames(t *testing.T) {
 	}
 }
 
+func TestValidateIgnoresGatewayFieldsWhenDisabled(t *testing.T) {
+	cfg := validTestConfig()
+	cfg.Gateway = GatewayConfig{
+		BaseURL: "not-a-url",
+		Routes: []GatewayRoute{{
+			Path: "missing-leading-slash",
+		}},
+	}
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+}
+
+func TestValidateAcceptsEnabledGatewayAndDefaultsRoutes(t *testing.T) {
+	cfg := validTestConfig()
+	cfg.Gateway = GatewayConfig{
+		Enabled: true,
+		BaseURL: "http://localhost:8088",
+		Routes: []GatewayRoute{{
+			Name: "homepage-via-gateway",
+			Path: "/",
+		}},
+	}
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+
+	route := cfg.Gateway.Routes[0]
+	if route.Method != "GET" {
+		t.Fatalf("method = %q, want GET", route.Method)
+	}
+	if route.ExpectedStatus != 200 {
+		t.Fatalf("expected status = %d, want 200", route.ExpectedStatus)
+	}
+	if route.CompareDirect == nil || !*route.CompareDirect {
+		t.Fatalf("compareDirect = %v, want true", route.CompareDirect)
+	}
+}
+
+func TestValidateRejectsEnabledGatewayWithoutBaseURL(t *testing.T) {
+	cfg := validTestConfig()
+	cfg.Gateway = GatewayConfig{
+		Enabled: true,
+		Routes: []GatewayRoute{{
+			Name: "homepage-via-gateway",
+			Path: "/",
+		}},
+	}
+
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), "gateway.baseURL is required") {
+		t.Fatalf("Validate error = %v, want missing gateway.baseURL error", err)
+	}
+}
+
+func TestValidateRejectsGatewayRoutePathWithoutLeadingSlash(t *testing.T) {
+	cfg := validTestConfig()
+	cfg.Gateway = GatewayConfig{
+		Enabled: true,
+		BaseURL: "https://gateway.example.test",
+		Routes: []GatewayRoute{{
+			Name: "homepage-via-gateway",
+			Path: "homepage",
+		}},
+	}
+
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), "gateway.routes[0].path must start with /") {
+		t.Fatalf("Validate error = %v, want invalid gateway route path error", err)
+	}
+}
+
 func validTestConfig() Config {
 	return Config{
 		Service: ServiceConfig{

@@ -8,6 +8,7 @@ import (
 
 	"github.com/HXong/predeploy-guard/internal/checker"
 	"github.com/HXong/predeploy-guard/internal/config"
+	"github.com/HXong/predeploy-guard/internal/gateway"
 	"github.com/HXong/predeploy-guard/internal/workload"
 )
 
@@ -23,6 +24,7 @@ type ReportData struct {
 	FinishedAt         time.Time
 	BuildResult        BuildResult
 	ReadinessResults   []ReadinessResult
+	GatewayResults     []gateway.RouteResult
 	Results            []checker.SmokeResult
 	WorkloadResults    []workload.Result
 	PerformanceResult  PerformanceResult

@@ -22,6 +22,7 @@ type ConfigSummary struct {
 	Service           ServiceSummary      `json:"service"`
 	Build             BuildSummary        `json:"build"`
 	Dependencies      []DependencySummary `json:"dependencies"`
+	Gateway           GatewaySummary      `json:"gateway"`
 	SmokeChecks       []SmokeCheckSummary `json:"smokeChecks"`
 	Workloads         []WorkloadSummary   `json:"workloads"`
 	Performance       PerformanceSummary  `json:"performance"`
@@ -64,6 +65,20 @@ type SmokeCheckSummary struct {
 	ExpectedStatus int    `json:"expectedStatus"`
 }
 
+type GatewaySummary struct {
+	Enabled bool                  `json:"enabled"`
+	BaseURL string                `json:"baseUrl,omitempty"`
+	Routes  []GatewayRouteSummary `json:"routes"`
+}
+
+type GatewayRouteSummary struct {
+	Name           string `json:"name"`
+	Method         string `json:"method"`
+	Path           string `json:"path"`
+	ExpectedStatus int    `json:"expectedStatus"`
+	CompareDirect  bool   `json:"compareDirect"`
+}
+
 type WorkloadSummary struct {
 	Name           string `json:"name"`
 	Type           string `json:"type"`
@@ -102,6 +117,7 @@ type ConfigCounts struct {
 	Dependencies         int `json:"dependencies"`
 	DependenciesReady    int `json:"dependenciesWithReadiness"`
 	SmokeChecks          int `json:"smokeChecks"`
+	GatewayRoutes        int `json:"gatewayRoutes"`
 	Workloads            int `json:"workloads"`
 	PerformanceEndpoints int `json:"performanceEndpoints"`
 	Profiles             int `json:"profiles"`
@@ -134,6 +150,7 @@ func (s *ConfigService) LoadWithProfile(path string, profile string) (*config.Co
 
 func (s *ConfigService) Summary() ConfigSummary {
 	dependencies := s.dependencySummaries()
+	gatewayRoutes := s.gatewayRouteSummaries()
 	smokeChecks := s.smokeCheckSummaries()
 	workloads := s.workloadSummaries()
 	performanceEndpoints := len(s.cfg.Performance.Endpoints)
@@ -166,8 +183,13 @@ func (s *ConfigService) Summary() ConfigSummary {
 			Dockerfile: s.cfg.Service.Build.Dockerfile,
 		},
 		Dependencies: dependencies,
-		SmokeChecks:  smokeChecks,
-		Workloads:    workloads,
+		Gateway: GatewaySummary{
+			Enabled: s.cfg.Gateway.Enabled,
+			BaseURL: s.cfg.Gateway.BaseURL,
+			Routes:  gatewayRoutes,
+		},
+		SmokeChecks: smokeChecks,
+		Workloads:   workloads,
 		Performance: PerformanceSummary{
 			Enabled:         s.cfg.Performance.Enabled,
 			VUs:             s.cfg.Performance.VUs,
@@ -191,6 +213,7 @@ func (s *ConfigService) Summary() ConfigSummary {
 			Dependencies:         len(dependencies),
 			DependenciesReady:    dependenciesWithReadiness,
 			SmokeChecks:          len(smokeChecks),
+			GatewayRoutes:        len(gatewayRoutes),
 			Workloads:            len(workloads),
 			PerformanceEndpoints: performanceEndpoints,
 			Profiles:             len(s.cfg.Profiles),
@@ -207,6 +230,7 @@ func (s *ConfigService) Explain() ConfigExplanation {
 			s.explainService(),
 			s.explainDependencies(),
 			s.explainServiceReadiness(),
+			s.explainGatewayChecks(),
 			s.explainSmokeChecks(),
 			s.explainWorkloads(),
 			s.explainPerformance(),
@@ -214,6 +238,21 @@ func (s *ConfigService) Explain() ConfigExplanation {
 			s.explainCleanup(),
 		},
 	}
+}
+
+func (s *ConfigService) gatewayRouteSummaries() []GatewayRouteSummary {
+	summaries := make([]GatewayRouteSummary, 0, len(s.cfg.Gateway.Routes))
+	for _, route := range s.cfg.Gateway.Routes {
+		compareDirect := route.CompareDirect == nil || *route.CompareDirect
+		summaries = append(summaries, GatewayRouteSummary{
+			Name:           route.Name,
+			Method:         strings.ToUpper(route.Method),
+			Path:           route.Path,
+			ExpectedStatus: route.ExpectedStatus,
+			CompareDirect:  compareDirect,
+		})
+	}
+	return summaries
 }
 
 func (s *ConfigService) dependencySummaries() []DependencySummary {
@@ -386,7 +425,7 @@ func (s *ConfigService) explainServiceReadiness() ConfigExplanationStep {
 func (s *ConfigService) explainSmokeChecks() ConfigExplanationStep {
 	if len(s.cfg.Checks.Smoke) == 0 {
 		return ConfigExplanationStep{
-			Number:  5,
+			Number:  6,
 			Title:   "Smoke Checks",
 			Details: []string{"No smoke checks are configured."},
 		}
@@ -398,8 +437,43 @@ func (s *ConfigService) explainSmokeChecks() ConfigExplanationStep {
 	}
 
 	return ConfigExplanationStep{
-		Number:  5,
+		Number:  6,
 		Title:   "Smoke Checks",
+		Details: details,
+	}
+}
+
+func (s *ConfigService) explainGatewayChecks() ConfigExplanationStep {
+	if !s.cfg.Gateway.Enabled {
+		return ConfigExplanationStep{
+			Number:  5,
+			Title:   "Gateway Checks",
+			Details: []string{"Gateway checks are disabled."},
+		}
+	}
+
+	details := []string{
+		"Gateway checks run after service readiness.",
+		fmt.Sprintf("%d gateway route(s) will be checked through %q.", len(s.cfg.Gateway.Routes), s.cfg.Gateway.BaseURL),
+		"Gateway checks compare the configured gateway route to the direct service route when compareDirect is enabled.",
+	}
+	for _, route := range s.gatewayRouteSummaries() {
+		details = append(
+			details,
+			fmt.Sprintf(
+				"%q: %s %s expects HTTP %d; compareDirect is %t.",
+				route.Name,
+				route.Method,
+				route.Path,
+				route.ExpectedStatus,
+				route.CompareDirect,
+			),
+		)
+	}
+
+	return ConfigExplanationStep{
+		Number:  5,
+		Title:   "Gateway Checks",
 		Details: details,
 	}
 }
@@ -407,7 +481,7 @@ func (s *ConfigService) explainSmokeChecks() ConfigExplanationStep {
 func (s *ConfigService) explainPerformance() ConfigExplanationStep {
 	if !s.cfg.Performance.Enabled {
 		return ConfigExplanationStep{
-			Number:  7,
+			Number:  8,
 			Title:   "Performance Checks",
 			Details: []string{"Performance checks are disabled."},
 		}
@@ -426,7 +500,7 @@ func (s *ConfigService) explainPerformance() ConfigExplanationStep {
 	}
 
 	return ConfigExplanationStep{
-		Number:  7,
+		Number:  8,
 		Title:   "Performance Checks",
 		Details: details,
 	}
@@ -435,7 +509,7 @@ func (s *ConfigService) explainPerformance() ConfigExplanationStep {
 func (s *ConfigService) explainWorkloads() ConfigExplanationStep {
 	if len(s.cfg.Workloads) == 0 {
 		return ConfigExplanationStep{
-			Number:  6,
+			Number:  7,
 			Title:   "Experiment Workloads",
 			Details: []string{"No experiment workloads are configured."},
 		}
@@ -466,7 +540,7 @@ func (s *ConfigService) explainWorkloads() ConfigExplanationStep {
 	}
 
 	return ConfigExplanationStep{
-		Number:  6,
+		Number:  7,
 		Title:   "Experiment Workloads",
 		Details: details,
 	}
@@ -476,7 +550,7 @@ func (s *ConfigService) explainReports() ConfigExplanationStep {
 	reportsDir := filepath.Join(s.cfg.ConfigDir, "reports")
 
 	return ConfigExplanationStep{
-		Number: 8,
+		Number: 9,
 		Title:  "Reports",
 		Details: []string{
 			fmt.Sprintf("Markdown and JSON reports will be written under %q.", reportsDir),
@@ -508,7 +582,7 @@ func (s *ConfigService) explainCleanup() ConfigExplanationStep {
 	}
 
 	return ConfigExplanationStep{
-		Number:  9,
+		Number:  10,
 		Title:   "Cleanup",
 		Details: details,
 	}

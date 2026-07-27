@@ -116,6 +116,7 @@ This project demonstrates backend engineering, developer tooling, Docker-based w
 - Dependency service support
 - Dependency readiness checks
 - Service readiness checks
+- Optional external gateway route checks with direct-service status comparison
 - HTTP smoke checks
 - Runtime-neutral HTTP experiment workloads with configurable rate, duration, expected status, and failure policy
 - Dockerized k6 performance checks
@@ -181,6 +182,7 @@ This project demonstrates backend engineering, developer tooling, Docker-based w
 | Sandbox Runtime | Docker Compose; Kubernetes local-cluster MVP via `kubectl` |
 | Service Build | Docker |
 | Smoke Checks | Go `net/http` |
+| Gateway Checks | Go `net/http` against a user-provided external URL |
 | Experiment Workloads | Go `net/http` HTTP traffic MVP |
 | Performance Checks | Dockerized k6 |
 | Reports | Markdown, JSON |
@@ -610,6 +612,28 @@ settings:
 
 ---
 
+## Gateway Checks
+
+Phase 9A can validate selected routes through an external gateway URL after the direct service becomes ready:
+
+```yaml
+gateway:
+  enabled: true
+  baseURL: http://localhost:8088
+  routes:
+    - name: homepage-via-gateway
+      method: GET
+      path: /
+      expectedStatus: 200
+      compareDirect: true
+```
+
+Each route is requested through `gateway.baseURL`. When `compareDirect` is enabled, the same method and path are also requested through the runtime-provided direct service URL, and both responses must have the expected, matching status. `method`, `expectedStatus`, and `compareDirect` default to `GET`, `200`, and `true`.
+
+Gateway checks are runtime-neutral and URL-based. PreDeploy Guard does not install or manage an ingress controller or gateway, and Phase 9A does not generate Kubernetes Ingress resources.
+
+---
+
 ## Reports and History
 
 PreDeploy Guard generates both Markdown and JSON reports under a `reports/` directory next to the `predeploy.yaml` file.
@@ -631,7 +655,8 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 - Kubernetes image loading is not implemented; configured service and dependency images must already be accessible to the selected cluster
 - HTTP is the first implemented experiment workload; file/log replay, message producers/consumers, background jobs, custom commands, and Kubernetes Jobs remain future work
 - Guided config builder previews and exports YAML in the browser; it does not write configuration files through the backend
-- No API gateway or ingress latency simulation yet
+- Gateway validation requires a separately managed, reachable external gateway URL
+- Gateway latency comparison and generated ingress/gateway resources are not implemented yet
 - Dependency readiness depends on user-provided commands
 - Smoke checks currently support simple HTTP status validation
 - Profile overrides are section-level replacements rather than deep merges
@@ -653,9 +678,6 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 - Phase 5: Local API and GUI groundwork
 - Phase 6: Local dashboard UI
 - Phase 7: Guided config builder
-
-### Next
-
 - Phase 8: Deployment Experiment Sandbox
   - completed runtime and experiment model alignment
   - completed the runtime adapter foundation
@@ -663,13 +685,14 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
   - completed runtime-neutral HTTP experiment workloads
   - completed runtime environment, phase timeline, and diagnostics report enhancements
   - future: additional generic workload types
+- Phase 9A: External gateway checks and direct-vs-gateway status comparison
 
 ### Future
 
 - Optional safe config save-to-file workflow
 - GitHub Actions workflow generator
-- Helm chart support
-- API gateway and ingress testing
+- Phase 9B: Generated Kubernetes Ingress manifests or gateway runtime integration
+- Phase 9C: Gateway latency comparison and report enhancements
 
 ---
 

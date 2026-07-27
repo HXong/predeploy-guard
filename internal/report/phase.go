@@ -12,6 +12,7 @@ const (
 	PhaseRuntimeStart        = "runtime-start"
 	PhaseRuntimeReadiness    = "runtime-readiness"
 	PhaseServiceReadiness    = "service-readiness"
+	PhaseGatewayChecks       = "gateway-checks"
 	PhaseSmokeChecks         = "smoke-checks"
 	PhaseExperimentWorkloads = "experiment-workloads"
 	PhasePerformanceChecks   = "performance-checks"

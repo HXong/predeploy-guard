@@ -8,6 +8,7 @@ import (
 	"github.com/HXong/predeploy-guard/internal/builder"
 	"github.com/HXong/predeploy-guard/internal/checker"
 	"github.com/HXong/predeploy-guard/internal/config"
+	"github.com/HXong/predeploy-guard/internal/gateway"
 	"github.com/HXong/predeploy-guard/internal/loadtest"
 	"github.com/HXong/predeploy-guard/internal/report"
 	runtimefactory "github.com/HXong/predeploy-guard/internal/runtime/factory"
@@ -23,7 +24,7 @@ func Run(cfg *config.Config) error {
 	runtimeName := string(runtimeAdapter.Type())
 
 	startedAt := time.Now()
-	runPhases := make([]report.RunPhase, 0, 9)
+	runPhases := make([]report.RunPhase, 0, 10)
 
 	fmt.Println("Checking whether target image build is required...")
 
@@ -92,6 +93,7 @@ func Run(cfg *config.Config) error {
 					report.PhaseRuntimeStart,
 					report.PhaseRuntimeReadiness,
 					report.PhaseServiceReadiness,
+					report.PhaseGatewayChecks,
 					report.PhaseSmokeChecks,
 					report.PhaseExperimentWorkloads,
 					report.PhasePerformanceChecks,
@@ -117,6 +119,7 @@ func Run(cfg *config.Config) error {
 				report.PhaseRuntimeStart,
 				report.PhaseRuntimeReadiness,
 				report.PhaseServiceReadiness,
+				report.PhaseGatewayChecks,
 				report.PhaseSmokeChecks,
 				report.PhaseExperimentWorkloads,
 				report.PhasePerformanceChecks,
@@ -164,6 +167,7 @@ func Run(cfg *config.Config) error {
 			[]string{
 				report.PhaseRuntimeReadiness,
 				report.PhaseServiceReadiness,
+				report.PhaseGatewayChecks,
 				report.PhaseSmokeChecks,
 				report.PhaseExperimentWorkloads,
 				report.PhasePerformanceChecks,
@@ -205,6 +209,7 @@ func Run(cfg *config.Config) error {
 	}
 
 	var results []checker.SmokeResult
+	var gatewayResults []gateway.RouteResult
 	var workloadResults []workload.Result
 	passed := false
 	readinessErr := error(nil)
@@ -228,6 +233,7 @@ func Run(cfg *config.Config) error {
 			&runPhases,
 			[]string{
 				report.PhaseServiceReadiness,
+				report.PhaseGatewayChecks,
 				report.PhaseSmokeChecks,
 				report.PhaseExperimentWorkloads,
 				report.PhasePerformanceChecks,
@@ -253,6 +259,7 @@ func Run(cfg *config.Config) error {
 			appendSkippedPhases(
 				&runPhases,
 				[]string{
+					report.PhaseGatewayChecks,
 					report.PhaseSmokeChecks,
 					report.PhaseExperimentWorkloads,
 					report.PhasePerformanceChecks,
@@ -264,98 +271,136 @@ func Run(cfg *config.Config) error {
 			serviceReadiness.Passed = true
 			readinessResults = append(readinessResults, serviceReadiness)
 
-			fmt.Println("Running smoke checks...")
-
-			smokePhase := report.StartPhase(report.PhaseSmokeChecks)
-			results = checker.RunSmokeChecks(env.BaseURL, cfg.Checks.Smoke)
-
-			for _, result := range results {
-				printSmokeResult(result)
-			}
-
-			smokePassed := len(results) > 0 && checker.AllPassed(results)
-			workloadsPassed := true
-			if smokePassed {
-				runPhases = append(runPhases, smokePhase.FinishPassed())
-			} else {
-				smokeError := "one or more smoke checks failed"
-				if len(results) == 0 {
-					smokeError = "no smoke checks were executed"
+			gatewayPassed := true
+			if cfg.Gateway.Enabled {
+				fmt.Println("Running gateway checks...")
+				gatewayPhase := report.StartPhase(report.PhaseGatewayChecks)
+				gatewayResults = gateway.RunChecks(ctx, cfg, env.BaseURL)
+				for _, result := range gatewayResults {
+					printGatewayResult(result)
 				}
-				runPhases = append(runPhases, smokePhase.FinishFailed(smokeError))
+
+				gatewayPassed = gateway.AllPassed(gatewayResults)
+				if gatewayPassed {
+					runPhases = append(runPhases, gatewayPhase.FinishPassed())
+				} else {
+					runPhases = append(
+						runPhases,
+						gatewayPhase.FinishFailed("one or more gateway checks failed"),
+					)
+				}
+			} else {
+				runPhases = append(
+					runPhases,
+					report.SkippedPhase(report.PhaseGatewayChecks, ""),
+				)
 			}
 
-			if smokePassed {
-				switch {
-				case len(cfg.Workloads) == 0:
-					runPhases = append(
-						runPhases,
-						report.SkippedPhase(report.PhaseExperimentWorkloads, ""),
-					)
-				case !workload.HasEnabled(cfg):
-					workloadResults = workload.RunAll(ctx, cfg, env.BaseURL)
-					runPhases = append(
-						runPhases,
-						report.SkippedPhase(report.PhaseExperimentWorkloads, ""),
-					)
-				default:
-					fmt.Println("Running experiment workloads...")
-					workloadPhase := report.StartPhase(report.PhaseExperimentWorkloads)
-					workloadResults = workload.RunAll(ctx, cfg, env.BaseURL)
-					for _, result := range workloadResults {
-						printWorkloadResult(result)
+			if gatewayPassed {
+				fmt.Println("Running smoke checks...")
+
+				smokePhase := report.StartPhase(report.PhaseSmokeChecks)
+				results = checker.RunSmokeChecks(env.BaseURL, cfg.Checks.Smoke)
+
+				for _, result := range results {
+					printSmokeResult(result)
+				}
+
+				smokePassed := len(results) > 0 && checker.AllPassed(results)
+				workloadsPassed := true
+				if smokePassed {
+					runPhases = append(runPhases, smokePhase.FinishPassed())
+				} else {
+					smokeError := "one or more smoke checks failed"
+					if len(results) == 0 {
+						smokeError = "no smoke checks were executed"
 					}
-					workloadsPassed = !workload.ShouldFailRun(workloadResults)
-					if workloadsPassed {
-						runPhases = append(runPhases, workloadPhase.FinishPassed())
-					} else {
+					runPhases = append(runPhases, smokePhase.FinishFailed(smokeError))
+				}
+
+				if smokePassed {
+					switch {
+					case len(cfg.Workloads) == 0:
 						runPhases = append(
 							runPhases,
-							workloadPhase.FinishFailed("one or more required experiment workloads failed"),
+							report.SkippedPhase(report.PhaseExperimentWorkloads, ""),
 						)
-					}
-				}
-			} else {
-				runPhases = append(
-					runPhases,
-					report.SkippedPhase(
-						report.PhaseExperimentWorkloads,
-						"skipped because smoke checks failed",
-					),
-				)
-			}
-
-			if smokePassed && cfg.Performance.Enabled {
-				fmt.Println("Running performance checks with k6...")
-
-				performancePhase := report.StartPhase(report.PhasePerformanceChecks)
-				performanceResult = loadtest.RunK6IfEnabled(cfg, env.WorkloadBaseURL, env.WorkDir)
-
-				if performanceResult.Enabled {
-					if performanceResult.Passed {
-						fmt.Println("Performance check passed")
-						runPhases = append(runPhases, performancePhase.FinishPassed())
-					} else {
-						fmt.Printf("Performance check failed: %s\n", performanceResult.Error)
-						errorMessage := performanceResult.Error
-						if errorMessage == "" {
-							errorMessage = "performance check failed"
+					case !workload.HasEnabled(cfg):
+						workloadResults = workload.RunAll(ctx, cfg, env.BaseURL)
+						runPhases = append(
+							runPhases,
+							report.SkippedPhase(report.PhaseExperimentWorkloads, ""),
+						)
+					default:
+						fmt.Println("Running experiment workloads...")
+						workloadPhase := report.StartPhase(report.PhaseExperimentWorkloads)
+						workloadResults = workload.RunAll(ctx, cfg, env.BaseURL)
+						for _, result := range workloadResults {
+							printWorkloadResult(result)
 						}
-						runPhases = append(runPhases, performancePhase.FinishFailed(errorMessage))
+						workloadsPassed = !workload.ShouldFailRun(workloadResults)
+						if workloadsPassed {
+							runPhases = append(runPhases, workloadPhase.FinishPassed())
+						} else {
+							runPhases = append(
+								runPhases,
+								workloadPhase.FinishFailed("one or more required experiment workloads failed"),
+							)
+						}
 					}
+				} else {
+					runPhases = append(
+						runPhases,
+						report.SkippedPhase(
+							report.PhaseExperimentWorkloads,
+							"skipped because smoke checks failed",
+						),
+					)
 				}
-			} else {
-				reason := ""
-				if !smokePassed {
-					reason = "skipped because smoke checks failed"
-				}
-				runPhases = append(
-					runPhases,
-					report.SkippedPhase(report.PhasePerformanceChecks, reason),
-				)
-			}
 
-			passed = smokePassed && workloadsPassed && performanceResult.Passed
+				if smokePassed && cfg.Performance.Enabled {
+					fmt.Println("Running performance checks with k6...")
+
+					performancePhase := report.StartPhase(report.PhasePerformanceChecks)
+					performanceResult = loadtest.RunK6IfEnabled(cfg, env.WorkloadBaseURL, env.WorkDir)
+
+					if performanceResult.Enabled {
+						if performanceResult.Passed {
+							fmt.Println("Performance check passed")
+							runPhases = append(runPhases, performancePhase.FinishPassed())
+						} else {
+							fmt.Printf("Performance check failed: %s\n", performanceResult.Error)
+							errorMessage := performanceResult.Error
+							if errorMessage == "" {
+								errorMessage = "performance check failed"
+							}
+							runPhases = append(runPhases, performancePhase.FinishFailed(errorMessage))
+						}
+					}
+				} else {
+					reason := ""
+					if !smokePassed {
+						reason = "skipped because smoke checks failed"
+					}
+					runPhases = append(
+						runPhases,
+						report.SkippedPhase(report.PhasePerformanceChecks, reason),
+					)
+				}
+
+				passed = smokePassed && workloadsPassed && performanceResult.Passed
+			} else {
+				appendSkippedPhases(
+					&runPhases,
+					[]string{
+						report.PhaseSmokeChecks,
+						report.PhaseExperimentWorkloads,
+						report.PhasePerformanceChecks,
+					},
+					"skipped because gateway checks failed",
+				)
+				passed = false
+			}
 		}
 	}
 
@@ -387,6 +432,7 @@ func Run(cfg *config.Config) error {
 		FinishedAt:         finishedAt,
 		BuildResult:        reportBuildResult(buildResult),
 		ReadinessResults:   readinessResults,
+		GatewayResults:     gatewayResults,
 		Results:            results,
 		WorkloadResults:    workloadResults,
 		PerformanceResult:  reportPerformanceResult(performanceResult),

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/HXong/predeploy-guard/internal/config"
+	"github.com/HXong/predeploy-guard/internal/gateway"
 	"github.com/HXong/predeploy-guard/internal/workload"
 )
 
@@ -51,6 +52,19 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 		},
 		StartedAt:  startedAt,
 		FinishedAt: startedAt.Add(time.Second),
+		GatewayResults: []gateway.RouteResult{{
+			Name:           "homepage-via-gateway",
+			Method:         "GET",
+			Path:           "/",
+			ExpectedStatus: 200,
+			GatewayStatus:  200,
+			GatewayPassed:  true,
+			CompareDirect:  true,
+			DirectStatus:   200,
+			DirectPassed:   true,
+			StatusMatched:  true,
+			Passed:         true,
+		}},
 		WorkloadResults: []workload.Result{{
 			Name:          "warmup-traffic",
 			Type:          "http",
@@ -77,6 +91,9 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 		"| experiment-workloads | passed | 10s | - |",
 		"## Experiment Workloads",
 		"| warmup-traffic | http | fail | GET / | 5 | 5 | 0 | PASS |",
+		"## Gateway Checks",
+		"| homepage-via-gateway | GET | / | 200 | 200 | yes | PASS |",
+		"- Gateway checks: 1 total, 1 passed, 0 failed",
 		"## Runtime Diagnostics",
 		"runtime diagnostic output",
 	} {
@@ -94,6 +111,7 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 		"## Run Timeline",
 		"## Build Check",
 		"## Readiness Checks",
+		"## Gateway Checks",
 		"## Smoke Checks",
 		"## Experiment Workloads",
 		"## Performance Check",
@@ -127,6 +145,7 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 		"ServiceName",
 		"Runtime",
 		"BaseURL",
+		"GatewayResults",
 		"WorkloadResults",
 		"Logs",
 	} {
@@ -140,6 +159,14 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 	}
 	if len(workloads) != 1 || workloads[0].Name != "warmup-traffic" {
 		t.Fatalf("workloads = %#v, want warmup-traffic result", workloads)
+	}
+
+	var gatewayResults []gateway.RouteResult
+	if err := json.Unmarshal(decoded["GatewayResults"], &gatewayResults); err != nil {
+		t.Fatalf("unmarshal gateway results: %v", err)
+	}
+	if len(gatewayResults) != 1 || gatewayResults[0].Name != "homepage-via-gateway" {
+		t.Fatalf("gateway results = %#v, want homepage-via-gateway result", gatewayResults)
 	}
 
 	var environment RuntimeEnvironment

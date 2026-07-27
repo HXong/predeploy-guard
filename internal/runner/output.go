@@ -5,8 +5,39 @@ import (
 	"strings"
 
 	"github.com/HXong/predeploy-guard/internal/checker"
+	"github.com/HXong/predeploy-guard/internal/gateway"
 	"github.com/HXong/predeploy-guard/internal/workload"
 )
+
+func printGatewayResult(result gateway.RouteResult) {
+	status := "FAIL"
+	if result.Passed {
+		status = "PASS"
+	}
+
+	directStatus := ""
+	if result.CompareDirect {
+		directStatus = fmt.Sprintf(" direct=%d", result.DirectStatus)
+	}
+
+	errorText := ""
+	if result.GatewayError != "" {
+		errorText += " gatewayError=" + result.GatewayError
+	}
+	if result.DirectError != "" {
+		errorText += " directError=" + result.DirectError
+	}
+
+	fmt.Printf(
+		"[%s] %s gateway=%d%s duration=%s%s\n",
+		status,
+		result.Name,
+		result.GatewayStatus,
+		directStatus,
+		result.GatewayDuration,
+		errorText,
+	)
+}
 
 func printSmokeResult(result checker.SmokeResult) {
 	status := "FAIL"

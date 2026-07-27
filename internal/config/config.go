@@ -18,6 +18,7 @@ type Config struct {
 	Service      ServiceConfig               `yaml:"service"`
 	Dependencies map[string]DependencyConfig `yaml:"dependencies"`
 	Checks       ChecksConfig                `yaml:"checks"`
+	Gateway      GatewayConfig               `yaml:"gateway"`
 	Workloads    []WorkloadConfig            `yaml:"workloads"`
 	Performance  PerformanceConfig           `yaml:"performance"`
 	Settings     SettingsConfig              `yaml:"settings"`
@@ -68,6 +69,20 @@ type SmokeCheck struct {
 	Method         string `yaml:"method"`
 	Path           string `yaml:"path"`
 	ExpectedStatus int    `yaml:"expectedStatus"`
+}
+
+type GatewayConfig struct {
+	Enabled bool           `yaml:"enabled"`
+	BaseURL string         `yaml:"baseURL"`
+	Routes  []GatewayRoute `yaml:"routes"`
+}
+
+type GatewayRoute struct {
+	Name           string `yaml:"name"`
+	Method         string `yaml:"method"`
+	Path           string `yaml:"path"`
+	ExpectedStatus int    `yaml:"expectedStatus"`
+	CompareDirect  *bool  `yaml:"compareDirect"`
 }
 
 type WorkloadConfig struct {
@@ -215,6 +230,51 @@ func (c *Config) Validate() error {
 			}
 
 			c.Dependencies[name] = dependency
+		}
+	}
+	if c.Gateway.Enabled {
+		if c.Gateway.BaseURL == "" {
+			return fmt.Errorf("gateway.baseURL is required when gateway is enabled")
+		}
+		if !strings.HasPrefix(c.Gateway.BaseURL, "http://") &&
+			!strings.HasPrefix(c.Gateway.BaseURL, "https://") {
+			return fmt.Errorf("gateway.baseURL must start with http:// or https://")
+		}
+		if len(c.Gateway.Routes) == 0 {
+			return fmt.Errorf("gateway.routes must contain at least one route when gateway is enabled")
+		}
+
+		routeNames := make(map[string]struct{}, len(c.Gateway.Routes))
+		for i := range c.Gateway.Routes {
+			route := &c.Gateway.Routes[i]
+			if route.Name == "" {
+				return fmt.Errorf("gateway.routes[%d].name is required", i)
+			}
+			if _, exists := routeNames[route.Name]; exists {
+				return fmt.Errorf("gateway.routes[%d].name %q must be unique", i, route.Name)
+			}
+			routeNames[route.Name] = struct{}{}
+
+			if route.Method == "" {
+				route.Method = "GET"
+			} else {
+				route.Method = strings.ToUpper(route.Method)
+			}
+			if route.Path == "" {
+				return fmt.Errorf("gateway.routes[%d].path is required", i)
+			}
+			if !strings.HasPrefix(route.Path, "/") {
+				return fmt.Errorf("gateway.routes[%d].path must start with /", i)
+			}
+			if route.ExpectedStatus == 0 {
+				route.ExpectedStatus = 200
+			}
+			if route.ExpectedStatus < 100 || route.ExpectedStatus > 599 {
+				return fmt.Errorf("gateway.routes[%d].expectedStatus must be between 100 and 599", i)
+			}
+			if route.CompareDirect == nil {
+				route.CompareDirect = boolPointer(true)
+			}
 		}
 	}
 	workloadNames := make(map[string]struct{}, len(c.Workloads))

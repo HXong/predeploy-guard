@@ -73,9 +73,7 @@ Completed:
 - YAML preview panel
 - Copy/download generated `predeploy.yaml`
 
-## Current Phase
-
-### Phase 8: Deployment Experiment Sandbox
+### Phase 8: Deployment Experiment Sandbox (Completed)
 Goal: allow developers to define and run local deployment experiments from `predeploy.yaml`, using Docker Compose by default and existing Kubernetes/local-cluster contexts through the runtime adapter architecture.
 
 PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It is not a production deployment platform.
@@ -123,13 +121,35 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Use runtime-neutral diagnostics wording across Docker Compose and Kubernetes reports
 - Keep existing JSON report fields stable while adding `runtimeEnvironment` and `runPhases`
 
+## Current Phase
+
+### Phase 9: API Gateway / Ingress Testing
+
+#### Phase 9A: External Gateway Checks (Completed)
+
+- Add optional top-level gateway configuration
+- Validate user-provided external HTTP or HTTPS gateway base URLs
+- Run gateway checks after direct service readiness and before smoke checks
+- Compare selected gateway route statuses with the runtime-provided direct service URL
+- Fail the run and skip later validation checks when a required gateway route fails
+- Include gateway results in Markdown and JSON reports
+- Keep checks runtime-neutral and URL-based
+- Do not install or manage ingress controllers or gateways
+- Do not generate Kubernetes Ingress resources
+
+#### Phase 9B: Ingress/Gateway Resource Integration (Future)
+
+- Explore safe generation of Kubernetes Ingress manifests or runtime integration
+- Keep generated resources clearly owned and scoped to the active local run
+- Avoid assumptions about NGINX, Kong, Istio, Traefik, or any single implementation
+
+#### Phase 9C: Gateway Comparison Reports (Future)
+
+- Add direct-vs-gateway latency comparison
+- Add report summaries and comparison-focused diagnostics
+- Preserve existing report fields while extending structured gateway metrics
+
 ## Future Enhancements
 
 - Optional safe save-to-file flow through the local API
 - GitHub Actions workflow generator for selected configurations and profiles
-
-## Future Direction
-
-### Phase 9: API Gateway / Ingress Testing
-- Gateway config support
-- Direct service vs gateway latency comparison

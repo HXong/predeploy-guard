@@ -10,6 +10,7 @@ import (
 func TestAppendSkippedPhasesPreservesOrder(t *testing.T) {
 	var phases []report.RunPhase
 	names := []string{
+		report.PhaseGatewayChecks,
 		report.PhaseSmokeChecks,
 		report.PhaseExperimentWorkloads,
 		report.PhasePerformanceChecks,

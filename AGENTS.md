@@ -10,11 +10,12 @@ The CLI validates services by:
 3. Preparing the selected local runtime sandbox
 4. Starting dependencies and target service
 5. Running readiness checks
-6. Running smoke checks
-7. Running configured experiment workloads
-8. Running Dockerized k6 performance checks
-9. Writing Markdown/JSON reports
-10. Recording run history
+6. Running optional external gateway checks
+7. Running smoke checks
+8. Running configured experiment workloads
+9. Running Dockerized k6 performance checks
+10. Writing Markdown/JSON reports
+11. Recording run history
 
 The project also exposes a local API server and React dashboard. It helps developers define services and dependencies, run readiness/smoke/performance checks, and generate local configuration through a guided UI.
 
@@ -37,6 +38,7 @@ The next direction is richer, config-driven deployment experiments across Docker
   - `internal/builder`
   - `internal/sandbox`
   - `internal/runtime`
+  - `internal/gateway`
   - `internal/workload`
   - `internal/loadtest`
   - `internal/report`
@@ -62,6 +64,10 @@ The next direction is richer, config-driven deployment experiments across Docker
 - Do not install or start Minikube automatically.
 - Do not make destructive cluster-wide changes.
 - Keep production deployment out of scope.
+- Phase 9A gateway checks must remain runtime-neutral and URL-based.
+- Do not install or manage ingress controllers or gateways in Phase 9A.
+- Do not assume NGINX, Kong, Istio, Traefik, or any other gateway implementation.
+- Do not generate Kubernetes Ingress resources in Phase 9A.
 - Keep experiment workloads generic across HTTP load generation, black-box checks, dependency integration checks, file/log replay, background worker jobs, and message producer/consumer experiments.
 - `internal/workload` owns runtime-neutral workload execution and result types.
 - HTTP traffic is the first implemented workload type and must run through the runtime-provided service base URL.
@@ -103,6 +109,7 @@ The next direction is richer, config-driven deployment experiments across Docker
 - `internal/runtime/factory`: select the configured runtime adapter.
 - `internal/runtime/compose`: adapt the existing Docker Compose sandbox lifecycle, readiness, diagnostics, and cleanup behavior.
 - `internal/runtime/kubernetes`: manage temporary local-cluster namespaces, manifests, rollout readiness, port-forwarding, diagnostics, and owned cleanup through `kubectl`.
+- `internal/gateway`: run external gateway route checks and optional direct-service status comparisons.
 - `internal/history`: manage `reports/history.json`.
 - `internal/report`: write Markdown and JSON reports.
 - `internal/server`: local API server for dashboard.
@@ -220,3 +227,4 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 8C completed: Kubernetes local runtime MVP through existing kubeconfig contexts and developer-managed local clusters.
 - Phase 8D completed: runtime-neutral HTTP experiment workloads.
 - Phase 8E completed: runtime environment summaries, run phase timelines, and runtime diagnostics reporting.
+- Phase 9A completed: external gateway checks and direct-vs-gateway status comparison.

@@ -17,6 +17,7 @@ func printExplainSummary(cfg *config.Config) {
 	printExplainService(cfg)
 	printExplainDependencies(cfg)
 	printExplainReadiness(cfg)
+	printExplainGatewayChecks(cfg)
 	printExplainSmokeChecks(cfg)
 	printExplainWorkloads(cfg)
 	printExplainPerformance(cfg)
@@ -143,7 +144,7 @@ func printExplainReadiness(cfg *config.Config) {
 }
 
 func printExplainSmokeChecks(cfg *config.Config) {
-	fmt.Println("5. Smoke Checks")
+	fmt.Println("6. Smoke Checks")
 
 	if len(cfg.Checks.Smoke) == 0 {
 		fmt.Println("   No smoke checks are configured.")
@@ -165,8 +166,34 @@ func printExplainSmokeChecks(cfg *config.Config) {
 	fmt.Println()
 }
 
+func printExplainGatewayChecks(cfg *config.Config) {
+	fmt.Println("5. Gateway Checks")
+
+	if !cfg.Gateway.Enabled {
+		fmt.Println("   Gateway checks are disabled.")
+		fmt.Println()
+		return
+	}
+
+	fmt.Println("   Gateway checks run after service readiness.")
+	fmt.Printf("   `%d` route(s) will be checked through `%s`.\n", len(cfg.Gateway.Routes), cfg.Gateway.BaseURL)
+	fmt.Println("   Gateway checks compare the configured gateway route to the direct service route when `compareDirect` is enabled.")
+	for _, route := range cfg.Gateway.Routes {
+		compareDirect := route.CompareDirect == nil || *route.CompareDirect
+		fmt.Printf(
+			"   - `%s`: %s %s expects HTTP %d; compareDirect=%t\n",
+			route.Name,
+			route.Method,
+			route.Path,
+			route.ExpectedStatus,
+			compareDirect,
+		)
+	}
+	fmt.Println()
+}
+
 func printExplainPerformance(cfg *config.Config) {
-	fmt.Println("7. Performance Checks")
+	fmt.Println("8. Performance Checks")
 
 	if !cfg.Performance.Enabled {
 		fmt.Println("   Performance checks are disabled.")
@@ -200,7 +227,7 @@ func printExplainPerformance(cfg *config.Config) {
 }
 
 func printExplainWorkloads(cfg *config.Config) {
-	fmt.Println("6. Experiment Workloads")
+	fmt.Println("7. Experiment Workloads")
 
 	if len(cfg.Workloads) == 0 {
 		fmt.Println("   No experiment workloads are configured.")
@@ -233,7 +260,7 @@ func printExplainWorkloads(cfg *config.Config) {
 }
 
 func printExplainReports(cfg *config.Config) {
-	fmt.Println("8. Reports")
+	fmt.Println("9. Reports")
 	fmt.Printf("   Markdown and JSON reports will be written under `%s/reports`.\n", cfg.ConfigDir)
 	fmt.Println("   Reports include a runtime environment summary and phase timeline.")
 	fmt.Println("   Runtime diagnostics are included when collected for a failed or incomplete run.")
@@ -243,7 +270,7 @@ func printExplainReports(cfg *config.Config) {
 }
 
 func printExplainCleanup(cfg *config.Config) {
-	fmt.Println("9. Cleanup")
+	fmt.Println("10. Cleanup")
 
 	if cfg.Settings.Cleanup {
 		fmt.Printf(

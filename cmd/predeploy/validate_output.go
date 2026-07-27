@@ -70,6 +70,25 @@ func printValidationSummary(cfg *config.Config) {
 	}
 
 	fmt.Println()
+	fmt.Println("Gateway")
+	fmt.Printf("  Enabled: %t\n", cfg.Gateway.Enabled)
+	if cfg.Gateway.Enabled {
+		fmt.Printf("  Base URL: %s\n", cfg.Gateway.BaseURL)
+		fmt.Printf("  Routes: %d\n", len(cfg.Gateway.Routes))
+		for _, route := range cfg.Gateway.Routes {
+			compareDirect := route.CompareDirect == nil || *route.CompareDirect
+			fmt.Printf(
+				"    - %s: %s %s expect=%d compare-direct=%t\n",
+				route.Name,
+				route.Method,
+				route.Path,
+				route.ExpectedStatus,
+				compareDirect,
+			)
+		}
+	}
+
+	fmt.Println()
 	fmt.Println("Smoke Checks")
 	if len(cfg.Checks.Smoke) == 0 {
 		fmt.Println("  None")

@@ -7,6 +7,7 @@ import (
 
 	"github.com/HXong/predeploy-guard/internal/checker"
 	"github.com/HXong/predeploy-guard/internal/config"
+	"github.com/HXong/predeploy-guard/internal/gateway"
 	"github.com/HXong/predeploy-guard/internal/workload"
 )
 
@@ -42,6 +43,17 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 		}
 	}
 
+	totalGateway := len(data.GatewayResults)
+	passedGateway := 0
+	failedGateway := 0
+	for _, result := range data.GatewayResults {
+		if result.Passed {
+			passedGateway++
+		} else {
+			failedGateway++
+		}
+	}
+
 	duration := data.FinishedAt.Sub(data.StartedAt)
 
 	fmt.Fprintf(&builder, "# PreDeploy Guard Report\n\n")
@@ -64,12 +76,14 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 	writeRunTimelineSection(&builder, data.RunPhases)
 	writeBuildSection(&builder, data.BuildResult)
 	writeReadinessSection(&builder, data.ReadinessResults)
+	writeGatewaySection(&builder, data.GatewayResults)
 	writeSmokeSection(&builder, data.Results)
 	writeWorkloadSection(&builder, data.WorkloadResults, len(cfg.Workloads))
 	writePerformanceSection(&builder, data.PerformanceResult)
 
 	fmt.Fprintf(&builder, "## Check Summary\n\n")
 	fmt.Fprintf(&builder, "- Readiness checks: %d total, %d passed, %d failed\n", totalReadiness, passedReadiness, failedReadiness)
+	fmt.Fprintf(&builder, "- Gateway checks: %d total, %d passed, %d failed\n", totalGateway, passedGateway, failedGateway)
 	fmt.Fprintf(&builder, "- Smoke checks: %d total, %d passed, %d failed\n", totalSmoke, passedSmoke, failedSmoke)
 	fmt.Fprintf(&builder, "- Experiment workloads: %d configured\n", len(cfg.Workloads))
 	fmt.Fprintf(&builder, "\n")
@@ -92,6 +106,47 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 	}
 
 	return builder.String()
+}
+
+func writeGatewaySection(builder *strings.Builder, results []gateway.RouteResult) {
+	fmt.Fprintf(builder, "## Gateway Checks\n\n")
+
+	if len(results) == 0 {
+		fmt.Fprintf(builder, "No gateway checks were executed.\n\n")
+		return
+	}
+
+	fmt.Fprintf(builder, "| Name | Method | Path | Gateway Status | Direct Status | Status Match | Result |\n")
+	fmt.Fprintf(builder, "|---|---|---|---:|---:|---|---|\n")
+	for _, result := range results {
+		status := "FAIL"
+		if result.Passed {
+			status = "PASS"
+		}
+
+		directStatus := "-"
+		statusMatched := "-"
+		if result.CompareDirect {
+			directStatus = fmt.Sprintf("%d", result.DirectStatus)
+			statusMatched = "no"
+			if result.StatusMatched {
+				statusMatched = "yes"
+			}
+		}
+
+		fmt.Fprintf(
+			builder,
+			"| %s | %s | %s | %d | %s | %s | %s |\n",
+			escapeMarkdownTable(result.Name),
+			escapeMarkdownTable(result.Method),
+			escapeMarkdownTable(result.Path),
+			result.GatewayStatus,
+			directStatus,
+			statusMatched,
+			status,
+		)
+	}
+	fmt.Fprintf(builder, "\n")
 }
 
 func writeRuntimeEnvironmentSection(builder *strings.Builder, data ReportData) {
