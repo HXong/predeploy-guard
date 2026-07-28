@@ -84,9 +84,15 @@ Ingress generation is disabled by default and requires the Kubernetes runtime. T
 - is applied in the existing runtime-start manifest operation; and
 - is removed with the owned temporary namespace during normal cleanup.
 
-Phase 9B does not create an IngressClass, controller Deployment, LoadBalancer Service, NodePort Service, or any cluster-wide resource. It does not wait for controller readiness. Gateway checks naturally report a failure if `gateway.baseURL` is not routed correctly.
+Phase 9B does not create an IngressClass, controller Deployment, LoadBalancer Service, NodePort Service, or any cluster-wide resource. It does not query controller-specific readiness; bounded gateway requests determine whether the generated route is active.
 
 The user remains responsible for installing and configuring a suitable local ingress controller and ensuring `gateway.baseURL` resolves to its endpoint. PreDeploy Guard does not edit host files or discover controller addresses.
+
+### Generated Ingress stabilization
+
+Service readiness can pass before an ingress controller has observed and activated a newly applied route. When `gateway.ingress.enabled` is true, gateway checks therefore retry every second until all configured routes pass or the retry window expires.
+
+The retry window uses `settings.timeoutSeconds` with a maximum of 30 seconds. Only the final route results are included in the report, while the gateway-check phase duration captures the total stabilization wait. Phase 9A checks against externally managed gateways remain single-attempt checks.
 
 ## Future Phase 9C: Latency Comparison
 

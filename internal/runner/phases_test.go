@@ -2,7 +2,9 @@ package runner
 
 import (
 	"testing"
+	"time"
 
+	"github.com/HXong/predeploy-guard/internal/config"
 	"github.com/HXong/predeploy-guard/internal/report"
 	predeployruntime "github.com/HXong/predeploy-guard/internal/runtime"
 )
@@ -49,5 +51,28 @@ func TestRuntimeEnvironmentSummary(t *testing.T) {
 		summary.BaseURL != env.BaseURL ||
 		summary.WorkloadBaseURL != env.WorkloadBaseURL {
 		t.Fatalf("runtime environment summary = %#v, want safe environment fields", summary)
+	}
+}
+
+func TestGeneratedIngressGatewayCheckTimeout(t *testing.T) {
+	tests := []struct {
+		name           string
+		timeoutSeconds int
+		want           time.Duration
+	}{
+		{name: "uses configured timeout below cap", timeoutSeconds: 12, want: 12 * time.Second},
+		{name: "caps configured timeout", timeoutSeconds: 120, want: 30 * time.Second},
+		{name: "defaults invalid timeout to cap", timeoutSeconds: 0, want: 30 * time.Second},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cfg := &config.Config{
+				Settings: config.SettingsConfig{TimeoutSeconds: test.timeoutSeconds},
+			}
+			if got := generatedIngressGatewayCheckTimeout(cfg); got != test.want {
+				t.Fatalf("timeout = %s, want %s", got, test.want)
+			}
+		})
 	}
 }

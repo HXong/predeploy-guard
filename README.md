@@ -643,6 +643,8 @@ Ingress generation is optional, Kubernetes-only, namespace-scoped, and disabled 
 
 PreDeploy Guard does not install or manage an ingress controller. `gateway.baseURL` must already resolve to the local ingress endpoint; PreDeploy Guard does not discover ingress IPs or edit host files.
 
+Because ingress controllers synchronize new routes asynchronously, generated-ingress gateway checks retry every second until all routes pass. The retry window uses `settings.timeoutSeconds`, capped at 30 seconds. External gateway checks without generated Ingress remain single-attempt checks.
+
 ---
 
 ## Reports and History

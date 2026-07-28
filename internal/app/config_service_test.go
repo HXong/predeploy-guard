@@ -88,6 +88,8 @@ func TestConfigSummaryAndExplainIncludeWorkloads(t *testing.T) {
 		"generate an owned Kubernetes Ingress",
 		"does not install or manage an ingress controller",
 		"must already resolve to the local ingress endpoint",
+		"retry every second",
+		"capped at 30 seconds",
 	} {
 		if !strings.Contains(gatewayDetails, want) {
 			t.Fatalf("gateway explanation %q does not contain %q", gatewayDetails, want)

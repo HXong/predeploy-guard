@@ -182,6 +182,8 @@ func printExplainGatewayChecks(cfg *config.Config) {
 		fmt.Println("   PreDeploy Guard will generate an owned Kubernetes Ingress in the temporary namespace.")
 		fmt.Println("   PreDeploy Guard does not install or manage an ingress controller.")
 		fmt.Println("   `gateway.baseURL` must already resolve to the local ingress endpoint.")
+		fmt.Println("   Gateway checks will retry every second while the generated Ingress route is being synchronized.")
+		fmt.Println("   Retries use the configured timeout, capped at 30 seconds.")
 	}
 	for _, route := range cfg.Gateway.Routes {
 		compareDirect := route.CompareDirect == nil || *route.CompareDirect

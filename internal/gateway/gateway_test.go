@@ -4,7 +4,9 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/HXong/predeploy-guard/internal/config"
 )
@@ -72,6 +74,64 @@ func TestRunChecksSkipsDirectRequestWhenComparisonDisabled(t *testing.T) {
 	}
 	if results[0].CompareDirect || results[0].DirectURL != "" {
 		t.Fatalf("result = %#v, want direct comparison omitted", results[0])
+	}
+}
+
+func TestRunChecksUntilReadyRetriesUntilGatewayPasses(t *testing.T) {
+	var attempts atomic.Int32
+	gatewayServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if attempts.Add(1) < 3 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer gatewayServer.Close()
+	directServer := statusServer(http.StatusOK)
+	defer directServer.Close()
+
+	results := runChecksUntilReady(
+		context.Background(),
+		gatewayConfig(gatewayServer.URL),
+		directServer.URL,
+		500*time.Millisecond,
+		5*time.Millisecond,
+	)
+
+	if len(results) != 1 || !results[0].Passed {
+		t.Fatalf("results = %#v, want final retry to pass", results)
+	}
+	if attempts.Load() < 3 {
+		t.Fatalf("attempts = %d, want at least 3", attempts.Load())
+	}
+}
+
+func TestRunChecksUntilReadyReturnsFinalFailureAtTimeout(t *testing.T) {
+	var attempts atomic.Int32
+	gatewayServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempts.Add(1)
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer gatewayServer.Close()
+	directServer := statusServer(http.StatusOK)
+	defer directServer.Close()
+
+	results := runChecksUntilReady(
+		context.Background(),
+		gatewayConfig(gatewayServer.URL),
+		directServer.URL,
+		150*time.Millisecond,
+		5*time.Millisecond,
+	)
+
+	if len(results) != 1 || results[0].Passed {
+		t.Fatalf("results = %#v, want final retry to fail", results)
+	}
+	if results[0].GatewayStatus != http.StatusServiceUnavailable {
+		t.Fatalf("gateway status = %d, want 503", results[0].GatewayStatus)
+	}
+	if attempts.Load() < 2 {
+		t.Fatalf("attempts = %d, want multiple attempts before timeout", attempts.Load())
 	}
 }
 

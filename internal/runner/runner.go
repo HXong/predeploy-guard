@@ -275,7 +275,16 @@ func Run(cfg *config.Config) error {
 			if cfg.Gateway.Enabled {
 				fmt.Println("Running gateway checks...")
 				gatewayPhase := report.StartPhase(report.PhaseGatewayChecks)
-				gatewayResults = gateway.RunChecks(ctx, cfg, env.BaseURL)
+				if cfg.Gateway.Ingress.Enabled {
+					gatewayResults = gateway.RunChecksUntilReady(
+						ctx,
+						cfg,
+						env.BaseURL,
+						generatedIngressGatewayCheckTimeout(cfg),
+					)
+				} else {
+					gatewayResults = gateway.RunChecks(ctx, cfg, env.BaseURL)
+				}
 				for _, result := range gatewayResults {
 					printGatewayResult(result)
 				}

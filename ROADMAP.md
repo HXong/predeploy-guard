@@ -143,6 +143,7 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Keep generated resources namespace-scoped and clearly owned by the active local run
 - Apply the Ingress through the existing Kubernetes runtime-start manifest flow
 - Support optional host, ingress class name, path type, and annotations
+- Retry generated-ingress gateway checks every second during controller synchronization, bounded by the configured timeout and a 30-second cap
 - Avoid assumptions about NGINX, Kong, Istio, Traefik, or any single implementation
 - Do not install or manage an ingress controller
 - Do not add TLS, authentication, custom headers, Gateway API resources, host-file editing, or automatic ingress IP discovery

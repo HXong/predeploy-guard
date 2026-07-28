@@ -8,25 +8,26 @@ service:
   port: 80
   healthPath: /
 
+gateway:
+  enabled: true
+  baseURL: http://127.0.0.1:8088
+  ingress:
+    enabled: true
+    className: nginx
+    pathType: Prefix
+  routes:
+    - name: homepage-via-ingress
+      method: GET
+      path: /
+      expectedStatus: 200
+      compareDirect: true
+
 checks:
   smoke:
     - name: nginx homepage
       method: GET
       path: /
       expectedStatus: 200
-
-performance:
-  enabled: false
-
-gateway:
-  enabled: true
-  baseURL: http://127.0.0.1:8088
-  routes:
-    - name: homepage-via-gateway
-      method: GET
-      path: /
-      expectedStatus: 200
-      compareDirect: true
 
 workloads:
   - name: nginx repeated traffic
@@ -39,7 +40,10 @@ workloads:
     expectedStatus: 200
     failurePolicy: fail
 
+performance:
+  enabled: false
+
 settings:
   namespacePrefix: predeploy
-  cleanup: false
+  cleanup: true
   timeoutSeconds: 120

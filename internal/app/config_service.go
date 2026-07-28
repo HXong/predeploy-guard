@@ -479,6 +479,8 @@ func (s *ConfigService) explainGatewayChecks() ConfigExplanationStep {
 			"PreDeploy Guard will generate an owned Kubernetes Ingress in the temporary namespace.",
 			"PreDeploy Guard does not install or manage an ingress controller.",
 			"gateway.baseURL must already resolve to the local ingress endpoint.",
+			"Gateway checks will retry every second while the generated Ingress route is being synchronized.",
+			"Retries use the configured timeout, capped at 30 seconds.",
 		)
 	}
 	for _, route := range s.gatewayRouteSummaries() {

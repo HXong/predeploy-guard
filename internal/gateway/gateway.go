@@ -46,6 +46,59 @@ func RunChecks(ctx context.Context, cfg *config.Config, directBaseURL string) []
 	return results
 }
 
+func RunChecksUntilReady(
+	ctx context.Context,
+	cfg *config.Config,
+	directBaseURL string,
+	timeout time.Duration,
+) []RouteResult {
+	return runChecksUntilReady(ctx, cfg, directBaseURL, timeout, time.Second)
+}
+
+func runChecksUntilReady(
+	ctx context.Context,
+	cfg *config.Config,
+	directBaseURL string,
+	timeout time.Duration,
+	retryInterval time.Duration,
+) []RouteResult {
+	if !cfg.Gateway.Enabled {
+		return nil
+	}
+	if timeout <= 0 {
+		return RunChecks(ctx, cfg, directBaseURL)
+	}
+	if retryInterval <= 0 {
+		retryInterval = time.Second
+	}
+
+	retryContext, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	var lastCompletedResults []RouteResult
+	for {
+		attemptResults := RunChecks(retryContext, cfg, directBaseURL)
+		if AllPassed(attemptResults) {
+			return attemptResults
+		}
+		if retryContext.Err() != nil {
+			if len(lastCompletedResults) > 0 {
+				return lastCompletedResults
+			}
+			return attemptResults
+		}
+		lastCompletedResults = attemptResults
+
+		timer := time.NewTimer(retryInterval)
+		select {
+		case <-retryContext.Done():
+			timer.Stop()
+			return lastCompletedResults
+		case <-timer.C:
+		}
+	}
+}
+
 func AllPassed(results []RouteResult) bool {
 	if len(results) == 0 {
 		return false
