@@ -68,7 +68,16 @@ type SmokeCheckSummary struct {
 type GatewaySummary struct {
 	Enabled bool                  `json:"enabled"`
 	BaseURL string                `json:"baseUrl,omitempty"`
+	Ingress GatewayIngressSummary `json:"ingress"`
 	Routes  []GatewayRouteSummary `json:"routes"`
+}
+
+type GatewayIngressSummary struct {
+	Enabled         bool   `json:"enabled"`
+	Host            string `json:"host,omitempty"`
+	ClassName       string `json:"className,omitempty"`
+	PathType        string `json:"pathType,omitempty"`
+	AnnotationCount int    `json:"annotationCount"`
 }
 
 type GatewayRouteSummary struct {
@@ -186,7 +195,14 @@ func (s *ConfigService) Summary() ConfigSummary {
 		Gateway: GatewaySummary{
 			Enabled: s.cfg.Gateway.Enabled,
 			BaseURL: s.cfg.Gateway.BaseURL,
-			Routes:  gatewayRoutes,
+			Ingress: GatewayIngressSummary{
+				Enabled:         s.cfg.Gateway.Ingress.Enabled,
+				Host:            s.cfg.Gateway.Ingress.Host,
+				ClassName:       s.cfg.Gateway.Ingress.ClassName,
+				PathType:        s.cfg.Gateway.Ingress.PathType,
+				AnnotationCount: len(s.cfg.Gateway.Ingress.Annotations),
+			},
+			Routes: gatewayRoutes,
 		},
 		SmokeChecks: smokeChecks,
 		Workloads:   workloads,
@@ -456,6 +472,14 @@ func (s *ConfigService) explainGatewayChecks() ConfigExplanationStep {
 		"Gateway checks run after service readiness.",
 		fmt.Sprintf("%d gateway route(s) will be checked through %q.", len(s.cfg.Gateway.Routes), s.cfg.Gateway.BaseURL),
 		"Gateway checks compare the configured gateway route to the direct service route when compareDirect is enabled.",
+	}
+	if s.cfg.Gateway.Ingress.Enabled {
+		details = append(
+			details,
+			"PreDeploy Guard will generate an owned Kubernetes Ingress in the temporary namespace.",
+			"PreDeploy Guard does not install or manage an ingress controller.",
+			"gateway.baseURL must already resolve to the local ingress endpoint.",
+		)
 	}
 	for _, route := range s.gatewayRouteSummaries() {
 		details = append(

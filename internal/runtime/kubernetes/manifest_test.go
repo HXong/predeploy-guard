@@ -99,6 +99,106 @@ func TestGenerateManifestsForDependencyShellReadiness(t *testing.T) {
 	}
 }
 
+func TestGenerateManifestsIncludesIngressWhenEnabled(t *testing.T) {
+	cfg := testManifestConfig()
+	cfg.Runtime.Type = "kubernetes"
+	cfg.Gateway = config.GatewayConfig{
+		Enabled: true,
+		BaseURL: "http://predeploy.local",
+		Ingress: config.GatewayIngressConfig{
+			Enabled:   true,
+			Host:      "predeploy.local",
+			ClassName: "local-controller",
+			PathType:  "Exact",
+			Annotations: map[string]string{
+				"example.test/setting": "enabled",
+			},
+		},
+		Routes: []config.GatewayRoute{
+			{Name: "homepage", Path: "/"},
+			{Name: "api", Path: "/api"},
+		},
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+
+	manifest := mustGenerateManifest(t, &cfg)
+
+	for _, want := range []string{
+		"apiVersion: networking.k8s.io/v1",
+		"kind: Ingress",
+		"name: booking-service",
+		"namespace: predeploy-booking-a1b2c3d4",
+		"app.kubernetes.io/managed-by: predeploy-guard",
+		"predeploy.guard/run: predeploy-booking-a1b2c3d4",
+		"example.test/setting: enabled",
+		"ingressClassName: local-controller",
+		"host: predeploy.local",
+		"path: /",
+		"path: /api",
+		"pathType: Exact",
+		"number: 8080",
+	} {
+		if !strings.Contains(manifest, want) {
+			t.Fatalf("manifest does not contain %q:\n%s", want, manifest)
+		}
+	}
+}
+
+func TestGenerateManifestsOmitsIngressWhenDisabled(t *testing.T) {
+	cfg := testManifestConfig()
+	cfg.Gateway = config.GatewayConfig{
+		Enabled: true,
+		BaseURL: "http://predeploy.local",
+		Routes: []config.GatewayRoute{{
+			Name: "homepage",
+			Path: "/",
+		}},
+	}
+
+	manifest := mustGenerateManifest(t, &cfg)
+
+	if strings.Contains(manifest, "kind: Ingress") {
+		t.Fatalf("manifest unexpectedly contains Ingress:\n%s", manifest)
+	}
+}
+
+func TestGenerateIngressOmitsOptionalHostAndClassAndDeduplicatesPaths(t *testing.T) {
+	cfg := testManifestConfig()
+	cfg.Gateway = config.GatewayConfig{
+		Enabled: true,
+		BaseURL: "http://127.0.0.1",
+		Ingress: config.GatewayIngressConfig{
+			Enabled: true,
+		},
+		Routes: []config.GatewayRoute{
+			{Name: "homepage-get", Path: "/"},
+			{Name: "homepage-post", Method: "POST", Path: "/"},
+		},
+	}
+
+	manifest := mustGenerateManifest(t, &cfg)
+	ingressStart := strings.Index(manifest, "apiVersion: networking.k8s.io/v1")
+	if ingressStart < 0 {
+		t.Fatalf("manifest does not contain Ingress:\n%s", manifest)
+	}
+	ingressDocument := manifest[ingressStart:]
+
+	if strings.Contains(ingressDocument, "ingressClassName:") {
+		t.Fatalf("ingress unexpectedly contains ingressClassName:\n%s", ingressDocument)
+	}
+	if strings.Contains(ingressDocument, "host:") {
+		t.Fatalf("ingress unexpectedly contains host:\n%s", ingressDocument)
+	}
+	if strings.Count(ingressDocument, "path: /") != 1 {
+		t.Fatalf("ingress path count = %d, want 1:\n%s", strings.Count(ingressDocument, "path: /"), ingressDocument)
+	}
+	if !strings.Contains(ingressDocument, "pathType: Prefix") {
+		t.Fatalf("ingress does not contain default Prefix path type:\n%s", ingressDocument)
+	}
+}
+
 func mustGenerateManifest(t *testing.T, cfg *config.Config) string {
 	t.Helper()
 

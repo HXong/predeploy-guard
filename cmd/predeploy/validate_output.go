@@ -74,6 +74,20 @@ func printValidationSummary(cfg *config.Config) {
 	fmt.Printf("  Enabled: %t\n", cfg.Gateway.Enabled)
 	if cfg.Gateway.Enabled {
 		fmt.Printf("  Base URL: %s\n", cfg.Gateway.BaseURL)
+		ingressState := "disabled"
+		if cfg.Gateway.Ingress.Enabled {
+			ingressState = "enabled"
+		}
+		fmt.Printf("  Ingress: %s\n", ingressState)
+		if cfg.Gateway.Ingress.Enabled {
+			if cfg.Gateway.Ingress.Host != "" {
+				fmt.Printf("  Ingress host: %s\n", cfg.Gateway.Ingress.Host)
+			}
+			if cfg.Gateway.Ingress.ClassName != "" {
+				fmt.Printf("  Ingress class: %s\n", cfg.Gateway.Ingress.ClassName)
+			}
+			fmt.Printf("  Ingress path type: %s\n", cfg.Gateway.Ingress.PathType)
+		}
 		fmt.Printf("  Routes: %d\n", len(cfg.Gateway.Routes))
 		for _, route := range cfg.Gateway.Routes {
 			compareDirect := route.CompareDirect == nil || *route.CompareDirect

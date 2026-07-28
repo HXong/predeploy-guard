@@ -10,9 +10,10 @@ import (
 )
 
 type objectMetadata struct {
-	Name      string            `yaml:"name"`
-	Namespace string            `yaml:"namespace"`
-	Labels    map[string]string `yaml:"labels"`
+	Name        string            `yaml:"name"`
+	Namespace   string            `yaml:"namespace"`
+	Labels      map[string]string `yaml:"labels"`
+	Annotations map[string]string `yaml:"annotations,omitempty"`
 }
 
 type deploymentManifest struct {
@@ -95,13 +96,53 @@ type servicePort struct {
 	TargetPort int32 `yaml:"targetPort"`
 }
 
+type ingressManifest struct {
+	APIVersion string              `yaml:"apiVersion"`
+	Kind       string              `yaml:"kind"`
+	Metadata   objectMetadata      `yaml:"metadata"`
+	Spec       ingressManifestSpec `yaml:"spec"`
+}
+
+type ingressManifestSpec struct {
+	IngressClassName string        `yaml:"ingressClassName,omitempty"`
+	Rules            []ingressRule `yaml:"rules"`
+}
+
+type ingressRule struct {
+	Host string          `yaml:"host,omitempty"`
+	HTTP ingressHTTPRule `yaml:"http"`
+}
+
+type ingressHTTPRule struct {
+	Paths []ingressPath `yaml:"paths"`
+}
+
+type ingressPath struct {
+	Path     string         `yaml:"path"`
+	PathType string         `yaml:"pathType"`
+	Backend  ingressBackend `yaml:"backend"`
+}
+
+type ingressBackend struct {
+	Service ingressBackendService `yaml:"service"`
+}
+
+type ingressBackendService struct {
+	Name string             `yaml:"name"`
+	Port ingressBackendPort `yaml:"port"`
+}
+
+type ingressBackendPort struct {
+	Number int32 `yaml:"number"`
+}
+
 func generateManifests(cfg *config.Config, namespace string) ([]byte, error) {
 	serviceName := sanitizeDNS1123(cfg.Service.Name)
 	usedDeploymentNames := map[string]string{
 		serviceName: "service",
 	}
 
-	documents := make([]interface{}, 0, 2+len(cfg.Dependencies)*2)
+	documents := make([]interface{}, 0, 3+len(cfg.Dependencies)*2)
 	for _, dependencyName := range sortedDependencyNames(cfg.Dependencies) {
 		resourceName := sanitizeDNS1123(dependencyName)
 		if owner, exists := usedDeploymentNames[resourceName]; exists {
@@ -127,6 +168,12 @@ func generateManifests(cfg *config.Config, namespace string) ([]byte, error) {
 
 	documents = append(documents, serviceDeployment(namespace, serviceName, cfg.Service))
 	documents = append(documents, newServiceManifest(namespace, serviceName, cfg.Service.Port))
+	if cfg.Gateway.Enabled && cfg.Gateway.Ingress.Enabled {
+		documents = append(
+			documents,
+			newIngressManifest(namespace, serviceName, cfg.Service.Port, cfg.Gateway),
+		)
+	}
 
 	var output bytes.Buffer
 	for index, document := range documents {
@@ -247,6 +294,55 @@ func newServiceManifest(namespace string, name string, port int32) serviceManife
 			Ports: []servicePort{{
 				Port:       port,
 				TargetPort: port,
+			}},
+		},
+	}
+}
+
+func newIngressManifest(
+	namespace string,
+	serviceName string,
+	servicePort int32,
+	gateway config.GatewayConfig,
+) ingressManifest {
+	pathType := gateway.Ingress.PathType
+	if pathType == "" {
+		pathType = "Prefix"
+	}
+
+	paths := make([]ingressPath, 0, len(gateway.Routes))
+	seenPaths := make(map[string]struct{}, len(gateway.Routes))
+	for _, route := range gateway.Routes {
+		if _, exists := seenPaths[route.Path]; exists {
+			continue
+		}
+		seenPaths[route.Path] = struct{}{}
+		paths = append(paths, ingressPath{
+			Path:     route.Path,
+			PathType: pathType,
+			Backend: ingressBackend{
+				Service: ingressBackendService{
+					Name: serviceName,
+					Port: ingressBackendPort{Number: servicePort},
+				},
+			},
+		})
+	}
+
+	return ingressManifest{
+		APIVersion: "networking.k8s.io/v1",
+		Kind:       "Ingress",
+		Metadata: objectMetadata{
+			Name:        serviceName,
+			Namespace:   namespace,
+			Labels:      resourceLabels(serviceName, namespace),
+			Annotations: gateway.Ingress.Annotations,
+		},
+		Spec: ingressManifestSpec{
+			IngressClassName: gateway.Ingress.ClassName,
+			Rules: []ingressRule{{
+				Host: gateway.Ingress.Host,
+				HTTP: ingressHTTPRule{Paths: paths},
 			}},
 		},
 	}

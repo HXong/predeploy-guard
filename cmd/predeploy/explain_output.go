@@ -178,6 +178,11 @@ func printExplainGatewayChecks(cfg *config.Config) {
 	fmt.Println("   Gateway checks run after service readiness.")
 	fmt.Printf("   `%d` route(s) will be checked through `%s`.\n", len(cfg.Gateway.Routes), cfg.Gateway.BaseURL)
 	fmt.Println("   Gateway checks compare the configured gateway route to the direct service route when `compareDirect` is enabled.")
+	if cfg.Gateway.Ingress.Enabled {
+		fmt.Println("   PreDeploy Guard will generate an owned Kubernetes Ingress in the temporary namespace.")
+		fmt.Println("   PreDeploy Guard does not install or manage an ingress controller.")
+		fmt.Println("   `gateway.baseURL` must already resolve to the local ingress endpoint.")
+	}
 	for _, route := range cfg.Gateway.Routes {
 		compareDirect := route.CompareDirect == nil || *route.CompareDirect
 		fmt.Printf(

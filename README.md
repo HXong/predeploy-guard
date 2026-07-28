@@ -117,6 +117,7 @@ This project demonstrates backend engineering, developer tooling, Docker-based w
 - Dependency readiness checks
 - Service readiness checks
 - Optional external gateway route checks with direct-service status comparison
+- Optional owned Kubernetes Ingress generation for configured gateway routes
 - HTTP smoke checks
 - Runtime-neutral HTTP experiment workloads with configurable rate, duration, expected status, and failure policy
 - Dockerized k6 performance checks
@@ -614,12 +615,20 @@ settings:
 
 ## Gateway Checks
 
-Phase 9A can validate selected routes through an external gateway URL after the direct service becomes ready:
+Phase 9A validates selected routes through an external gateway URL after the direct service becomes ready. Phase 9B can also generate an owned Kubernetes Ingress for those routes:
 
 ```yaml
+runtime:
+  type: kubernetes
+
 gateway:
   enabled: true
-  baseURL: http://localhost:8088
+  baseURL: http://predeploy.local
+  ingress:
+    enabled: true
+    host: predeploy.local
+    className: local-controller
+    pathType: Prefix
   routes:
     - name: homepage-via-gateway
       method: GET
@@ -630,7 +639,9 @@ gateway:
 
 Each route is requested through `gateway.baseURL`. When `compareDirect` is enabled, the same method and path are also requested through the runtime-provided direct service URL, and both responses must have the expected, matching status. `method`, `expectedStatus`, and `compareDirect` default to `GET`, `200`, and `true`.
 
-Gateway checks are runtime-neutral and URL-based. PreDeploy Guard does not install or manage an ingress controller or gateway, and Phase 9A does not generate Kubernetes Ingress resources.
+Ingress generation is optional, Kubernetes-only, namespace-scoped, and disabled by default. PreDeploy Guard uses the configured routes, host, class name, path type, and annotations without adding controller-specific settings.
+
+PreDeploy Guard does not install or manage an ingress controller. `gateway.baseURL` must already resolve to the local ingress endpoint; PreDeploy Guard does not discover ingress IPs or edit host files.
 
 ---
 
@@ -656,7 +667,8 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 - HTTP is the first implemented experiment workload; file/log replay, message producers/consumers, background jobs, custom commands, and Kubernetes Jobs remain future work
 - Guided config builder previews and exports YAML in the browser; it does not write configuration files through the backend
 - Gateway validation requires a separately managed, reachable external gateway URL
-- Gateway latency comparison and generated ingress/gateway resources are not implemented yet
+- Generated Ingress resources do not support TLS, authentication, custom headers, or Gateway API yet
+- Gateway latency comparison is not implemented yet
 - Dependency readiness depends on user-provided commands
 - Smoke checks currently support simple HTTP status validation
 - Profile overrides are section-level replacements rather than deep merges
@@ -686,12 +698,12 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
   - completed runtime environment, phase timeline, and diagnostics report enhancements
   - future: additional generic workload types
 - Phase 9A: External gateway checks and direct-vs-gateway status comparison
+- Phase 9B: Owned Kubernetes Ingress manifest generation
 
 ### Future
 
 - Optional safe config save-to-file workflow
 - GitHub Actions workflow generator
-- Phase 9B: Generated Kubernetes Ingress manifests or gateway runtime integration
 - Phase 9C: Gateway latency comparison and report enhancements
 
 ---

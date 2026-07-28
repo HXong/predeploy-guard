@@ -18,6 +18,16 @@ checks:
 performance:
   enabled: false
 
+gateway:
+  enabled: true
+  baseURL: http://127.0.0.1:8088
+  routes:
+    - name: homepage-via-gateway
+      method: GET
+      path: /
+      expectedStatus: 200
+      compareDirect: true
+
 workloads:
   - name: nginx repeated traffic
     type: http
@@ -31,5 +41,5 @@ workloads:
 
 settings:
   namespacePrefix: predeploy
-  cleanup: true
+  cleanup: false
   timeoutSeconds: 120

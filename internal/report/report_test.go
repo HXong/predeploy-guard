@@ -16,8 +16,24 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 	startedAt := time.Date(2026, time.July, 24, 10, 0, 0, 0, time.UTC)
 	cfg := &config.Config{
 		ConfigDir: t.TempDir(),
+		Runtime: config.RuntimeConfig{
+			Type: "kubernetes",
+		},
 		Service: config.ServiceConfig{
 			Name: "test-service",
+		},
+		Gateway: config.GatewayConfig{
+			Enabled: true,
+			BaseURL: "http://predeploy.local",
+			Ingress: config.GatewayIngressConfig{
+				Enabled:   true,
+				Host:      "predeploy.local",
+				ClassName: "local-controller",
+			},
+			Routes: []config.GatewayRoute{{
+				Name: "homepage-via-gateway",
+				Path: "/",
+			}},
 		},
 		Workloads: []config.WorkloadConfig{{
 			Name: "warmup-traffic",
@@ -92,6 +108,9 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 		"## Experiment Workloads",
 		"| warmup-traffic | http | fail | GET / | 5 | 5 | 0 | PASS |",
 		"## Gateway Checks",
+		"- Ingress generation: enabled",
+		"- Ingress host: predeploy.local",
+		"- Ingress class: local-controller",
 		"| homepage-via-gateway | GET | / | 200 | 200 | yes | PASS |",
 		"- Gateway checks: 1 total, 1 passed, 0 failed",
 		"## Runtime Diagnostics",

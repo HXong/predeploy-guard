@@ -10,15 +10,17 @@ Phase 9 adds runtime-neutral validation for gateway-routed traffic. It begins wi
 
 ## Non-goals
 
-Phase 9A does not:
+Phase 9 does not:
 
 - install or manage an ingress controller or gateway;
 - install NGINX Ingress Controller, Traefik, Kong, Istio, or another gateway;
-- generate Kubernetes Ingress or gateway resources;
 - add Helm;
-- change Docker Compose or Kubernetes runtime behavior;
 - add gateway authentication, headers, or implementation-specific configuration;
-- compare gateway and direct-service latency.
+- compare gateway and direct-service latency;
+- add TLS;
+- generate Gateway API resources;
+- edit `/etc/hosts` or another host file;
+- discover ingress IP addresses automatically.
 
 ## Phase 9A: External Gateway Checks
 
@@ -50,9 +52,41 @@ If any gateway route fails, the run fails and smoke, workload, and performance c
 
 Markdown and JSON reports include structured gateway results. The Markdown gateway table appears after readiness checks and before smoke checks.
 
-## Future Phase 9B: Ingress/Gateway Resource Generation
+## Phase 9B: Kubernetes Ingress Manifest Generation
 
-Phase 9B may explore generating clearly owned Kubernetes Ingress manifests or adding safe gateway runtime integration. Any design must remain portable across local development clusters and avoid binding the configuration model to one controller or gateway product.
+Phase 9B optionally generates a `networking.k8s.io/v1` Ingress in the same temporary namespace as the target service:
+
+```yaml
+runtime:
+  type: kubernetes
+
+gateway:
+  enabled: true
+  baseURL: http://predeploy.local
+  ingress:
+    enabled: true
+    host: predeploy.local
+    className: local-controller
+    pathType: Prefix
+    annotations:
+      example.test/setting: enabled
+  routes:
+    - name: homepage-via-gateway
+      path: /
+```
+
+Ingress generation is disabled by default and requires the Kubernetes runtime. The generated resource:
+
+- uses the sanitized target service name and temporary namespace;
+- carries the same owned labels as other runtime resources;
+- maps each unique configured gateway path to the target ClusterIP Service and service port;
+- includes the host, ingress class name, path type, and annotations only as configured;
+- is applied in the existing runtime-start manifest operation; and
+- is removed with the owned temporary namespace during normal cleanup.
+
+Phase 9B does not create an IngressClass, controller Deployment, LoadBalancer Service, NodePort Service, or any cluster-wide resource. It does not wait for controller readiness. Gateway checks naturally report a failure if `gateway.baseURL` is not routed correctly.
+
+The user remains responsible for installing and configuring a suitable local ingress controller and ensuring `gateway.baseURL` resolves to its endpoint. PreDeploy Guard does not edit host files or discover controller addresses.
 
 ## Future Phase 9C: Latency Comparison
 
@@ -64,6 +98,8 @@ Phase 9C may add direct-vs-gateway latency comparisons, thresholds, and report e
 - Never install, start, reconfigure, or delete a gateway or ingress controller.
 - Never make cluster-wide changes.
 - Keep gateway checks independent of Docker Compose and Kubernetes adapters.
+- Keep generated ingress resources owned and namespace-scoped.
+- Preserve configured route order while deduplicating identical paths.
 - Send only the configured HTTP method and route; do not expose environment variables or sensitive configuration.
 - Use bounded HTTP timeouts and honor run cancellation through context.
 - Preserve existing behavior when gateway validation is disabled.

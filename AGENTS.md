@@ -68,6 +68,10 @@ The next direction is richer, config-driven deployment experiments across Docker
 - Do not install or manage ingress controllers or gateways in Phase 9A.
 - Do not assume NGINX, Kong, Istio, Traefik, or any other gateway implementation.
 - Do not generate Kubernetes Ingress resources in Phase 9A.
+- Gateway and ingress support must remain controller-neutral.
+- Do not hardcode NGINX, Kong, Istio, Traefik, or any specific ingress implementation.
+- Do not create cluster-wide gateway or ingress resources.
+- Generated gateway resources must be clearly owned and namespace-scoped where possible.
 - Keep experiment workloads generic across HTTP load generation, black-box checks, dependency integration checks, file/log replay, background worker jobs, and message producer/consumer experiments.
 - `internal/workload` owns runtime-neutral workload execution and result types.
 - HTTP traffic is the first implemented workload type and must run through the runtime-provided service base URL.
@@ -228,3 +232,4 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 8D completed: runtime-neutral HTTP experiment workloads.
 - Phase 8E completed: runtime environment summaries, run phase timelines, and runtime diagnostics reporting.
 - Phase 9A completed: external gateway checks and direct-vs-gateway status comparison.
+- Phase 9B completed: owned Kubernetes Ingress manifest generation for configured gateway routes.

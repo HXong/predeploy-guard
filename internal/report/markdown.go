@@ -76,7 +76,7 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 	writeRunTimelineSection(&builder, data.RunPhases)
 	writeBuildSection(&builder, data.BuildResult)
 	writeReadinessSection(&builder, data.ReadinessResults)
-	writeGatewaySection(&builder, data.GatewayResults)
+	writeGatewaySection(&builder, cfg, data.GatewayResults)
 	writeSmokeSection(&builder, data.Results)
 	writeWorkloadSection(&builder, data.WorkloadResults, len(cfg.Workloads))
 	writePerformanceSection(&builder, data.PerformanceResult)
@@ -108,8 +108,18 @@ func buildMarkdown(cfg *config.Config, data ReportData) string {
 	return builder.String()
 }
 
-func writeGatewaySection(builder *strings.Builder, results []gateway.RouteResult) {
+func writeGatewaySection(
+	builder *strings.Builder,
+	cfg *config.Config,
+	results []gateway.RouteResult,
+) {
 	fmt.Fprintf(builder, "## Gateway Checks\n\n")
+
+	if cfg.Gateway.Ingress.Enabled {
+		fmt.Fprintf(builder, "- Ingress generation: enabled\n")
+		fmt.Fprintf(builder, "- Ingress host: %s\n", markdownValue(cfg.Gateway.Ingress.Host))
+		fmt.Fprintf(builder, "- Ingress class: %s\n\n", markdownValue(cfg.Gateway.Ingress.ClassName))
+	}
 
 	if len(results) == 0 {
 		fmt.Fprintf(builder, "No gateway checks were executed.\n\n")

@@ -137,11 +137,15 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Do not install or manage ingress controllers or gateways
 - Do not generate Kubernetes Ingress resources
 
-#### Phase 9B: Ingress/Gateway Resource Integration (Future)
+#### Phase 9B: Kubernetes Ingress Manifest Generation (Completed)
 
-- Explore safe generation of Kubernetes Ingress manifests or runtime integration
-- Keep generated resources clearly owned and scoped to the active local run
+- Generate optional `networking.k8s.io/v1` Ingress resources from configured gateway routes
+- Keep generated resources namespace-scoped and clearly owned by the active local run
+- Apply the Ingress through the existing Kubernetes runtime-start manifest flow
+- Support optional host, ingress class name, path type, and annotations
 - Avoid assumptions about NGINX, Kong, Istio, Traefik, or any single implementation
+- Do not install or manage an ingress controller
+- Do not add TLS, authentication, custom headers, Gateway API resources, host-file editing, or automatic ingress IP discovery
 
 #### Phase 9C: Gateway Comparison Reports (Future)
 

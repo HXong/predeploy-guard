@@ -10,6 +10,9 @@ import (
 func TestConfigSummaryAndExplainIncludeWorkloads(t *testing.T) {
 	cfg := &config.Config{
 		ConfigDir: t.TempDir(),
+		Runtime: config.RuntimeConfig{
+			Type: "kubernetes",
+		},
 		Service: config.ServiceConfig{
 			Name:  "test-service",
 			Image: "example/test-service:latest",
@@ -26,6 +29,14 @@ func TestConfigSummaryAndExplainIncludeWorkloads(t *testing.T) {
 		Gateway: config.GatewayConfig{
 			Enabled: true,
 			BaseURL: "http://localhost:8088",
+			Ingress: config.GatewayIngressConfig{
+				Enabled:   true,
+				Host:      "predeploy.local",
+				ClassName: "local-controller",
+				Annotations: map[string]string{
+					"example.test/setting": "private-value",
+				},
+			},
 			Routes: []config.GatewayRoute{{
 				Name: "homepage-via-gateway",
 				Path: "/",
@@ -56,6 +67,13 @@ func TestConfigSummaryAndExplainIncludeWorkloads(t *testing.T) {
 	if !summary.Gateway.Routes[0].CompareDirect {
 		t.Fatalf("gateway compareDirect = false, want default true")
 	}
+	if !summary.Gateway.Ingress.Enabled ||
+		summary.Gateway.Ingress.Host != "predeploy.local" ||
+		summary.Gateway.Ingress.ClassName != "local-controller" ||
+		summary.Gateway.Ingress.PathType != "Prefix" ||
+		summary.Gateway.Ingress.AnnotationCount != 1 {
+		t.Fatalf("gateway ingress summary = %#v, want safe enabled ingress details", summary.Gateway.Ingress)
+	}
 
 	explanation := service.Explain()
 	if len(explanation.Steps) != 11 {
@@ -63,7 +81,14 @@ func TestConfigSummaryAndExplainIncludeWorkloads(t *testing.T) {
 	}
 	gatewayStep := explanation.Steps[5]
 	gatewayDetails := strings.Join(gatewayStep.Details, " ")
-	for _, want := range []string{"Gateway checks run after service readiness", "direct service route", "homepage-via-gateway"} {
+	for _, want := range []string{
+		"Gateway checks run after service readiness",
+		"direct service route",
+		"homepage-via-gateway",
+		"generate an owned Kubernetes Ingress",
+		"does not install or manage an ingress controller",
+		"must already resolve to the local ingress endpoint",
+	} {
 		if !strings.Contains(gatewayDetails, want) {
 			t.Fatalf("gateway explanation %q does not contain %q", gatewayDetails, want)
 		}

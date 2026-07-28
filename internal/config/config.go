@@ -72,9 +72,18 @@ type SmokeCheck struct {
 }
 
 type GatewayConfig struct {
-	Enabled bool           `yaml:"enabled"`
-	BaseURL string         `yaml:"baseURL"`
-	Routes  []GatewayRoute `yaml:"routes"`
+	Enabled bool                 `yaml:"enabled"`
+	BaseURL string               `yaml:"baseURL"`
+	Ingress GatewayIngressConfig `yaml:"ingress"`
+	Routes  []GatewayRoute       `yaml:"routes"`
+}
+
+type GatewayIngressConfig struct {
+	Enabled     bool              `yaml:"enabled"`
+	Host        string            `yaml:"host"`
+	ClassName   string            `yaml:"className"`
+	PathType    string            `yaml:"pathType"`
+	Annotations map[string]string `yaml:"annotations"`
 }
 
 type GatewayRoute struct {
@@ -232,6 +241,12 @@ func (c *Config) Validate() error {
 			c.Dependencies[name] = dependency
 		}
 	}
+	if c.Gateway.Ingress.Enabled && !c.Gateway.Enabled {
+		return fmt.Errorf("gateway.ingress.enabled requires gateway.enabled")
+	}
+	if c.Gateway.Ingress.Enabled && c.Runtime.Type != "kubernetes" {
+		return fmt.Errorf(`gateway.ingress.enabled requires runtime.type "kubernetes"`)
+	}
 	if c.Gateway.Enabled {
 		if c.Gateway.BaseURL == "" {
 			return fmt.Errorf("gateway.baseURL is required when gateway is enabled")
@@ -274,6 +289,25 @@ func (c *Config) Validate() error {
 			}
 			if route.CompareDirect == nil {
 				route.CompareDirect = boolPointer(true)
+			}
+		}
+
+		if c.Gateway.Ingress.Enabled {
+			if c.Gateway.Ingress.PathType == "" {
+				c.Gateway.Ingress.PathType = "Prefix"
+			}
+			switch c.Gateway.Ingress.PathType {
+			case "Prefix", "Exact", "ImplementationSpecific":
+			default:
+				return fmt.Errorf(
+					"unsupported gateway.ingress.pathType %q; supported path types: Prefix, Exact, ImplementationSpecific",
+					c.Gateway.Ingress.PathType,
+				)
+			}
+			for key := range c.Gateway.Ingress.Annotations {
+				if strings.TrimSpace(key) == "" {
+					return fmt.Errorf("gateway.ingress.annotations cannot contain an empty key")
+				}
 			}
 		}
 	}

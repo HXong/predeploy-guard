@@ -290,6 +290,93 @@ func TestValidateRejectsGatewayRoutePathWithoutLeadingSlash(t *testing.T) {
 	}
 }
 
+func TestValidateAcceptsEnabledIngressForKubernetesRuntime(t *testing.T) {
+	cfg := validGatewayIngressTestConfig()
+	cfg.Gateway.Ingress = GatewayIngressConfig{
+		Enabled:   true,
+		Host:      "predeploy.local",
+		ClassName: "local-controller",
+		PathType:  "Exact",
+		Annotations: map[string]string{
+			"example.test/setting": "enabled",
+		},
+	}
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+}
+
+func TestValidateRejectsEnabledIngressForDockerComposeRuntime(t *testing.T) {
+	cfg := validGatewayIngressTestConfig()
+	cfg.Runtime.Type = "docker-compose"
+	cfg.Gateway.Ingress.Enabled = true
+
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), `gateway.ingress.enabled requires runtime.type "kubernetes"`) {
+		t.Fatalf("Validate error = %v, want Kubernetes runtime requirement", err)
+	}
+}
+
+func TestValidateDefaultsIngressPathTypeToPrefix(t *testing.T) {
+	cfg := validGatewayIngressTestConfig()
+	cfg.Gateway.Ingress.Enabled = true
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if cfg.Gateway.Ingress.PathType != "Prefix" {
+		t.Fatalf("ingress path type = %q, want Prefix", cfg.Gateway.Ingress.PathType)
+	}
+}
+
+func TestValidateRejectsUnsupportedIngressPathType(t *testing.T) {
+	cfg := validGatewayIngressTestConfig()
+	cfg.Gateway.Ingress.Enabled = true
+	cfg.Gateway.Ingress.PathType = "Regex"
+
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), `unsupported gateway.ingress.pathType "Regex"`) {
+		t.Fatalf("Validate error = %v, want unsupported ingress path type", err)
+	}
+}
+
+func TestValidateRejectsEmptyIngressAnnotationKey(t *testing.T) {
+	cfg := validGatewayIngressTestConfig()
+	cfg.Gateway.Ingress.Enabled = true
+	cfg.Gateway.Ingress.Annotations = map[string]string{"": "value"}
+
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), "gateway.ingress.annotations cannot contain an empty key") {
+		t.Fatalf("Validate error = %v, want empty annotation key error", err)
+	}
+}
+
+func TestValidateRejectsIngressWhenGatewayDisabled(t *testing.T) {
+	cfg := validTestConfig()
+	cfg.Runtime.Type = "kubernetes"
+	cfg.Gateway.Ingress.Enabled = true
+
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), "gateway.ingress.enabled requires gateway.enabled") {
+		t.Fatalf("Validate error = %v, want gateway enabled requirement", err)
+	}
+}
+
+func validGatewayIngressTestConfig() Config {
+	cfg := validTestConfig()
+	cfg.Runtime.Type = "kubernetes"
+	cfg.Gateway = GatewayConfig{
+		Enabled: true,
+		BaseURL: "http://predeploy.local",
+		Routes: []GatewayRoute{{
+			Name: "homepage-via-gateway",
+			Path: "/",
+		}},
+	}
+	return cfg
+}
+
 func validTestConfig() Config {
 	return Config{
 		Service: ServiceConfig{
