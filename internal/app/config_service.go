@@ -69,6 +69,7 @@ type GatewaySummary struct {
 	Enabled bool                  `json:"enabled"`
 	BaseURL string                `json:"baseUrl,omitempty"`
 	Ingress GatewayIngressSummary `json:"ingress"`
+	Latency GatewayLatencySummary `json:"latency"`
 	Routes  []GatewayRouteSummary `json:"routes"`
 }
 
@@ -78,6 +79,14 @@ type GatewayIngressSummary struct {
 	ClassName       string `json:"className,omitempty"`
 	PathType        string `json:"pathType,omitempty"`
 	AnnotationCount int    `json:"annotationCount"`
+}
+
+type GatewayLatencySummary struct {
+	Enabled             bool    `json:"enabled"`
+	MaxGatewayLatencyMs int     `json:"maxGatewayLatencyMs,omitempty"`
+	MaxOverheadMs       int     `json:"maxOverheadMs,omitempty"`
+	MaxOverheadRatio    float64 `json:"maxOverheadRatio,omitempty"`
+	FailurePolicy       string  `json:"failurePolicy,omitempty"`
 }
 
 type GatewayRouteSummary struct {
@@ -201,6 +210,13 @@ func (s *ConfigService) Summary() ConfigSummary {
 				ClassName:       s.cfg.Gateway.Ingress.ClassName,
 				PathType:        s.cfg.Gateway.Ingress.PathType,
 				AnnotationCount: len(s.cfg.Gateway.Ingress.Annotations),
+			},
+			Latency: GatewayLatencySummary{
+				Enabled:             s.cfg.Gateway.Latency.Enabled,
+				MaxGatewayLatencyMs: s.cfg.Gateway.Latency.MaxGatewayLatencyMs,
+				MaxOverheadMs:       s.cfg.Gateway.Latency.MaxOverheadMs,
+				MaxOverheadRatio:    s.cfg.Gateway.Latency.MaxOverheadRatio,
+				FailurePolicy:       s.cfg.Gateway.Latency.FailurePolicy,
 			},
 			Routes: gatewayRoutes,
 		},
@@ -469,7 +485,7 @@ func (s *ConfigService) explainGatewayChecks() ConfigExplanationStep {
 	}
 
 	details := []string{
-		"Gateway checks run after service readiness.",
+		"Gateway correctness checks run after service readiness.",
 		fmt.Sprintf("%d gateway route(s) will be checked through %q.", len(s.cfg.Gateway.Routes), s.cfg.Gateway.BaseURL),
 		"Gateway checks compare the configured gateway route to the direct service route when compareDirect is enabled.",
 	}
@@ -482,6 +498,24 @@ func (s *ConfigService) explainGatewayChecks() ConfigExplanationStep {
 			"Gateway checks will retry every second while the generated Ingress route is being synchronized.",
 			"Retries use the configured timeout, capped at 30 seconds.",
 		)
+	}
+	if s.cfg.Gateway.Latency.Enabled {
+		details = append(
+			details,
+			"Latency comparison is measured from the final gateway and direct check result.",
+			"This lightweight comparison is not a substitute for k6 load testing.",
+		)
+		if s.cfg.Gateway.Latency.FailurePolicy == "fail" {
+			details = append(
+				details,
+				"Latency failure policy fail fails the run when a configured threshold is exceeded.",
+			)
+		} else {
+			details = append(
+				details,
+				"Latency failure policy warn reports threshold violations without failing the run.",
+			)
+		}
 	}
 	for _, route := range s.gatewayRouteSummaries() {
 		details = append(

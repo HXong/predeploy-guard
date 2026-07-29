@@ -37,6 +37,13 @@ func TestConfigSummaryAndExplainIncludeWorkloads(t *testing.T) {
 					"example.test/setting": "private-value",
 				},
 			},
+			Latency: config.GatewayLatencyConfig{
+				Enabled:             true,
+				MaxGatewayLatencyMs: 500,
+				MaxOverheadMs:       200,
+				MaxOverheadRatio:    3,
+				FailurePolicy:       "warn",
+			},
 			Routes: []config.GatewayRoute{{
 				Name: "homepage-via-gateway",
 				Path: "/",
@@ -74,6 +81,13 @@ func TestConfigSummaryAndExplainIncludeWorkloads(t *testing.T) {
 		summary.Gateway.Ingress.AnnotationCount != 1 {
 		t.Fatalf("gateway ingress summary = %#v, want safe enabled ingress details", summary.Gateway.Ingress)
 	}
+	if !summary.Gateway.Latency.Enabled ||
+		summary.Gateway.Latency.MaxGatewayLatencyMs != 500 ||
+		summary.Gateway.Latency.MaxOverheadMs != 200 ||
+		summary.Gateway.Latency.MaxOverheadRatio != 3 ||
+		summary.Gateway.Latency.FailurePolicy != "warn" {
+		t.Fatalf("gateway latency summary = %#v, want configured thresholds", summary.Gateway.Latency)
+	}
 
 	explanation := service.Explain()
 	if len(explanation.Steps) != 11 {
@@ -82,7 +96,7 @@ func TestConfigSummaryAndExplainIncludeWorkloads(t *testing.T) {
 	gatewayStep := explanation.Steps[5]
 	gatewayDetails := strings.Join(gatewayStep.Details, " ")
 	for _, want := range []string{
-		"Gateway checks run after service readiness",
+		"Gateway correctness checks run after service readiness",
 		"direct service route",
 		"homepage-via-gateway",
 		"generate an owned Kubernetes Ingress",
@@ -90,6 +104,9 @@ func TestConfigSummaryAndExplainIncludeWorkloads(t *testing.T) {
 		"must already resolve to the local ingress endpoint",
 		"retry every second",
 		"capped at 30 seconds",
+		"measured from the final gateway and direct check result",
+		"not a substitute for k6 load testing",
+		"warn reports threshold violations without failing the run",
 	} {
 		if !strings.Contains(gatewayDetails, want) {
 			t.Fatalf("gateway explanation %q does not contain %q", gatewayDetails, want)

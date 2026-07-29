@@ -118,6 +118,7 @@ This project demonstrates backend engineering, developer tooling, Docker-based w
 - Service readiness checks
 - Optional external gateway route checks with direct-service status comparison
 - Optional owned Kubernetes Ingress generation for configured gateway routes
+- Optional direct-vs-gateway latency thresholds with warn or fail policies
 - HTTP smoke checks
 - Runtime-neutral HTTP experiment workloads with configurable rate, duration, expected status, and failure policy
 - Dockerized k6 performance checks
@@ -629,6 +630,12 @@ gateway:
     host: predeploy.local
     className: local-controller
     pathType: Prefix
+  latency:
+    enabled: true
+    maxGatewayLatencyMs: 500
+    maxOverheadMs: 200
+    maxOverheadRatio: 3.0
+    failurePolicy: warn
   routes:
     - name: homepage-via-gateway
       method: GET
@@ -644,6 +651,10 @@ Ingress generation is optional, Kubernetes-only, namespace-scoped, and disabled 
 PreDeploy Guard does not install or manage an ingress controller. `gateway.baseURL` must already resolve to the local ingress endpoint; PreDeploy Guard does not discover ingress IPs or edit host files.
 
 Because ingress controllers synchronize new routes asynchronously, generated-ingress gateway checks retry every second until all routes pass. The retry window uses `settings.timeoutSeconds`, capped at 30 seconds. External gateway checks without generated Ingress remain single-attempt checks.
+
+Phase 9C can evaluate the final request durations against an absolute gateway latency limit and, when direct comparison is available, maximum gateway overhead in milliseconds or as a ratio. At least one threshold is required when latency comparison is enabled. `failurePolicy` defaults to `warn`; warnings are reported without failing an otherwise correct route, while `fail` makes a threshold violation fail the route and run.
+
+This is a lightweight comparison of the final correctness-check requests, not a load test or statistically significant benchmark. Use the existing k6 performance checks for sustained traffic and percentile-based performance validation. Generated-ingress retry decisions use HTTP correctness only, so a latency-only violation does not cause repeated readiness attempts.
 
 ---
 
@@ -670,7 +681,7 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 - Guided config builder previews and exports YAML in the browser; it does not write configuration files through the backend
 - Gateway validation requires a separately managed, reachable external gateway URL
 - Generated Ingress resources do not support TLS, authentication, custom headers, or Gateway API yet
-- Gateway latency comparison is not implemented yet
+- Gateway latency comparison uses one final correctness-check sample per route; it is not a substitute for k6 performance testing
 - Dependency readiness depends on user-provided commands
 - Smoke checks currently support simple HTTP status validation
 - Profile overrides are section-level replacements rather than deep merges
@@ -701,12 +712,12 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
   - future: additional generic workload types
 - Phase 9A: External gateway checks and direct-vs-gateway status comparison
 - Phase 9B: Owned Kubernetes Ingress manifest generation
+- Phase 9C: Gateway latency comparison and report enhancements
 
 ### Future
 
 - Optional safe config save-to-file workflow
 - GitHub Actions workflow generator
-- Phase 9C: Gateway latency comparison and report enhancements
 
 ---
 

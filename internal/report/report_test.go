@@ -30,6 +30,13 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 				Host:      "predeploy.local",
 				ClassName: "local-controller",
 			},
+			Latency: config.GatewayLatencyConfig{
+				Enabled:             true,
+				MaxGatewayLatencyMs: 500,
+				MaxOverheadMs:       200,
+				MaxOverheadRatio:    3,
+				FailurePolicy:       "warn",
+			},
 			Routes: []config.GatewayRoute{{
 				Name: "homepage-via-gateway",
 				Path: "/",
@@ -69,17 +76,26 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 		StartedAt:  startedAt,
 		FinishedAt: startedAt.Add(time.Second),
 		GatewayResults: []gateway.RouteResult{{
-			Name:           "homepage-via-gateway",
-			Method:         "GET",
-			Path:           "/",
-			ExpectedStatus: 200,
-			GatewayStatus:  200,
-			GatewayPassed:  true,
-			CompareDirect:  true,
-			DirectStatus:   200,
-			DirectPassed:   true,
-			StatusMatched:  true,
-			Passed:         true,
+			Name:             "homepage-via-gateway",
+			Method:           "GET",
+			Path:             "/",
+			ExpectedStatus:   200,
+			GatewayStatus:    200,
+			GatewayPassed:    true,
+			CompareDirect:    true,
+			DirectStatus:     200,
+			DirectPassed:     true,
+			StatusMatched:    true,
+			GatewayLatencyMs: 14,
+			DirectLatencyMs:  3,
+			LatencyCompared:  true,
+			OverheadMs:       11,
+			OverheadRatio:    4.67,
+			LatencyPassed:    false,
+			LatencyWarnings: []string{
+				"gateway overhead ratio 4.67x exceeded maximum 3.00x",
+			},
+			Passed: true,
 		}},
 		WorkloadResults: []workload.Result{{
 			Name:          "warmup-traffic",
@@ -111,7 +127,15 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 		"- Ingress generation: enabled",
 		"- Ingress host: predeploy.local",
 		"- Ingress class: local-controller",
-		"| homepage-via-gateway | GET | / | 200 | 200 | yes | PASS |",
+		"- Latency comparison: enabled",
+		"- Latency failure policy: warn",
+		"- Max gateway latency: 500ms",
+		"- Max overhead: 200ms",
+		"- Max overhead ratio: 3.00x",
+		"| Gateway Latency | Direct Latency | Overhead | Ratio | Latency | Result |",
+		"| homepage-via-gateway | GET | / | 200 | 200 | yes | 14.00ms | 3.00ms | 11.00ms | 4.67x | WARN | PASS |",
+		"homepage-via-gateway latency warning",
+		"gateway overhead ratio 4.67x exceeded maximum 3.00x",
 		"- Gateway checks: 1 total, 1 passed, 0 failed",
 		"## Runtime Diagnostics",
 		"runtime diagnostic output",
@@ -186,6 +210,11 @@ func TestReportIncludesWorkloadResults(t *testing.T) {
 	}
 	if len(gatewayResults) != 1 || gatewayResults[0].Name != "homepage-via-gateway" {
 		t.Fatalf("gateway results = %#v, want homepage-via-gateway result", gatewayResults)
+	}
+	if !gatewayResults[0].LatencyCompared ||
+		gatewayResults[0].OverheadMs != 11 ||
+		len(gatewayResults[0].LatencyWarnings) != 1 {
+		t.Fatalf("gateway latency result = %#v, want structured warning details", gatewayResults[0])
 	}
 
 	var environment RuntimeEnvironment

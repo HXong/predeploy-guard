@@ -75,6 +75,7 @@ type GatewayConfig struct {
 	Enabled bool                 `yaml:"enabled"`
 	BaseURL string               `yaml:"baseURL"`
 	Ingress GatewayIngressConfig `yaml:"ingress"`
+	Latency GatewayLatencyConfig `yaml:"latency"`
 	Routes  []GatewayRoute       `yaml:"routes"`
 }
 
@@ -84,6 +85,14 @@ type GatewayIngressConfig struct {
 	ClassName   string            `yaml:"className"`
 	PathType    string            `yaml:"pathType"`
 	Annotations map[string]string `yaml:"annotations"`
+}
+
+type GatewayLatencyConfig struct {
+	Enabled             bool    `yaml:"enabled"`
+	MaxGatewayLatencyMs int     `yaml:"maxGatewayLatencyMs"`
+	MaxOverheadMs       int     `yaml:"maxOverheadMs"`
+	MaxOverheadRatio    float64 `yaml:"maxOverheadRatio"`
+	FailurePolicy       string  `yaml:"failurePolicy"`
 }
 
 type GatewayRoute struct {
@@ -247,6 +256,9 @@ func (c *Config) Validate() error {
 	if c.Gateway.Ingress.Enabled && c.Runtime.Type != "kubernetes" {
 		return fmt.Errorf(`gateway.ingress.enabled requires runtime.type "kubernetes"`)
 	}
+	if c.Gateway.Latency.Enabled && !c.Gateway.Enabled {
+		return fmt.Errorf("gateway.latency.enabled requires gateway.enabled")
+	}
 	if c.Gateway.Enabled {
 		if c.Gateway.BaseURL == "" {
 			return fmt.Errorf("gateway.baseURL is required when gateway is enabled")
@@ -308,6 +320,36 @@ func (c *Config) Validate() error {
 				if strings.TrimSpace(key) == "" {
 					return fmt.Errorf("gateway.ingress.annotations cannot contain an empty key")
 				}
+			}
+		}
+
+		if c.Gateway.Latency.Enabled {
+			if c.Gateway.Latency.FailurePolicy == "" {
+				c.Gateway.Latency.FailurePolicy = "warn"
+			} else {
+				c.Gateway.Latency.FailurePolicy = strings.ToLower(c.Gateway.Latency.FailurePolicy)
+			}
+			switch c.Gateway.Latency.FailurePolicy {
+			case "warn", "fail":
+			default:
+				return fmt.Errorf(
+					"unsupported gateway.latency.failurePolicy %q; supported policies: warn, fail",
+					c.Gateway.Latency.FailurePolicy,
+				)
+			}
+			if c.Gateway.Latency.MaxGatewayLatencyMs < 0 {
+				return fmt.Errorf("gateway.latency.maxGatewayLatencyMs must be greater than 0 when configured")
+			}
+			if c.Gateway.Latency.MaxOverheadMs < 0 {
+				return fmt.Errorf("gateway.latency.maxOverheadMs must be greater than 0 when configured")
+			}
+			if c.Gateway.Latency.MaxOverheadRatio < 0 {
+				return fmt.Errorf("gateway.latency.maxOverheadRatio must be greater than 0 when configured")
+			}
+			if c.Gateway.Latency.MaxGatewayLatencyMs == 0 &&
+				c.Gateway.Latency.MaxOverheadMs == 0 &&
+				c.Gateway.Latency.MaxOverheadRatio == 0 {
+				return fmt.Errorf("gateway.latency.enabled requires at least one latency threshold")
 			}
 		}
 	}

@@ -11,13 +11,27 @@ import (
 
 func printGatewayResult(result gateway.RouteResult) {
 	status := "FAIL"
-	if result.Passed {
+	if result.Passed && len(result.LatencyWarnings) > 0 {
+		status = "WARN"
+	} else if result.Passed {
 		status = "PASS"
 	}
 
 	directStatus := ""
 	if result.CompareDirect {
 		directStatus = fmt.Sprintf(" direct=%d", result.DirectStatus)
+	}
+
+	latencyText := fmt.Sprintf(" gatewayLatency=%.2fms", result.GatewayLatencyMs)
+	if result.CompareDirect && result.DirectError == "" {
+		latencyText += fmt.Sprintf(" directLatency=%.2fms", result.DirectLatencyMs)
+	}
+	if result.LatencyCompared {
+		latencyText += fmt.Sprintf(
+			" overhead=%.2fms ratio=%.2fx",
+			result.OverheadMs,
+			result.OverheadRatio,
+		)
 	}
 
 	errorText := ""
@@ -27,14 +41,26 @@ func printGatewayResult(result gateway.RouteResult) {
 	if result.DirectError != "" {
 		errorText += " directError=" + result.DirectError
 	}
+	if len(result.LatencyWarnings) > 0 {
+		errorText += fmt.Sprintf(
+			" latencyWarning=%q",
+			strings.Join(result.LatencyWarnings, "; "),
+		)
+	}
+	if len(result.LatencyErrors) > 0 {
+		errorText += fmt.Sprintf(
+			" latencyError=%q",
+			strings.Join(result.LatencyErrors, "; "),
+		)
+	}
 
 	fmt.Printf(
-		"[%s] %s gateway=%d%s duration=%s%s\n",
+		"[%s] %s gateway=%d%s%s%s\n",
 		status,
 		result.Name,
 		result.GatewayStatus,
 		directStatus,
-		result.GatewayDuration,
+		latencyText,
 		errorText,
 	)
 }

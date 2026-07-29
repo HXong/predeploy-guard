@@ -175,7 +175,7 @@ func printExplainGatewayChecks(cfg *config.Config) {
 		return
 	}
 
-	fmt.Println("   Gateway checks run after service readiness.")
+	fmt.Println("   Gateway correctness checks run after service readiness.")
 	fmt.Printf("   `%d` route(s) will be checked through `%s`.\n", len(cfg.Gateway.Routes), cfg.Gateway.BaseURL)
 	fmt.Println("   Gateway checks compare the configured gateway route to the direct service route when `compareDirect` is enabled.")
 	if cfg.Gateway.Ingress.Enabled {
@@ -184,6 +184,15 @@ func printExplainGatewayChecks(cfg *config.Config) {
 		fmt.Println("   `gateway.baseURL` must already resolve to the local ingress endpoint.")
 		fmt.Println("   Gateway checks will retry every second while the generated Ingress route is being synchronized.")
 		fmt.Println("   Retries use the configured timeout, capped at 30 seconds.")
+	}
+	if cfg.Gateway.Latency.Enabled {
+		fmt.Println("   Latency comparison is measured from the final gateway and direct check result.")
+		fmt.Println("   This lightweight comparison is not a substitute for k6 load testing.")
+		if cfg.Gateway.Latency.FailurePolicy == "fail" {
+			fmt.Println("   Latency failure policy `fail` fails the run when a configured threshold is exceeded.")
+		} else {
+			fmt.Println("   Latency failure policy `warn` reports threshold violations without failing the run.")
+		}
 	}
 	for _, route := range cfg.Gateway.Routes {
 		compareDirect := route.CompareDirect == nil || *route.CompareDirect

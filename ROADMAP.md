@@ -148,11 +148,14 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Do not install or manage an ingress controller
 - Do not add TLS, authentication, custom headers, Gateway API resources, host-file editing, or automatic ingress IP discovery
 
-#### Phase 9C: Gateway Comparison Reports (Future)
+#### Phase 9C: Gateway Latency Comparison (Completed)
 
-- Add direct-vs-gateway latency comparison
-- Add report summaries and comparison-focused diagnostics
-- Preserve existing report fields while extending structured gateway metrics
+- Add optional absolute gateway latency, overhead-millisecond, and overhead-ratio thresholds
+- Support warning-only and run-failing latency policies
+- Keep HTTP correctness authoritative and prevent latency-only failures from extending generated-ingress readiness retries
+- Add latency metrics, threshold outcomes, and diagnostic messages to CLI, Markdown, and JSON output
+- Keep the comparison lightweight and separate from Dockerized k6 load testing
+- Preserve existing report fields while extending structured gateway metrics additively
 
 ## Future Enhancements
 

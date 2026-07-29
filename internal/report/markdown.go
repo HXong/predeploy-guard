@@ -120,14 +120,37 @@ func writeGatewaySection(
 		fmt.Fprintf(builder, "- Ingress host: %s\n", markdownValue(cfg.Gateway.Ingress.Host))
 		fmt.Fprintf(builder, "- Ingress class: %s\n\n", markdownValue(cfg.Gateway.Ingress.ClassName))
 	}
+	if cfg.Gateway.Latency.Enabled {
+		fmt.Fprintf(builder, "- Latency comparison: enabled\n")
+		fmt.Fprintf(
+			builder,
+			"- Latency failure policy: %s\n",
+			cfg.Gateway.Latency.FailurePolicy,
+		)
+		fmt.Fprintf(
+			builder,
+			"- Max gateway latency: %s\n",
+			formatGatewayLatencyThreshold(cfg.Gateway.Latency.MaxGatewayLatencyMs),
+		)
+		fmt.Fprintf(
+			builder,
+			"- Max overhead: %s\n",
+			formatGatewayLatencyThreshold(cfg.Gateway.Latency.MaxOverheadMs),
+		)
+		fmt.Fprintf(
+			builder,
+			"- Max overhead ratio: %s\n\n",
+			formatGatewayRatioThreshold(cfg.Gateway.Latency.MaxOverheadRatio),
+		)
+	}
 
 	if len(results) == 0 {
 		fmt.Fprintf(builder, "No gateway checks were executed.\n\n")
 		return
 	}
 
-	fmt.Fprintf(builder, "| Name | Method | Path | Gateway Status | Direct Status | Status Match | Result |\n")
-	fmt.Fprintf(builder, "|---|---|---|---:|---:|---|---|\n")
+	fmt.Fprintf(builder, "| Name | Method | Path | Gateway Status | Direct Status | Status Match | Gateway Latency | Direct Latency | Overhead | Ratio | Latency | Result |\n")
+	fmt.Fprintf(builder, "|---|---|---|---:|---:|---|---:|---:|---:|---:|---|---|\n")
 	for _, result := range results {
 		status := "FAIL"
 		if result.Passed {
@@ -144,19 +167,96 @@ func writeGatewaySection(
 			}
 		}
 
+		directLatency := "-"
+		if result.CompareDirect && result.DirectError == "" {
+			directLatency = formatGatewayLatency(result.DirectLatencyMs)
+		}
+		overhead := "-"
+		ratio := "-"
+		if result.LatencyCompared {
+			overhead = formatGatewayLatency(result.OverheadMs)
+			ratio = fmt.Sprintf("%.2fx", result.OverheadRatio)
+		}
+
+		latencyStatus := "-"
+		if cfg.Gateway.Latency.Enabled {
+			switch {
+			case result.LatencyPassed:
+				latencyStatus = "PASS"
+			case len(result.LatencyWarnings) > 0:
+				latencyStatus = "WARN"
+			default:
+				latencyStatus = "FAIL"
+			}
+		}
+
 		fmt.Fprintf(
 			builder,
-			"| %s | %s | %s | %d | %s | %s | %s |\n",
+			"| %s | %s | %s | %d | %s | %s | %s | %s | %s | %s | %s | %s |\n",
 			escapeMarkdownTable(result.Name),
 			escapeMarkdownTable(result.Method),
 			escapeMarkdownTable(result.Path),
 			result.GatewayStatus,
 			directStatus,
 			statusMatched,
+			formatGatewayLatency(result.GatewayLatencyMs),
+			directLatency,
+			overhead,
+			ratio,
+			latencyStatus,
 			status,
 		)
 	}
 	fmt.Fprintf(builder, "\n")
+
+	for _, result := range results {
+		for _, warning := range result.LatencyWarnings {
+			fmt.Fprintf(
+				builder,
+				"- **%s latency warning:** %s\n",
+				escapeMarkdownTable(result.Name),
+				escapeMarkdownTable(warning),
+			)
+		}
+		for _, latencyError := range result.LatencyErrors {
+			fmt.Fprintf(
+				builder,
+				"- **%s latency error:** %s\n",
+				escapeMarkdownTable(result.Name),
+				escapeMarkdownTable(latencyError),
+			)
+		}
+	}
+	if hasGatewayLatencyMessages(results) {
+		fmt.Fprintf(builder, "\n")
+	}
+}
+
+func formatGatewayLatency(value float64) string {
+	return fmt.Sprintf("%.2fms", value)
+}
+
+func formatGatewayLatencyThreshold(value int) string {
+	if value <= 0 {
+		return "-"
+	}
+	return fmt.Sprintf("%dms", value)
+}
+
+func formatGatewayRatioThreshold(value float64) string {
+	if value <= 0 {
+		return "-"
+	}
+	return fmt.Sprintf("%.2fx", value)
+}
+
+func hasGatewayLatencyMessages(results []gateway.RouteResult) bool {
+	for _, result := range results {
+		if len(result.LatencyWarnings) > 0 || len(result.LatencyErrors) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func writeRuntimeEnvironmentSection(builder *strings.Builder, data ReportData) {

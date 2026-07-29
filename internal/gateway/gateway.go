@@ -2,6 +2,8 @@ package gateway
 
 import (
 	"context"
+	"fmt"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -30,7 +32,19 @@ type RouteResult struct {
 	DirectError    string        `json:"directError,omitempty"`
 
 	StatusMatched bool `json:"statusMatched"`
-	Passed        bool `json:"passed"`
+
+	GatewayLatencyMs float64 `json:"gatewayLatencyMs"`
+	DirectLatencyMs  float64 `json:"directLatencyMs,omitempty"`
+
+	LatencyCompared bool    `json:"latencyCompared"`
+	OverheadMs      float64 `json:"overheadMs,omitempty"`
+	OverheadRatio   float64 `json:"overheadRatio,omitempty"`
+
+	LatencyPassed   bool     `json:"latencyPassed"`
+	LatencyWarnings []string `json:"latencyWarnings,omitempty"`
+	LatencyErrors   []string `json:"latencyErrors,omitempty"`
+
+	Passed bool `json:"passed"`
 }
 
 func RunChecks(ctx context.Context, cfg *config.Config, directBaseURL string) []RouteResult {
@@ -41,7 +55,14 @@ func RunChecks(ctx context.Context, cfg *config.Config, directBaseURL string) []
 	client := &http.Client{Timeout: 10 * time.Second}
 	results := make([]RouteResult, 0, len(cfg.Gateway.Routes))
 	for _, route := range cfg.Gateway.Routes {
-		results = append(results, runRoute(ctx, client, cfg.Gateway.BaseURL, directBaseURL, route))
+		results = append(results, runRoute(
+			ctx,
+			client,
+			cfg.Gateway.BaseURL,
+			directBaseURL,
+			route,
+			cfg.Gateway.Latency,
+		))
 	}
 	return results
 }
@@ -78,7 +99,7 @@ func runChecksUntilReady(
 	var lastCompletedResults []RouteResult
 	for {
 		attemptResults := RunChecks(retryContext, cfg, directBaseURL)
-		if AllPassed(attemptResults) {
+		if AllCorrectnessPassed(attemptResults) {
 			return attemptResults
 		}
 		if retryContext.Err() != nil {
@@ -111,12 +132,25 @@ func AllPassed(results []RouteResult) bool {
 	return true
 }
 
+func AllCorrectnessPassed(results []RouteResult) bool {
+	if len(results) == 0 {
+		return false
+	}
+	for _, result := range results {
+		if !correctnessPassed(result) {
+			return false
+		}
+	}
+	return true
+}
+
 func runRoute(
 	ctx context.Context,
 	client *http.Client,
 	gatewayBaseURL string,
 	directBaseURL string,
 	route config.GatewayRoute,
+	latency config.GatewayLatencyConfig,
 ) RouteResult {
 	compareDirect := route.CompareDirect == nil || *route.CompareDirect
 	result := RouteResult{
@@ -152,9 +186,88 @@ func runRoute(
 			result.GatewayStatus == result.DirectStatus
 	}
 
-	result.Passed = result.GatewayPassed &&
-		(!compareDirect || (result.DirectPassed && result.StatusMatched))
+	finalizeRouteResult(&result, latency)
 	return result
+}
+
+func finalizeRouteResult(result *RouteResult, latency config.GatewayLatencyConfig) {
+	result.GatewayLatencyMs = durationMilliseconds(result.GatewayDuration)
+	if result.CompareDirect && result.DirectError == "" {
+		result.DirectLatencyMs = durationMilliseconds(result.DirectDuration)
+	}
+
+	result.LatencyPassed = true
+	if latency.Enabled {
+		applyLatencyThresholds(result, latency)
+	}
+
+	result.Passed = correctnessPassed(*result) &&
+		(strings.ToLower(latency.FailurePolicy) != "fail" || result.LatencyPassed)
+}
+
+func applyLatencyThresholds(result *RouteResult, latency config.GatewayLatencyConfig) {
+	policy := strings.ToLower(latency.FailurePolicy)
+	if policy == "" {
+		policy = "warn"
+	}
+
+	recordViolation := func(message string) {
+		result.LatencyPassed = false
+		if policy == "fail" {
+			result.LatencyErrors = append(result.LatencyErrors, message)
+		} else {
+			result.LatencyWarnings = append(result.LatencyWarnings, message)
+		}
+	}
+
+	if latency.MaxGatewayLatencyMs > 0 &&
+		result.GatewayLatencyMs > float64(latency.MaxGatewayLatencyMs) {
+		recordViolation(fmt.Sprintf(
+			"gateway latency %.2fms exceeded maximum %dms",
+			result.GatewayLatencyMs,
+			latency.MaxGatewayLatencyMs,
+		))
+	}
+
+	result.LatencyCompared = result.CompareDirect &&
+		result.GatewayError == "" &&
+		result.DirectError == ""
+	overheadConfigured := latency.MaxOverheadMs > 0 || latency.MaxOverheadRatio > 0
+	if result.LatencyCompared {
+		result.OverheadMs = result.GatewayLatencyMs - result.DirectLatencyMs
+		directLatencyForRatio := math.Max(result.DirectLatencyMs, 0.001)
+		result.OverheadRatio = result.GatewayLatencyMs / directLatencyForRatio
+
+		if latency.MaxOverheadMs > 0 &&
+			result.OverheadMs > float64(latency.MaxOverheadMs) {
+			recordViolation(fmt.Sprintf(
+				"gateway overhead %.2fms exceeded maximum %dms",
+				result.OverheadMs,
+				latency.MaxOverheadMs,
+			))
+		}
+		if latency.MaxOverheadRatio > 0 &&
+			result.OverheadRatio > latency.MaxOverheadRatio {
+			recordViolation(fmt.Sprintf(
+				"gateway overhead ratio %.2fx exceeded maximum %.2fx",
+				result.OverheadRatio,
+				latency.MaxOverheadRatio,
+			))
+		}
+	} else if overheadConfigured {
+		recordViolation(
+			"gateway overhead comparison unavailable; compareDirect must be enabled and both requests must complete",
+		)
+	}
+}
+
+func correctnessPassed(result RouteResult) bool {
+	return result.GatewayPassed &&
+		(!result.CompareDirect || (result.DirectPassed && result.StatusMatched))
+}
+
+func durationMilliseconds(duration time.Duration) float64 {
+	return float64(duration) / float64(time.Millisecond)
 }
 
 func doRequest(

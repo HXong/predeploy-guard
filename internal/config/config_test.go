@@ -363,6 +363,103 @@ func TestValidateRejectsIngressWhenGatewayDisabled(t *testing.T) {
 	}
 }
 
+func TestValidateAcceptsGatewayLatencyThreshold(t *testing.T) {
+	cfg := validGatewayIngressTestConfig()
+	cfg.Gateway.Latency = GatewayLatencyConfig{
+		Enabled:             true,
+		MaxGatewayLatencyMs: 500,
+	}
+
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if cfg.Gateway.Latency.FailurePolicy != "warn" {
+		t.Fatalf("latency failure policy = %q, want warn", cfg.Gateway.Latency.FailurePolicy)
+	}
+}
+
+func TestValidateRejectsGatewayLatencyWithoutThresholds(t *testing.T) {
+	cfg := validGatewayIngressTestConfig()
+	cfg.Gateway.Latency.Enabled = true
+
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), "gateway.latency.enabled requires at least one latency threshold") {
+		t.Fatalf("Validate error = %v, want missing latency threshold error", err)
+	}
+}
+
+func TestValidateRejectsUnsupportedGatewayLatencyFailurePolicy(t *testing.T) {
+	cfg := validGatewayIngressTestConfig()
+	cfg.Gateway.Latency = GatewayLatencyConfig{
+		Enabled:             true,
+		MaxGatewayLatencyMs: 500,
+		FailurePolicy:       "ignore",
+	}
+
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), `unsupported gateway.latency.failurePolicy "ignore"`) {
+		t.Fatalf("Validate error = %v, want unsupported latency failure policy", err)
+	}
+}
+
+func TestValidateRejectsNonPositiveConfiguredGatewayLatencyThresholds(t *testing.T) {
+	tests := []struct {
+		name    string
+		latency GatewayLatencyConfig
+		field   string
+	}{
+		{
+			name: "gateway latency",
+			latency: GatewayLatencyConfig{
+				Enabled:             true,
+				MaxGatewayLatencyMs: -1,
+			},
+			field: "maxGatewayLatencyMs",
+		},
+		{
+			name: "overhead milliseconds",
+			latency: GatewayLatencyConfig{
+				Enabled:       true,
+				MaxOverheadMs: -1,
+			},
+			field: "maxOverheadMs",
+		},
+		{
+			name: "overhead ratio",
+			latency: GatewayLatencyConfig{
+				Enabled:          true,
+				MaxOverheadRatio: -1,
+			},
+			field: "maxOverheadRatio",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cfg := validGatewayIngressTestConfig()
+			cfg.Gateway.Latency = test.latency
+
+			err := cfg.Validate()
+			if err == nil || !strings.Contains(err.Error(), "gateway.latency."+test.field) {
+				t.Fatalf("Validate error = %v, want %s validation error", err, test.field)
+			}
+		})
+	}
+}
+
+func TestValidateRejectsGatewayLatencyWhenGatewayDisabled(t *testing.T) {
+	cfg := validTestConfig()
+	cfg.Gateway.Latency = GatewayLatencyConfig{
+		Enabled:             true,
+		MaxGatewayLatencyMs: 500,
+	}
+
+	err := cfg.Validate()
+	if err == nil || !strings.Contains(err.Error(), "gateway.latency.enabled requires gateway.enabled") {
+		t.Fatalf("Validate error = %v, want gateway enabled requirement", err)
+	}
+}
+
 func validGatewayIngressTestConfig() Config {
 	cfg := validTestConfig()
 	cfg.Runtime.Type = "kubernetes"

@@ -88,6 +88,29 @@ func printValidationSummary(cfg *config.Config) {
 			}
 			fmt.Printf("  Ingress path type: %s\n", cfg.Gateway.Ingress.PathType)
 		}
+		latencyState := "disabled"
+		if cfg.Gateway.Latency.Enabled {
+			latencyState = "enabled"
+		}
+		fmt.Printf("  Latency comparison: %s\n", latencyState)
+		if cfg.Gateway.Latency.Enabled {
+			fmt.Printf("  Latency failure policy: %s\n", cfg.Gateway.Latency.FailurePolicy)
+			if cfg.Gateway.Latency.MaxGatewayLatencyMs > 0 {
+				fmt.Printf(
+					"  Max gateway latency: %dms\n",
+					cfg.Gateway.Latency.MaxGatewayLatencyMs,
+				)
+			}
+			if cfg.Gateway.Latency.MaxOverheadMs > 0 {
+				fmt.Printf("  Max overhead: %dms\n", cfg.Gateway.Latency.MaxOverheadMs)
+			}
+			if cfg.Gateway.Latency.MaxOverheadRatio > 0 {
+				fmt.Printf(
+					"  Max overhead ratio: %.2fx\n",
+					cfg.Gateway.Latency.MaxOverheadRatio,
+				)
+			}
+		}
 		fmt.Printf("  Routes: %d\n", len(cfg.Gateway.Routes))
 		for _, route := range cfg.Gateway.Routes {
 			compareDirect := route.CompareDirect == nil || *route.CompareDirect

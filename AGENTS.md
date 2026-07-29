@@ -72,6 +72,10 @@ The next direction is richer, config-driven deployment experiments across Docker
 - Do not hardcode NGINX, Kong, Istio, Traefik, or any specific ingress implementation.
 - Do not create cluster-wide gateway or ingress resources.
 - Generated gateway resources must be clearly owned and namespace-scoped where possible.
+- Gateway latency comparison must remain runtime-neutral and URL-based.
+- Keep gateway latency checks lightweight; do not turn gateway correctness checks into a load-testing engine or modify k6 behavior.
+- Latency warnings must not fail an otherwise correct route unless the configured failure policy is `fail`.
+- Generated-ingress readiness retries must be driven by HTTP correctness, not latency-only threshold failures.
 - Keep experiment workloads generic across HTTP load generation, black-box checks, dependency integration checks, file/log replay, background worker jobs, and message producer/consumer experiments.
 - `internal/workload` owns runtime-neutral workload execution and result types.
 - HTTP traffic is the first implemented workload type and must run through the runtime-provided service base URL.
@@ -233,3 +237,4 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 8E completed: runtime environment summaries, run phase timelines, and runtime diagnostics reporting.
 - Phase 9A completed: external gateway checks and direct-vs-gateway status comparison.
 - Phase 9B completed: owned Kubernetes Ingress manifest generation for configured gateway routes.
+- Phase 9C completed: optional gateway latency and direct-vs-gateway overhead comparison with warn/fail policies.
