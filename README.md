@@ -656,6 +656,11 @@ Phase 9C can evaluate the final request durations against an absolute gateway la
 
 This is a lightweight comparison of the final correctness-check requests, not a load test or statistically significant benchmark. Use the existing k6 performance checks for sustained traffic and percentile-based performance validation. Generated-ingress retry decisions use HTTP correctness only, so a latency-only violation does not cause repeated readiness attempts.
 
+Reusable examples are available under `examples/`:
+
+- `kubernetes-ingress-gateway.yaml` demonstrates generated Kubernetes Ingress, external gateway checks, and warning-only latency thresholds. It requires an existing ingress controller and a `gateway.baseURL` that already resolves to its endpoint.
+- `kubernetes-local-image.yaml` demonstrates a Kubernetes service using a locally prepared image; `local-nginx-image/Dockerfile` provides the small sample image source.
+
 ---
 
 ## Reports and History

@@ -117,7 +117,7 @@ The next direction is richer, config-driven deployment experiments across Docker
 - `internal/runtime/factory`: select the configured runtime adapter.
 - `internal/runtime/compose`: adapt the existing Docker Compose sandbox lifecycle, readiness, diagnostics, and cleanup behavior.
 - `internal/runtime/kubernetes`: manage temporary local-cluster namespaces, manifests, rollout readiness, port-forwarding, diagnostics, and owned cleanup through `kubectl`.
-- `internal/gateway`: run external gateway route checks and optional direct-service status comparisons.
+- `internal/gateway`: run external gateway route checks, optional direct-service status comparisons, and lightweight latency analysis.
 - `internal/history`: manage `reports/history.json`.
 - `internal/report`: write Markdown and JSON reports.
 - `internal/server`: local API server for dashboard.

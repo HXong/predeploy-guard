@@ -1,3 +1,5 @@
+# Requires an existing Kubernetes context and user-managed ingress controller.
+# gateway.baseURL must already resolve to that controller's ingress endpoint.
 runtime:
   type: kubernetes
   context: minikube
@@ -13,8 +15,15 @@ gateway:
   baseURL: http://127.0.0.1:8088
   ingress:
     enabled: true
+    # Set this to the IngressClass provided by your existing controller.
     className: nginx
     pathType: Prefix
+  latency:
+    enabled: true
+    maxGatewayLatencyMs: 500
+    maxOverheadMs: 200
+    maxOverheadRatio: 3.0
+    failurePolicy: warn
   routes:
     - name: homepage-via-ingress
       method: GET

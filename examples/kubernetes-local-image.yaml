@@ -1,3 +1,5 @@
+# Build the image from examples/local-nginx-image and make it available
+# to the selected Kubernetes context before running this configuration.
 runtime:
   type: kubernetes
   context: minikube
