@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -261,6 +262,7 @@ func main() {
 	)
 
 	rootCmd.AddCommand(initCmd)
+	rootCmd.AddCommand(newDoctorCommand())
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(explainCmd)
@@ -270,6 +272,9 @@ func main() {
 	rootCmd.AddCommand(serveCmd)
 
 	if err := rootCmd.Execute(); err != nil {
+		if errors.Is(err, errDoctorChecksFailed) {
+			os.Exit(1)
+		}
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}

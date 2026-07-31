@@ -77,6 +77,9 @@ The next direction is richer, config-driven deployment experiments across Docker
 - Latency warnings must not fail an otherwise correct route unless the configured failure policy is `fail`.
 - Generated-ingress readiness retries must be driven by HTTP correctness, not latency-only threshold failures.
 - Keep experiment workloads generic across HTTP load generation, black-box checks, dependency integration checks, file/log replay, background worker jobs, and message producer/consumer experiments.
+- `internal/doctor` owns local environment, configuration, and application-path readiness diagnostics.
+- Doctor checks must never install or start tools, edit host files, manage ingress controllers, or modify user projects.
+- Doctor app-path checks must remain shallow and must not read or print environment values, secret files, or package-manager contents.
 - `internal/workload` owns runtime-neutral workload execution and result types.
 - HTTP traffic is the first implemented workload type and must run through the runtime-provided service base URL.
 - Keep workloads runtime-neutral where possible so Docker Compose and Kubernetes reuse the same execution path.
@@ -126,6 +129,7 @@ The next direction is richer, config-driven deployment experiments across Docker
 - `internal/checker`: readiness and smoke checks.
 - `internal/workload`: run runtime-neutral experiment workloads; HTTP traffic is the first implemented type.
 - `internal/loadtest`: Dockerized k6 execution.
+- `internal/doctor`: run safe, read-only environment and app-path readiness diagnostics, apart from a cleaned-up temporary writability probe.
 
 ### Frontend
 
@@ -238,3 +242,4 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 9A completed: external gateway checks and direct-vs-gateway status comparison.
 - Phase 9B completed: owned Kubernetes Ingress manifest generation for configured gateway routes.
 - Phase 9C completed: optional gateway latency and direct-vs-gateway overhead comparison with warn/fail policies.
+- Phase 10A completed: developer environment doctor with Docker, Kubernetes, config, filesystem, Git, and app-path readiness checks.

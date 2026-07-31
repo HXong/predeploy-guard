@@ -142,6 +142,7 @@ This project demonstrates backend engineering, developer tooling, Docker-based w
 
 ### Config usability
 
+- `predeploy doctor` for safe local environment and app-path readiness checks
 - `predeploy init` starter config generation
 - Dependency presets through `predeploy init --with postgres,redis`
 - `predeploy validate` for config validation
@@ -355,6 +356,19 @@ During development, the Vite dev server proxies `/api` requests to `http://local
 ---
 
 ## CLI Commands
+
+### `predeploy doctor`
+
+```bash
+predeploy doctor
+predeploy doctor --config predeploy.yaml
+predeploy doctor --app ./my-app
+predeploy doctor --config predeploy.yaml --app ./my-app
+```
+
+Doctor reports `PASS`, `WARN`, and `FAIL` results for local filesystem access, Git repository detection, configuration validity, Docker, Docker Compose, kubectl, Kubernetes connectivity, optional Minikube, and common application project files. A valid config makes checks for its selected runtime, generated ingress, and Dockerized performance engine required.
+
+Doctor is diagnostic only. It does not install or start tools, modify application source, edit host files, run k6, or install an ingress controller. Warnings keep a zero exit code; failed required checks return exit code 1.
 
 ### `predeploy init`
 
@@ -718,6 +732,9 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 - Phase 9A: External gateway checks and direct-vs-gateway status comparison
 - Phase 9B: Owned Kubernetes Ingress manifest generation
 - Phase 9C: Gateway latency comparison and report enhancements
+- Phase 10A: Developer environment doctor
+  - Docker, Kubernetes, config, filesystem, Git, and app-path readiness checks
+  - safe diagnostics with no automatic installation or app source changes
 
 ### Future
 

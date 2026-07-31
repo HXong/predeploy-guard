@@ -157,6 +157,28 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Keep the comparison lightweight and separate from Dockerized k6 load testing
 - Preserve existing report fields while extending structured gateway metrics additively
 
+## Current Phase
+
+### Phase 10: Developer Onboarding & App Integration
+
+#### Phase 10A: Developer Environment Doctor (Completed)
+
+- Add `predeploy doctor` with optional `--config` and `--app` paths
+- Report Docker CLI, daemon, Compose, kubectl, current-context, cluster, and optional Minikube readiness
+- Check current-directory writes, Git repository presence, config validity, and common application project indicators
+- Make valid configurations inform which Docker or Kubernetes checks are required
+- Keep onboarding diagnostic-only: do not install tools, start Minikube, manage ingress controllers, edit host files, or modify user projects
+
+#### Phase 10B: App-Aware Initialization (Future)
+
+- Add an explicit `predeploy init --app <folder>` workflow
+- Generate integration configuration only after presenting safe, reviewable choices
+
+#### Phase 10C: Lightweight Project Detection (Future)
+
+- Detect a small set of common top-level project indicators
+- Avoid deep framework inference and secret-bearing environment inspection
+
 ## Future Enhancements
 
 - Optional safe save-to-file flow through the local API
