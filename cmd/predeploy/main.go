@@ -261,8 +261,10 @@ func main() {
 		"Address for the local API server",
 	)
 
+	doctorCmd := newDoctorCommand()
+
 	rootCmd.AddCommand(initCmd)
-	rootCmd.AddCommand(newDoctorCommand())
+	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(runCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(explainCmd)
