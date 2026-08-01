@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/HXong/predeploy-guard/internal/app"
 	"github.com/HXong/predeploy-guard/internal/config"
@@ -17,6 +18,13 @@ func main() {
 	var initOutputPath string
 	var initForce bool
 	var initDependencies string
+	var initAppPath string
+	var initRuntime string
+	var initServiceName string
+	var initImage string
+	var initPort int
+	var initHealthPath string
+	var initNoBuild bool
 	var runProfile string
 	var validateProfile string
 	var explainProfile string
@@ -27,41 +35,36 @@ func main() {
 		Use:   "init",
 		Short: "Create a starter predeploy.yaml config",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := scaffold.WriteDefaultConfig(scaffold.InitOptions{
+			if strings.TrimSpace(initAppPath) == "" {
+				for _, flagName := range []string{
+					"runtime", "service-name", "image", "port", "health-path", "no-build",
+				} {
+					if cmd.Flags().Changed(flagName) {
+						return fmt.Errorf("--%s requires --app", flagName)
+					}
+				}
+			}
+			if cmd.Flags().Changed("port") && (initPort <= 0 || initPort > 65535) {
+				return fmt.Errorf("--port must be between 1 and 65535")
+			}
+
+			options := scaffold.InitOptions{
 				OutputPath:   initOutputPath,
 				Overwrite:    initForce,
 				Dependencies: initDependencies,
-			}); err != nil {
+				AppPath:      initAppPath,
+				Runtime:      initRuntime,
+				ServiceName:  initServiceName,
+				Image:        initImage,
+				Port:         initPort,
+				HealthPath:   initHealthPath,
+				NoBuild:      initNoBuild,
+			}
+			result, err := scaffold.WriteConfig(options)
+			if err != nil {
 				return err
 			}
-
-			output := initOutputPath
-			if output == "" {
-				output = scaffold.DefaultConfigFilename
-			}
-
-			fmt.Printf("Created %s\n", output)
-
-			if initDependencies != "" {
-				fmt.Printf("Included dependency presets: %s\n", initDependencies)
-			}
-
-			fmt.Println("Next steps:")
-			fmt.Printf("  1. Edit %s for your service\n", output)
-			fmt.Printf("  2. Run: predeploy validate %s\n", output)
-			fmt.Printf("  3. Run: predeploy explain %s\n", output)
-			fmt.Printf("  4. Run: predeploy run %s\n", output)
-
-			fmt.Println("Optional profile commands:")
-			fmt.Printf("  - Run smoke only: predeploy run %s --profile smoke-only\n", output)
-			fmt.Printf("  - Run light load: predeploy run %s --profile light-load\n", output)
-			fmt.Printf("  - Run stress test: predeploy run %s --profile stress-test\n", output)
-
-			fmt.Println("After running:")
-			fmt.Printf("  - View history: predeploy history %s\n", output)
-			fmt.Printf("  - Show a run: predeploy show %s <run-id>\n", output)
-			fmt.Printf("  - Compare runs: predeploy compare %s <base-run-id> <target-run-id>\n", output)
-
+			printInitResult(cmd.OutOrStdout(), options, result)
 			return nil
 		},
 	}
@@ -87,6 +90,49 @@ func main() {
 		"with",
 		"",
 		"Comma-separated dependency presets to include, e.g. postgres,redis",
+	)
+
+	initCmd.Flags().StringVar(
+		&initAppPath,
+		"app",
+		"",
+		"Path to an existing application directory to integrate",
+	)
+	initCmd.Flags().StringVar(
+		&initRuntime,
+		"runtime",
+		"",
+		"Runtime for generated config: docker-compose or kubernetes",
+	)
+	initCmd.Flags().StringVar(
+		&initServiceName,
+		"service-name",
+		"",
+		"Service name to use in predeploy.yaml",
+	)
+	initCmd.Flags().StringVar(
+		&initImage,
+		"image",
+		"",
+		"Image name to use for the service",
+	)
+	initCmd.Flags().IntVar(
+		&initPort,
+		"port",
+		0,
+		"Container port exposed by the service",
+	)
+	initCmd.Flags().StringVar(
+		&initHealthPath,
+		"health-path",
+		"",
+		"Health endpoint path to validate",
+	)
+	initCmd.Flags().BoolVar(
+		&initNoBuild,
+		"no-build",
+		false,
+		"Do not configure service.build even if a Dockerfile is found",
 	)
 
 	rootCmd := &cobra.Command{

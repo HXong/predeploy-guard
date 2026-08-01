@@ -169,15 +169,20 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Make valid configurations inform which Docker or Kubernetes checks are required
 - Keep onboarding diagnostic-only: do not install tools, start Minikube, manage ingress controllers, edit host files, or modify user projects
 
-#### Phase 10B: App-Aware Initialization (Future)
+#### Phase 10B: App-Aware Initialization (Completed)
 
-- Add an explicit `predeploy init --app <folder>` workflow
-- Generate integration configuration only after presenting safe, reviewable choices
+- Add `predeploy init --app <folder>` with runtime, service, image, port, health-path, and no-build overrides
+- Detect only common top-level project indicators without parsing application or environment files
+- Link Dockerfile-based applications through a build context relative to the generated config
+- Generate conservative config defaults with performance and gateway checks disabled
+- Print doctor, validate, and run onboarding steps plus non-failing Dockerfile and port warnings
+- Never modify the application directory or overwrite an existing config without `--force`
 
 #### Phase 10C: Lightweight Project Detection (Future)
 
-- Detect a small set of common top-level project indicators
-- Avoid deep framework inference and secret-bearing environment inspection
+- Build on the reusable top-level detection foundation introduced in Phase 10B
+- Add carefully scoped detection-informed defaults without deep framework inference
+- Keep all inferred values transparent and explicitly overridable
 
 ## Future Enhancements
 

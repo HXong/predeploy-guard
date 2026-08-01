@@ -144,6 +144,7 @@ This project demonstrates backend engineering, developer tooling, Docker-based w
 
 - `predeploy doctor` for safe local environment and app-path readiness checks
 - `predeploy init` starter config generation
+- App-aware config generation through `predeploy init --app <folder>`
 - Dependency presets through `predeploy init --with postgres,redis`
 - `predeploy validate` for config validation
 - `predeploy explain` for human-readable execution plans
@@ -377,7 +378,24 @@ predeploy init
 predeploy init --output predeploy.yaml
 predeploy init --output predeploy.yaml --force
 predeploy init --with postgres,redis
+predeploy init --app ./my-app --port 8080 --health-path /health
+predeploy init --app ./my-app --runtime kubernetes
+predeploy init --app ./my-app --service-name orders-api --image orders-api:local
+predeploy init --app ./my-app --no-build
 ```
+
+App-aware init detects only common top-level project files and links the application through `service.build.context` when a Dockerfile exists. The build context is relative to the generated config where possible. PreDeploy Guard does not modify the application folder, create a Dockerfile, parse `.env`, or overwrite an existing config unless `--force` is supplied.
+
+Recommended onboarding flow:
+
+```bash
+predeploy init --app ./my-app --port 8080 --health-path /health
+predeploy doctor --config predeploy.yaml --app ./my-app
+predeploy validate predeploy.yaml
+predeploy run predeploy.yaml
+```
+
+When no Dockerfile is found—or when `--no-build` is used—the generated config references the selected or default image without a build context.
 
 ### `predeploy validate`
 
@@ -735,6 +753,10 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
 - Phase 10A: Developer environment doctor
   - Docker, Kubernetes, config, filesystem, Git, and app-path readiness checks
   - safe diagnostics with no automatic installation or app source changes
+- Phase 10B: App-aware initialization and safe project integration
+  - lightweight top-level project detection
+  - relative build-context linking without application source changes
+  - generated doctor, validate, and run onboarding steps
 
 ### Future
 

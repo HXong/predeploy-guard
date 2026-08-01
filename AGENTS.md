@@ -80,6 +80,11 @@ The next direction is richer, config-driven deployment experiments across Docker
 - `internal/doctor` owns local environment, configuration, and application-path readiness diagnostics.
 - Doctor checks must never install or start tools, edit host files, manage ingress controllers, or modify user projects.
 - Doctor app-path checks must remain shallow and must not read or print environment values, secret files, or package-manager contents.
+- `internal/appdetect` owns reusable, top-level-only application project detection and service-name sanitization.
+- App detection must never recursively scan source, parse `.env`, read dependency manifest contents, or expose secret values.
+- App-aware init may write only the explicitly selected output config and must never modify the detected application directory or generate Dockerfiles there.
+- App-aware build contexts should be relative to the generated config location when possible.
+- Preserve existing `predeploy init` behavior when no app path is supplied.
 - `internal/workload` owns runtime-neutral workload execution and result types.
 - HTTP traffic is the first implemented workload type and must run through the runtime-provided service base URL.
 - Keep workloads runtime-neutral where possible so Docker Compose and Kubernetes reuse the same execution path.
@@ -130,6 +135,7 @@ The next direction is richer, config-driven deployment experiments across Docker
 - `internal/workload`: run runtime-neutral experiment workloads; HTTP traffic is the first implemented type.
 - `internal/loadtest`: Dockerized k6 execution.
 - `internal/doctor`: run safe, read-only environment and app-path readiness diagnostics, apart from a cleaned-up temporary writability probe.
+- `internal/appdetect`: detect common top-level application indicators and derive safe default service names without reading file contents.
 
 ### Frontend
 
@@ -243,3 +249,4 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 9B completed: owned Kubernetes Ingress manifest generation for configured gateway routes.
 - Phase 9C completed: optional gateway latency and direct-vs-gateway overhead comparison with warn/fail policies.
 - Phase 10A completed: developer environment doctor with Docker, Kubernetes, config, filesystem, Git, and app-path readiness checks.
+- Phase 10B completed: app-aware init with safe folder linking, lightweight detection, conservative config generation, and onboarding next steps.

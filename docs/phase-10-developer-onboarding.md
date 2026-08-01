@@ -6,7 +6,7 @@ Connecting an existing backend service to a local deployment experiment currentl
 
 ## Goal
 
-Phase 10 makes onboarding safe and incremental. It starts with diagnostics that explain local readiness, then can evolve toward explicit configuration generation and lightweight project detection. PreDeploy Guard remains a local validation sandbox and does not install platform tools or alter application source code.
+Phase 10 makes onboarding safe and incremental. It starts with diagnostics that explain local readiness, then adds explicit app-aware configuration generation backed by lightweight project detection. PreDeploy Guard remains a local validation sandbox and does not install platform tools or alter application source code.
 
 ## Phase 10A: Developer Environment Doctor
 
@@ -67,24 +67,90 @@ Generated ingress diagnostics explicitly remind developers that PreDeploy Guard 
 
 Without a valid config, missing optional tools are warnings so a Docker-only or Kubernetes-only developer can still use the report. Warnings return exit code 0. A failed filesystem, app-path, config, or required capability check returns exit code 1.
 
-## Future Phase 10B: `init --app`
+## Phase 10B: App-Aware Init and Safe Project Integration
 
-A future `predeploy init --app <folder>` workflow may generate a reviewable integration config for an existing project. It must be explicit about output paths and overwrite behavior. It must not modify application source, generate app-specific Dockerfiles without a separate design, or silently install dependencies.
+Phase 10B adds an explicit way to create a reviewable PreDeploy Guard config for an existing application directory:
+
+```bash
+predeploy init --app ./my-app
+predeploy init --app ./my-app --port 8080 --health-path /health
+predeploy init --app ./my-app --runtime kubernetes
+predeploy init --app ./my-app --service-name orders-api
+predeploy init --app ./my-app --image orders-api:local
+predeploy init --app ./my-app --no-build
+```
+
+### Purpose
+
+App-aware init reduces the manual edits needed to connect a local project while keeping every generated decision visible and overridable. It derives a sanitized service name from the app directory and defaults to:
+
+- runtime `docker-compose`;
+- image `predeploy-<service-name>:local`;
+- port `8080`; and
+- health path `/health`.
+
+The runtime, service name, image, port, and health path can all be selected explicitly. The normal `predeploy init` output remains unchanged when `--app` is not supplied.
+
+### Generated config behavior
+
+Detection checks only the app directory's top-level `Dockerfile`, `package.json`, `go.mod`, `requirements.txt`, `pyproject.toml`, `pom.xml`, and `build.gradle` filenames. It does not read their contents.
+
+When a Dockerfile is present and `--no-build` is not selected, the generated service includes a build context relative to the output config directory where possible:
+
+```yaml
+runtime:
+  type: docker-compose
+
+service:
+  name: "my-app"
+  image: "predeploy-my-app:local"
+  build:
+    context: "./my-app"
+    dockerfile: Dockerfile
+  port: 8080
+  healthPath: "/health"
+```
+
+Without a Dockerfile, the config keeps the image reference and omits `service.build`. Init prints a warning explaining that the image must already exist or a Dockerfile can be added later. `--no-build` deliberately produces the same image-only configuration even when a Dockerfile exists.
+
+Generated app-aware configs include a health smoke check using the selected health path, keep gateway and performance checks disabled by default, and retain the existing smoke-only, light-load, and stress-test profiles. The completion output recommends:
+
+```bash
+predeploy doctor --config predeploy.yaml --app ./my-app
+predeploy validate predeploy.yaml
+predeploy run predeploy.yaml
+```
+
+### Safety boundaries
+
+- The app directory must already exist and must be a directory.
+- Init writes only the selected output config and rejects an output path inside the app directory.
+- Existing output is preserved unless `--force` is supplied.
+- No application file is created, changed, or deleted.
+- No Dockerfile is generated.
+- `.env` files, dependency manifests, and source files are never opened or parsed.
+- No tool is installed or started, and no host file is edited.
+- An invalid runtime or missing app path fails before config output is written.
+- Relative build contexts are used when the app and config locations permit it.
 
 ## Future Phase 10C: Project Detection
 
-Future project detection may infer a small set of useful defaults from common top-level files. Detection should remain lightweight, transparent, and easy to override. Deep framework detection, package-manager inspection, and environment discovery are intentionally deferred.
+Phase 10B establishes the reusable lightweight detection package. A future phase may use those indicators for a small set of transparent, detection-informed defaults. Deep framework detection, package-manager inspection, environment discovery, and hidden inference remain out of scope.
+
+## Future Interactive Wizard
+
+A future interactive onboarding wizard may present detected values and ask the developer to confirm them before generation. It must use the same safe detection and scaffold boundaries, support a non-interactive mode for automation, and never modify application source.
 
 ## Non-goals
 
-Phase 10A does not:
+Phase 10 does not:
 
 - install Docker, Docker Compose, kubectl, Kubernetes, Minikube, k6, or another tool;
 - install, select, or manage an ingress controller;
 - start Docker, Minikube, or a Kubernetes cluster;
 - run a validation experiment or k6 workload;
 - edit host files, kubeconfig, Docker configuration, or user application files;
-- generate `predeploy.yaml`, a Dockerfile, Compose files, or Kubernetes manifests;
+- generate a Dockerfile, Compose file, Kubernetes manifest, or any artifact inside the application directory;
 - deeply detect frameworks or parse dependency manifests; or
 - read or print environment values or secret-bearing files.
 
