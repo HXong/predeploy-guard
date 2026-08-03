@@ -25,6 +25,7 @@ func main() {
 	var initPort int
 	var initHealthPath string
 	var initNoBuild bool
+	var initInteractive bool
 	var runProfile string
 	var validateProfile string
 	var explainProfile string
@@ -35,7 +36,7 @@ func main() {
 		Use:   "init",
 		Short: "Create a starter predeploy.yaml config",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if strings.TrimSpace(initAppPath) == "" {
+			if !initInteractive && strings.TrimSpace(initAppPath) == "" {
 				for _, flagName := range []string{
 					"runtime", "service-name", "image", "port", "health-path", "no-build",
 				} {
@@ -44,7 +45,7 @@ func main() {
 					}
 				}
 			}
-			if cmd.Flags().Changed("port") && (initPort <= 0 || initPort > 65535) {
+			if !initInteractive && cmd.Flags().Changed("port") && (initPort <= 0 || initPort > 65535) {
 				return fmt.Errorf("--port must be between 1 and 65535")
 			}
 
@@ -59,6 +60,9 @@ func main() {
 				Port:         initPort,
 				HealthPath:   initHealthPath,
 				NoBuild:      initNoBuild,
+			}
+			if initInteractive {
+				return runInteractiveInit(cmd.InOrStdin(), cmd.OutOrStdout(), options)
 			}
 			result, err := scaffold.WriteConfig(options)
 			if err != nil {
@@ -133,6 +137,12 @@ func main() {
 		"no-build",
 		false,
 		"Do not configure service.build even if a Dockerfile is found",
+	)
+	initCmd.Flags().BoolVar(
+		&initInteractive,
+		"interactive",
+		false,
+		"Run an opt-in guided configuration setup",
 	)
 
 	rootCmd := &cobra.Command{

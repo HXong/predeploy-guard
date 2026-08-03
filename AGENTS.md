@@ -85,6 +85,10 @@ The next direction is richer, config-driven deployment experiments across Docker
 - App-aware init may write only the explicitly selected output config and must never modify the detected application directory or generate Dockerfiles there.
 - App-aware build contexts should be relative to the generated config location when possible.
 - Preserve existing `predeploy init` behavior when no app path is supplied.
+- Interactive init prompts must be opt-in through `--interactive` and must never block non-interactive commands.
+- The init wizard must use injected input/output streams and must not access `os.Stdin` or `os.Stdout` directly.
+- Interactive init must not write any file before final confirmation; cancellation must leave the filesystem unchanged.
+- Interactive init must reuse the safe scaffold and app-detection paths and must never modify application folders.
 - `internal/workload` owns runtime-neutral workload execution and result types.
 - HTTP traffic is the first implemented workload type and must run through the runtime-provided service base URL.
 - Keep workloads runtime-neutral where possible so Docker Compose and Kubernetes reuse the same execution path.
@@ -250,3 +254,4 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 9C completed: optional gateway latency and direct-vs-gateway overhead comparison with warn/fail policies.
 - Phase 10A completed: developer environment doctor with Docker, Kubernetes, config, filesystem, Git, and app-path readiness checks.
 - Phase 10B completed: app-aware init with safe folder linking, lightweight detection, conservative config generation, and onboarding next steps.
+- Phase 10C completed: opt-in interactive guided init with validated prompts, app-aware defaults, preview, and final confirmation.

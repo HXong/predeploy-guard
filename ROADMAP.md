@@ -178,11 +178,14 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Print doctor, validate, and run onboarding steps plus non-failing Dockerfile and port warnings
 - Never modify the application directory or overwrite an existing config without `--force`
 
-#### Phase 10C: Lightweight Project Detection (Future)
+#### Phase 10C: Interactive Guided Init (Completed)
 
-- Build on the reusable top-level detection foundation introduced in Phase 10B
-- Add carefully scoped detection-informed defaults without deep framework inference
-- Keep all inferred values transparent and explicitly overridable
+- Add opt-in `predeploy init --interactive` and app-aware guided setup
+- Use existing CLI flags and lightweight detection as prompt defaults
+- Re-prompt invalid runtime, port, health-path, build, and dependency choices
+- Show a concise generated-config preview before writing
+- Require final confirmation and support cancellation without filesystem changes
+- Keep all existing non-interactive init behavior unchanged
 
 ## Future Enhancements
 

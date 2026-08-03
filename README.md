@@ -382,6 +382,9 @@ predeploy init --app ./my-app --port 8080 --health-path /health
 predeploy init --app ./my-app --runtime kubernetes
 predeploy init --app ./my-app --service-name orders-api --image orders-api:local
 predeploy init --app ./my-app --no-build
+predeploy init --interactive
+predeploy init --interactive --app ./my-app
+predeploy init --interactive --output predeploy.yaml
 ```
 
 App-aware init detects only common top-level project files and links the application through `service.build.context` when a Dockerfile exists. The build context is relative to the generated config where possible. PreDeploy Guard does not modify the application folder, create a Dockerfile, parse `.env`, or overwrite an existing config unless `--force` is supplied.
@@ -396,6 +399,8 @@ predeploy run predeploy.yaml
 ```
 
 When no Dockerfile is found—or when `--no-build` is used—the generated config references the selected or default image without a build context.
+
+Guided init is strictly opt-in through `--interactive`. Existing flags pre-fill the corresponding prompts, invalid runtime, port, health-path, and dependency answers are re-prompted, and a final confirmation is required before the config is written. The wizard generates only the selected config file; it does not modify the application folder, create a Dockerfile, inspect `.env` values, or install tools.
 
 ### `predeploy validate`
 
@@ -757,6 +762,10 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
   - lightweight top-level project detection
   - relative build-context linking without application source changes
   - generated doctor, validate, and run onboarding steps
+- Phase 10C: Interactive guided init
+  - opt-in prompt-based configuration with app-aware defaults
+  - validated runtime, port, health-path, build, and dependency choices
+  - final confirmation before any file is written
 
 ### Future
 

@@ -133,13 +133,57 @@ predeploy run predeploy.yaml
 - An invalid runtime or missing app path fails before config output is written.
 - Relative build contexts are used when the app and config locations permit it.
 
-## Future Phase 10C: Project Detection
+## Phase 10C: Interactive Guided Init
 
-Phase 10B establishes the reusable lightweight detection package. A future phase may use those indicators for a small set of transparent, detection-informed defaults. Deep framework detection, package-manager inspection, environment discovery, and hidden inference remain out of scope.
+Phase 10C adds an opt-in prompt-driven setup flow for developers who prefer to confirm configuration choices interactively:
 
-## Future Interactive Wizard
+```bash
+predeploy init --interactive
+predeploy init --interactive --app ./my-app
+predeploy init --interactive --output predeploy.yaml
+predeploy init --interactive --app ./my-app --runtime kubernetes --port 8080
+```
 
-A future interactive onboarding wizard may present detected values and ask the developer to confirm them before generation. It must use the same safe detection and scaffold boundaries, support a non-interactive mode for automation, and never modify application source.
+Without `--interactive`, both generic and app-aware init retain their existing non-interactive behavior and never display prompts.
+
+### Purpose
+
+Guided init makes the safe Phase 10B generator easier to discover without adding hidden inference. Existing flags become prompt defaults, so a developer can preselect some answers and confirm or adjust the rest. A blank app directory creates a generic starter; an app path activates the existing lightweight top-level detection.
+
+### Prompt flow
+
+The wizard asks for:
+
+1. application directory;
+2. service name;
+3. Docker Compose or Kubernetes runtime;
+4. service image;
+5. container port;
+6. health path;
+7. Dockerfile build-context use when a top-level Dockerfile exists;
+8. optional PostgreSQL and Redis dependency presets;
+9. output config path; and
+10. final confirmation.
+
+Detected app indicators and the suggested service name are shown before service prompts. Runtime, port, health-path, yes/no, and dependency choices are validated and re-prompted rather than silently corrected. The final preview includes the output, runtime, service, image, build context, port, health path, and dependencies.
+
+The wizard itself only reads answers and returns scaffold options. The CLI calls the existing scaffold writer only after the developer confirms. Answering no at the final prompt prints `Init cancelled. No files were written.` and returns successfully.
+
+### Safety boundaries
+
+- Prompts appear only when `--interactive` is explicitly supplied.
+- The wizard uses injected input and output streams and performs no direct terminal or file writes.
+- App detection must succeed before the configuration prompts continue.
+- No config is written before final confirmation.
+- Cancellation and detection failures write no files.
+- Existing output remains protected unless `--force` was supplied before the wizard started.
+- The generated config must remain outside the detected application directory.
+- The application directory, source files, Dockerfiles, and `.env` files are never changed or parsed.
+- No external tool is installed, started, or reconfigured.
+
+## Future Improvements
+
+Future onboarding work may add terminal-aware selection controls, richer previews, or carefully scoped detection-informed suggestions. Any enhancement must preserve stream-injected tests, explicit overrides, non-interactive automation, final confirmation, and the no-application-modification boundary.
 
 ## Non-goals
 
