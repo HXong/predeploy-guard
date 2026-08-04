@@ -77,6 +77,59 @@ func TestInitWizardUsesProvidedAppDefaults(t *testing.T) {
 	}
 }
 
+func TestInitWizardGenericImageDefaultFollowsChangedServiceName(t *testing.T) {
+	input := strings.Join([]string{
+		"", "orders-api", "", "", "", "", "", "", "",
+	}, "\n") + "\n"
+
+	result, output, err := runWizardTest(InitOptions{}, input)
+	if err != nil {
+		t.Fatalf("RunInitWizard: %v", err)
+	}
+	if result.Options.Image != "orders-api:predeploy" {
+		t.Fatalf("Image = %q, want orders-api:predeploy", result.Options.Image)
+	}
+	if !strings.Contains(output, "Image [orders-api:predeploy]:") {
+		t.Fatalf("output = %q, want service-aware image prompt", output)
+	}
+}
+
+func TestInitWizardAppImageDefaultFollowsChangedServiceName(t *testing.T) {
+	appPath := t.TempDir()
+	mustWriteFile(t, filepath.Join(appPath, "Dockerfile"), "FROM scratch\n")
+	input := strings.Join([]string{
+		"", "orders-api", "", "", "", "", "", "", "", "",
+	}, "\n") + "\n"
+
+	result, output, err := runWizardTest(InitOptions{AppPath: appPath}, input)
+	if err != nil {
+		t.Fatalf("RunInitWizard: %v", err)
+	}
+	if result.Options.Image != "predeploy-orders-api:local" {
+		t.Fatalf("Image = %q, want predeploy-orders-api:local", result.Options.Image)
+	}
+	if !strings.Contains(output, "Image [predeploy-orders-api:local]:") {
+		t.Fatalf("output = %q, want app-aware image prompt", output)
+	}
+}
+
+func TestInitWizardProvidedImageIsPreservedAfterServiceChange(t *testing.T) {
+	input := strings.Join([]string{
+		"", "orders-api", "", "", "", "", "", "", "",
+	}, "\n") + "\n"
+
+	result, output, err := runWizardTest(InitOptions{Image: "custom/image:test"}, input)
+	if err != nil {
+		t.Fatalf("RunInitWizard: %v", err)
+	}
+	if result.Options.Image != "custom/image:test" {
+		t.Fatalf("Image = %q, want custom/image:test", result.Options.Image)
+	}
+	if !strings.Contains(output, "Image [custom/image:test]:") {
+		t.Fatalf("output = %q, want provided image prompt", output)
+	}
+}
+
 func TestInitWizardSetsNoBuildWhenAnswerIsNo(t *testing.T) {
 	appPath := t.TempDir()
 	mustWriteFile(t, filepath.Join(appPath, "Dockerfile"), "FROM scratch\n")

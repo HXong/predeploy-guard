@@ -26,7 +26,10 @@ func TestPrintDoctorReportGroupsChecksAndPrintsSummary(t *testing.T) {
 			Status:   doctor.StatusFail,
 			Message:  "App path does not exist: ./missing",
 		},
-	}}
+	}, Recommendations: []doctor.Recommendation{{
+		Message: "Run guided init:",
+		Command: "predeploy init --interactive",
+	}}}
 
 	var output bytes.Buffer
 	printDoctorReport(&output, report)
@@ -37,6 +40,7 @@ func TestPrintDoctorReportGroupsChecksAndPrintsSummary(t *testing.T) {
 		"Docker\n[WARN] Docker CLI not found",
 		"Doctor never installs tools.",
 		"Application\n[FAIL] App path does not exist: ./missing",
+		"Recommendations\n- Run guided init:\n  predeploy init --interactive",
 		"Summary: 1 passed, 1 warning, 1 failed",
 	} {
 		if !strings.Contains(output.String(), expected) {

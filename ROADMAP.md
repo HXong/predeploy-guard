@@ -187,6 +187,15 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Require final confirmation and support cancellation without filesystem changes
 - Keep all existing non-interactive init behavior unchanged
 
+#### Phase 10D: Onboarding Polish and First-Run Guidance (Completed)
+
+- Reuse shared app detection for doctor application checks
+- Add actionable, secret-free doctor recommendations without executing installs or fixes
+- Align generic, app-aware, and interactive first-run next steps
+- Derive interactive image defaults from the final selected service name
+- Add a safe alternative command when config output is rejected inside an app directory
+- Preserve application contents and core runtime behavior
+
 ## Future Enhancements
 
 - Optional safe save-to-file flow through the local API

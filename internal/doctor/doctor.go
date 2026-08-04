@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/HXong/predeploy-guard/internal/appdetect"
 	"github.com/HXong/predeploy-guard/internal/config"
 )
 
@@ -38,8 +39,14 @@ type CheckResult struct {
 	Details  string
 }
 
+type Recommendation struct {
+	Message string
+	Command string
+}
+
 type Report struct {
-	Results []CheckResult
+	Results         []CheckResult
+	Recommendations []Recommendation
 }
 
 type Options struct {
@@ -72,6 +79,20 @@ type requirements struct {
 	cluster       bool
 }
 
+type configCheckState string
+
+const (
+	configMissing configCheckState = "missing"
+	configInvalid configCheckState = "invalid"
+	configValid   configCheckState = "valid"
+)
+
+type configCheckOutcome struct {
+	state       configCheckState
+	config      *config.Config
+	commandPath string
+}
+
 func Run(ctx context.Context, options Options) Report {
 	return RunWithRunner(ctx, options, execCommandRunner{})
 }
@@ -99,14 +120,16 @@ func RunWithRunner(ctx context.Context, options Options, commandRunner CommandRu
 	report.checkWritable(workingDir)
 	report.checkGitRepository(workingDir)
 
-	loadedConfig := report.checkConfig(options.ConfigPath, workingDir)
-	required := configRequirements(loadedConfig)
+	configOutcome := report.checkConfig(options.ConfigPath, workingDir)
+	required := configRequirements(configOutcome.config)
 	report.checkDocker(ctx, commandRunner, required)
 	report.checkKubernetes(ctx, commandRunner, required)
 
-	if options.AppPath != "" {
-		report.checkAppPath(options.AppPath, workingDir)
+	appValid := false
+	if strings.TrimSpace(options.AppPath) != "" {
+		appValid = report.checkAppPath(options.AppPath, workingDir)
 	}
+	report.addRecommendations(options, configOutcome, appValid)
 
 	return report
 }
@@ -184,11 +207,12 @@ func (r *Report) checkGitRepository(workingDir string) {
 		"Git is optional, but a repository makes configuration and reports easier to track.")
 }
 
-func (r *Report) checkConfig(configPath string, workingDir string) *config.Config {
+func (r *Report) checkConfig(configPath string, workingDir string) configCheckOutcome {
 	supplied := configPath != ""
 	if configPath == "" {
 		configPath = "predeploy.yaml"
 	}
+	commandPath := configPath
 	if !filepath.IsAbs(configPath) {
 		configPath = filepath.Join(workingDir, configPath)
 	}
@@ -200,18 +224,18 @@ func (r *Report) checkConfig(configPath string, workingDir string) *config.Confi
 			r.add(CategoryLocalEnvironment, "config", StatusWarn,
 				"No predeploy.yaml found in the current directory",
 				"Pass --config to check a config at another path.")
-			return nil
+			return configCheckOutcome{state: configMissing, commandPath: commandPath}
 		}
 		r.add(CategoryLocalEnvironment, "config", StatusFail,
 			fmt.Sprintf("Config validation failed: %v", err), "")
-		return nil
+		return configCheckOutcome{state: configInvalid, commandPath: commandPath}
 	}
 
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		r.add(CategoryLocalEnvironment, "config", StatusFail,
 			fmt.Sprintf("Config validation failed: %v", err), "")
-		return nil
+		return configCheckOutcome{state: configInvalid, commandPath: commandPath}
 	}
 
 	r.add(CategoryLocalEnvironment, "config", StatusPass,
@@ -230,7 +254,11 @@ func (r *Report) checkConfig(configPath string, workingDir string) *config.Confi
 			"PreDeploy Guard will require the Docker CLI and daemon for k6; doctor does not run k6.")
 	}
 
-	return cfg
+	return configCheckOutcome{
+		state:       configValid,
+		config:      cfg,
+		commandPath: commandPath,
+	}
 }
 
 func configRequirements(cfg *config.Config) requirements {
@@ -342,54 +370,36 @@ func (r *Report) checkKubernetes(ctx context.Context, commandRunner CommandRunne
 		"Minikube is optional; any accessible kubeconfig context can be used.")
 }
 
-func (r *Report) checkAppPath(appPath string, workingDir string) {
+func (r *Report) checkAppPath(appPath string, workingDir string) bool {
 	resolvedPath := appPath
 	if !filepath.IsAbs(resolvedPath) {
 		resolvedPath = filepath.Join(workingDir, resolvedPath)
 	}
 	resolvedPath = filepath.Clean(resolvedPath)
 
-	info, err := os.Stat(resolvedPath)
+	detection, err := appdetect.Detect(appdetect.Options{AppPath: resolvedPath})
 	if err != nil {
-		r.add(CategoryApplication, "app-path", StatusFail,
-			fmt.Sprintf("App path does not exist: %s", appPath), err.Error())
-		return
-	}
-	if !info.IsDir() {
-		r.add(CategoryApplication, "app-path", StatusFail,
-			fmt.Sprintf("App path is not a directory: %s", appPath), "")
-		return
+		message := fmt.Sprintf("App path is invalid: %s", appPath)
+		if errors.Is(err, os.ErrNotExist) {
+			message = fmt.Sprintf("App path does not exist: %s", appPath)
+		}
+		r.add(CategoryApplication, "app-path", StatusFail, message, err.Error())
+		return false
 	}
 
 	r.add(CategoryApplication, "app-path", StatusPass,
 		fmt.Sprintf("App path exists: %s", appPath), "")
 
-	indicatorNames := []string{
-		"Dockerfile",
-		"package.json",
-		"go.mod",
-		"requirements.txt",
-		"pyproject.toml",
-		"pom.xml",
-		"build.gradle",
-	}
-	found := make([]string, 0, len(indicatorNames))
-	for _, name := range indicatorNames {
-		if fileExists(filepath.Join(resolvedPath, name)) {
-			found = append(found, name)
-		}
-	}
-
-	if len(found) == 0 {
+	if len(detection.ProjectIndicators) == 0 {
 		r.add(CategoryApplication, "project-indicators", StatusWarn,
-			"No supported project indicators found",
+			"No common project indicators found",
 			"Doctor only checks common top-level files and does not perform deep framework detection.")
 	} else {
 		r.add(CategoryApplication, "project-indicators", StatusPass,
-			fmt.Sprintf("Project indicators found: %s", strings.Join(found, ", ")), "")
+			fmt.Sprintf("Project indicators found: %s", strings.Join(detection.ProjectIndicators, ", ")), "")
 	}
 
-	if fileExists(filepath.Join(resolvedPath, "Dockerfile")) {
+	if detection.HasDockerfile {
 		r.add(CategoryApplication, "dockerfile", StatusPass,
 			"Dockerfile found", "")
 	} else {
@@ -397,6 +407,89 @@ func (r *Report) checkAppPath(appPath string, workingDir string) {
 			"Dockerfile not found",
 			"PreDeploy Guard can still reference an existing image, but build-context integration needs a Dockerfile.")
 	}
+	return true
+}
+
+func (r *Report) addRecommendations(
+	options Options,
+	configOutcome configCheckOutcome,
+	appValid bool,
+) {
+	switch configOutcome.state {
+	case configMissing:
+		if strings.TrimSpace(options.AppPath) == "" {
+			r.recommend("Run guided init:", "predeploy init --interactive")
+		} else if appValid {
+			r.recommend(
+				"Run guided init for this app:",
+				"predeploy init --interactive --app "+commandArgument(options.AppPath),
+			)
+			r.recommend("Then validate the generated config:", "predeploy validate predeploy.yaml")
+		} else {
+			r.recommend("Fix the app path before running guided init.", "")
+		}
+	case configInvalid:
+		r.recommend(
+			"Fix the reported configuration errors, then validate again:",
+			"predeploy validate "+commandArgument(configOutcome.commandPath),
+		)
+	case configValid:
+		configPath := commandArgument(configOutcome.commandPath)
+		r.recommend("Validate the configuration:", "predeploy validate "+configPath)
+		r.recommend("Run the configured checks:", "predeploy run "+configPath)
+	}
+
+	cfg := configOutcome.config
+	if cfg == nil {
+		return
+	}
+	if cfg.Runtime.Type == "kubernetes" &&
+		(r.resultStatus("kubectl") != StatusPass ||
+			r.resultStatus("kubernetes-context") != StatusPass ||
+			r.resultStatus("kubernetes-cluster") != StatusPass) {
+		r.recommend(
+			"Check kubeconfig and select a reachable Kubernetes context before running.",
+			"kubectl config current-context",
+		)
+	}
+	if cfg.Gateway.Ingress.Enabled {
+		r.recommend(
+			"PreDeploy Guard does not install ingress controllers; ensure gateway.baseURL resolves to the ingress endpoint.",
+			"",
+		)
+	}
+	if cfg.Performance.Enabled &&
+		(r.resultStatus("docker-cli") != StatusPass || r.resultStatus("docker-daemon") != StatusPass) {
+		r.recommend(
+			"Dockerized k6 performance checks need an available Docker CLI and daemon.",
+			"docker info",
+		)
+	}
+}
+
+func (r *Report) recommend(message string, command string) {
+	r.Recommendations = append(r.Recommendations, Recommendation{
+		Message: message,
+		Command: command,
+	})
+}
+
+func (r *Report) resultStatus(name string) Status {
+	for _, result := range r.Results {
+		if result.Name == name {
+			return result.Status
+		}
+	}
+	return ""
+}
+
+func commandArgument(value string) string {
+	value = strings.ReplaceAll(value, "\r", " ")
+	value = strings.ReplaceAll(value, "\n", " ")
+	if strings.ContainsAny(value, " \t\"") {
+		return `"` + strings.ReplaceAll(value, `"`, `\"`) + `"`
+	}
+	return value
 }
 
 func requiredStatus(required bool) Status {
@@ -448,9 +541,4 @@ func displayPath(path string, workingDir string) string {
 		return relative
 	}
 	return path
-}
-
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir()
 }

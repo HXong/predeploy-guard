@@ -307,8 +307,10 @@ func buildAppAwareConfig(options InitOptions, outputPath string) (InitResult, st
 	}
 	if pathWithin(outputPath, detection.AppPath) {
 		return InitResult{}, "", fmt.Errorf(
-			"output config must be outside the app directory to keep the app unchanged: %s",
-			detection.AppPath,
+			"output config must be outside the app directory to keep the app unchanged: %s\n\nTry:\n  predeploy init --app %s --output %s",
+			options.AppPath,
+			commandLineArgument(options.AppPath),
+			commandLineArgument(safeOutputPath(detection.AppPath)),
 		)
 	}
 
@@ -362,6 +364,30 @@ func buildAppAwareConfig(options InitOptions, outputPath string) (InitResult, st
 	}
 
 	return result, buildDetectedAppConfig(result, presets), nil
+}
+
+func safeOutputPath(appPath string) string {
+	candidate := filepath.Join(filepath.Dir(appPath), DefaultConfigFilename)
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return filepath.ToSlash(candidate)
+	}
+	relative, err := filepath.Rel(workingDir, candidate)
+	if err != nil {
+		return filepath.ToSlash(candidate)
+	}
+	relative = filepath.ToSlash(relative)
+	if relative != "." && relative != ".." && !strings.HasPrefix(relative, "../") {
+		return "./" + relative
+	}
+	return relative
+}
+
+func commandLineArgument(value string) string {
+	if strings.ContainsAny(value, " \t\"") {
+		return `"` + strings.ReplaceAll(value, `"`, `\"`) + `"`
+	}
+	return value
 }
 
 func buildDetectedAppConfig(result InitResult, presets []DependencyPreset) string {

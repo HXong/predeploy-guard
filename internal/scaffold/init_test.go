@@ -253,6 +253,11 @@ func TestAppAwareInitRejectsOutputInsideAppDirectory(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "outside the app directory") {
 		t.Fatalf("WriteConfig error = %v, want app-directory safety error", err)
 	}
+	expectedSuggestion := "Try:\n  predeploy init --app " + commandLineArgument(appPath) +
+		" --output " + commandLineArgument(safeOutputPath(appPath))
+	if !strings.Contains(err.Error(), expectedSuggestion) {
+		t.Fatalf("WriteConfig error = %q, want suggestion %q", err, expectedSuggestion)
+	}
 	if _, statErr := os.Stat(outputPath); !os.IsNotExist(statErr) {
 		t.Fatalf("output exists after safety failure: %v", statErr)
 	}

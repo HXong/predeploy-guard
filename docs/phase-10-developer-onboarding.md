@@ -181,6 +181,53 @@ The wizard itself only reads answers and returns scaffold options. The CLI calls
 - The application directory, source files, Dockerfiles, and `.env` files are never changed or parsed.
 - No external tool is installed, started, or reconfigured.
 
+## Phase 10D: Onboarding Polish and First-Run Guidance
+
+Phase 10D connects doctor, guided init, validation, and execution into one consistent first-run path. It does not change runtime orchestration or configuration semantics.
+
+### Before
+
+The onboarding commands existed independently, so developers had to infer whether to initialize first, rerun doctor with the generated config, explain the plan, or move directly to a run. Doctor also maintained a duplicate list of application indicator filenames.
+
+### After
+
+The recommended flow for an existing application is explicit:
+
+```bash
+predeploy doctor --app ./my-app
+predeploy init --interactive --app ./my-app
+predeploy doctor --config predeploy.yaml --app ./my-app
+predeploy validate predeploy.yaml
+predeploy explain predeploy.yaml
+predeploy run predeploy.yaml
+```
+
+Doctor now reuses `internal/appdetect` and adds recommendations based on observed state:
+
+- missing config: run generic or app-aware guided init;
+- valid config: validate and run the selected config;
+- invalid config: fix validation errors before running;
+- unavailable configured Kubernetes runtime: check kubeconfig and context;
+- generated ingress: provide an ingress controller externally and ensure `gateway.baseURL` resolves to it; and
+- enabled performance checks without Docker: make the Docker CLI and daemon available for Dockerized k6.
+
+Recommendations are printed commands, not automatic actions. They contain only user-provided paths and fixed command names, never environment values or config secrets.
+
+Init output now presents doctor, validate, explain, and run in the same order for app-aware and interactive generation. Generic init adds config review first. Profile, history, show, and compare commands remain available after the first-run steps.
+
+Interactive image defaults follow the final service name unless `--image` was supplied. For example, choosing `orders-api` suggests `orders-api:predeploy` for a generic starter or `predeploy-orders-api:local` for an app-aware starter.
+
+When an output path points inside the app directory, init still refuses to write and now shows a safe command targeting a config adjacent to the app.
+
+### Safety boundaries
+
+- Doctor recommendations never execute commands or install tools.
+- Recommended commands never include environment values or application file contents.
+- Shared app detection inspects only known top-level filenames.
+- Init continues to write only the selected config outside the app directory.
+- No application source, Dockerfile, dependency manifest, or `.env` file is read or modified.
+- Existing command flags and non-interactive behavior remain compatible.
+
 ## Future Improvements
 
 Future onboarding work may add terminal-aware selection controls, richer previews, or carefully scoped detection-informed suggestions. Any enhancement must preserve stream-injected tests, explicit overrides, non-interactive automation, final confirmation, and the no-application-modification boundary.

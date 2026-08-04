@@ -17,6 +17,24 @@ PreDeploy Guard also reduces YAML configuration friction through starter config 
 
 ---
 
+## First-time setup
+
+For an existing backend application, use this onboarding flow:
+
+```bash
+predeploy doctor --app ./my-app
+predeploy init --interactive --app ./my-app
+predeploy doctor --config predeploy.yaml --app ./my-app
+predeploy validate predeploy.yaml
+predeploy run predeploy.yaml
+```
+
+Doctor reports local readiness and prints actionable recommendations for the next command. Recommendations can guide initialization, validation, runtime checks, kubeconfig troubleshooting, ingress responsibility, or Dockerized k6 prerequisites, but they never install tools or include configured environment values.
+
+App-aware and guided init write only the selected configuration outside the application directory. They do not modify source files, create Dockerfiles, or read `.env` values.
+
+---
+
 ## Demo
 
 ### Dashboard
@@ -371,6 +389,8 @@ Doctor reports `PASS`, `WARN`, and `FAIL` results for local filesystem access, G
 
 Doctor is diagnostic only. It does not install or start tools, modify application source, edit host files, run k6, or install an ingress controller. Warnings keep a zero exit code; failed required checks return exit code 1.
 
+After its checks, doctor recommends the safest next command based on whether a config or app path was supplied and which configured runtime features need attention. Recommendations are guidance only and are never executed automatically.
+
 ### `predeploy init`
 
 ```bash
@@ -392,7 +412,8 @@ App-aware init detects only common top-level project files and links the applica
 Recommended onboarding flow:
 
 ```bash
-predeploy init --app ./my-app --port 8080 --health-path /health
+predeploy doctor --app ./my-app
+predeploy init --interactive --app ./my-app
 predeploy doctor --config predeploy.yaml --app ./my-app
 predeploy validate predeploy.yaml
 predeploy run predeploy.yaml
@@ -766,6 +787,10 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
   - opt-in prompt-based configuration with app-aware defaults
   - validated runtime, port, health-path, build, and dependency choices
   - final confirmation before any file is written
+- Phase 10D: Onboarding polish and first-run guidance
+  - shared app detection and actionable doctor recommendations
+  - consistent doctor, validate, explain, and run next steps
+  - service-aware interactive image defaults and safer output guidance
 
 ### Future
 

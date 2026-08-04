@@ -60,19 +60,24 @@ func printInitResult(writer io.Writer, options scaffold.InitOptions, result scaf
 	}
 
 	fmt.Fprintln(writer, "\nNext steps:")
-	fmt.Fprintf(writer, "  1. Review %s\n", output)
-	fmt.Fprintf(writer, "  2. Run: predeploy doctor --config %s --app %s\n", output, options.AppPath)
-	fmt.Fprintf(writer, "  3. Run: predeploy validate %s\n", output)
+	fmt.Fprintf(writer, "  1. Run: predeploy doctor --config %s --app %s\n", output, options.AppPath)
+	fmt.Fprintf(writer, "  2. Run: predeploy validate %s\n", output)
+	fmt.Fprintf(writer, "  3. Run: predeploy explain %s\n", output)
 	fmt.Fprintf(writer, "  4. Run: predeploy run %s\n", output)
+	printProfileAndHistoryCommands(writer, output)
 }
 
 func printDefaultInitNextSteps(writer io.Writer, output string) {
 	fmt.Fprintln(writer, "Next steps:")
-	fmt.Fprintf(writer, "  1. Edit %s for your service\n", output)
-	fmt.Fprintf(writer, "  2. Run: predeploy validate %s\n", output)
-	fmt.Fprintf(writer, "  3. Run: predeploy explain %s\n", output)
-	fmt.Fprintf(writer, "  4. Run: predeploy run %s\n", output)
+	fmt.Fprintf(writer, "  1. Review %s\n", output)
+	fmt.Fprintf(writer, "  2. Run: predeploy doctor --config %s\n", output)
+	fmt.Fprintf(writer, "  3. Run: predeploy validate %s\n", output)
+	fmt.Fprintf(writer, "  4. Run: predeploy explain %s\n", output)
+	fmt.Fprintf(writer, "  5. Run: predeploy run %s\n", output)
+	printProfileAndHistoryCommands(writer, output)
+}
 
+func printProfileAndHistoryCommands(writer io.Writer, output string) {
 	fmt.Fprintln(writer, "Optional profile commands:")
 	fmt.Fprintf(writer, "  - Run smoke only: predeploy run %s --profile smoke-only\n", output)
 	fmt.Fprintf(writer, "  - Run light load: predeploy run %s --profile light-load\n", output)

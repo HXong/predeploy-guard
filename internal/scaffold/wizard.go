@@ -86,7 +86,7 @@ func RunInitWizard(options WizardOptions) (WizardResult, error) {
 	imageDefault := strings.TrimSpace(selected.Image)
 	if imageDefault == "" {
 		if strings.TrimSpace(appPath) == "" {
-			imageDefault = "my-service:predeploy"
+			imageDefault = selected.ServiceName + ":predeploy"
 		} else {
 			imageDefault = fmt.Sprintf("predeploy-%s:local", selected.ServiceName)
 		}

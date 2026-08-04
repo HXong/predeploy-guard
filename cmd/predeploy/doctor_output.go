@@ -64,6 +64,15 @@ func printDoctorReport(writer io.Writer, report doctor.Report) {
 			fmt.Fprintf(writer, "       %s\n", result.Details)
 		}
 	}
+	if len(report.Recommendations) > 0 {
+		fmt.Fprintln(writer, "\nRecommendations")
+		for _, recommendation := range report.Recommendations {
+			fmt.Fprintf(writer, "- %s\n", recommendation.Message)
+			if recommendation.Command != "" {
+				fmt.Fprintf(writer, "  %s\n", recommendation.Command)
+			}
+		}
+	}
 
 	passed, warned, failed := report.Counts()
 	warningLabel := "warnings"

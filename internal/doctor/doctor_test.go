@@ -101,6 +101,9 @@ func TestRunReportsPassForAppPathWithDockerfile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(appDir, "Dockerfile"), []byte("FROM scratch\n"), 0600); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
+	if err := os.WriteFile(filepath.Join(appDir, "package.json"), []byte("{}\n"), 0600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
 
 	report := RunWithRunner(context.Background(), Options{
 		WorkingDir: workingDir,
@@ -108,7 +111,10 @@ func TestRunReportsPassForAppPathWithDockerfile(t *testing.T) {
 	}, fakeCommandRunner{})
 
 	assertResult(t, report, "app-path", StatusPass)
-	assertResult(t, report, "project-indicators", StatusPass)
+	indicatorResult := assertResult(t, report, "project-indicators", StatusPass)
+	if indicatorResult.Message != "Project indicators found: Dockerfile, package.json" {
+		t.Fatalf("indicator message = %q", indicatorResult.Message)
+	}
 	assertResult(t, report, "dockerfile", StatusPass)
 }
 
@@ -125,7 +131,10 @@ func TestRunReportsWarnForAppPathWithoutProjectIndicators(t *testing.T) {
 	}, fakeCommandRunner{})
 
 	assertResult(t, report, "app-path", StatusPass)
-	assertResult(t, report, "project-indicators", StatusWarn)
+	indicatorResult := assertResult(t, report, "project-indicators", StatusWarn)
+	if indicatorResult.Message != "No common project indicators found" {
+		t.Fatalf("indicator message = %q", indicatorResult.Message)
+	}
 	assertResult(t, report, "dockerfile", StatusWarn)
 }
 
@@ -145,6 +154,109 @@ func TestRunReportsFailForInvalidConfigPath(t *testing.T) {
 	}, fakeCommandRunner{})
 
 	assertResult(t, report, "config", StatusFail)
+}
+
+func TestRunRecommendsAppAwareInteractiveInitWhenConfigIsMissing(t *testing.T) {
+	workingDir := t.TempDir()
+	appDir := filepath.Join(workingDir, "my-app")
+	if err := os.Mkdir(appDir, 0755); err != nil {
+		t.Fatalf("Mkdir: %v", err)
+	}
+
+	report := RunWithRunner(context.Background(), Options{
+		WorkingDir: workingDir,
+		AppPath:    "./my-app",
+	}, fakeCommandRunner{})
+
+	assertRecommendation(t, report, "Run guided init for this app:",
+		"predeploy init --interactive --app ./my-app")
+	assertRecommendation(t, report, "Then validate the generated config:",
+		"predeploy validate predeploy.yaml")
+}
+
+func TestRunRecommendsGenericInteractiveInitWhenConfigAndAppAreMissing(t *testing.T) {
+	report := RunWithRunner(context.Background(), Options{WorkingDir: t.TempDir()}, fakeCommandRunner{})
+
+	assertRecommendation(t, report, "Run guided init:", "predeploy init --interactive")
+}
+
+func TestRunRecommendsValidateAndRunForValidConfig(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, "predeploy.yaml")
+	writeDoctorTestConfig(t, configPath, `
+service:
+  name: test-service
+  image: example/test-service:latest
+  port: 8080
+`)
+
+	report := RunWithRunner(context.Background(), Options{
+		WorkingDir: workingDir,
+		ConfigPath: "predeploy.yaml",
+	}, fakeCommandRunner{})
+
+	assertRecommendation(t, report, "Validate the configuration:",
+		"predeploy validate predeploy.yaml")
+	assertRecommendation(t, report, "Run the configured checks:",
+		"predeploy run predeploy.yaml")
+}
+
+func TestRunRecommendsIngressResponsibility(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, "predeploy.yaml")
+	writeDoctorTestConfig(t, configPath, `
+runtime:
+  type: kubernetes
+service:
+  name: test-service
+  image: example/test-service:latest
+  port: 8080
+gateway:
+  enabled: true
+  baseURL: http://predeploy.local
+  ingress:
+    enabled: true
+  routes:
+    - name: health
+      path: /health
+`)
+
+	report := RunWithRunner(context.Background(), Options{
+		WorkingDir: workingDir,
+		ConfigPath: configPath,
+	}, fakeCommandRunner{})
+
+	assertRecommendation(t, report,
+		"PreDeploy Guard does not install ingress controllers; ensure gateway.baseURL resolves to the ingress endpoint.",
+		"")
+}
+
+func TestRunRecommendsDockerForEnabledPerformance(t *testing.T) {
+	workingDir := t.TempDir()
+	configPath := filepath.Join(workingDir, "predeploy.yaml")
+	writeDoctorTestConfig(t, configPath, `
+runtime:
+  type: kubernetes
+service:
+  name: test-service
+  image: example/test-service:latest
+  port: 8080
+checks:
+  smoke:
+    - name: health
+      path: /health
+performance:
+  enabled: true
+`)
+
+	report := RunWithRunner(context.Background(), Options{
+		WorkingDir: workingDir,
+		ConfigPath: configPath,
+	}, fakeCommandRunner{})
+
+	assertRecommendation(t, report,
+		"Dockerized k6 performance checks need an available Docker CLI and daemon.",
+		"docker info")
 }
 
 func TestRunMakesConfiguredKubernetesChecksRequired(t *testing.T) {
@@ -203,4 +315,21 @@ func assertResult(t *testing.T, report Report, name string, status Status) Check
 	}
 	t.Fatalf("result %q not found in %#v", name, report.Results)
 	return CheckResult{}
+}
+
+func assertRecommendation(t *testing.T, report Report, message string, command string) {
+	t.Helper()
+	for _, recommendation := range report.Recommendations {
+		if recommendation.Message == message && recommendation.Command == command {
+			return
+		}
+	}
+	t.Fatalf("recommendation (%q, %q) not found in %#v", message, command, report.Recommendations)
+}
+
+func writeDoctorTestConfig(t *testing.T, path string, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
 }
