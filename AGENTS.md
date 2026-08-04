@@ -92,6 +92,8 @@ The next direction is richer, config-driven deployment experiments across Docker
 - Onboarding recommendations must be actionable guidance only and must never install, start, or reconfigure tools.
 - Recommended commands must not expose environment values, secrets, or application file contents.
 - First-run guidance must preserve the application directory and direct users through doctor, validate, explain, and run safely.
+- Onboarding must never install Docker, kubectl, Minikube, ingress controllers, or any other tool; it must never modify app folders, create Dockerfiles, or read or print `.env` values.
+- Static and nginx demo guidance must use the health endpoint the image actually serves; default nginx uses port `80` and path `/`, not `/health`.
 - `internal/workload` owns runtime-neutral workload execution and result types.
 - HTTP traffic is the first implemented workload type and must run through the runtime-provided service base URL.
 - Keep workloads runtime-neutral where possible so Docker Compose and Kubernetes reuse the same execution path.
@@ -259,3 +261,4 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 10B completed: app-aware init with safe folder linking, lightweight detection, conservative config generation, and onboarding next steps.
 - Phase 10C completed: opt-in interactive guided init with validated prompts, app-aware defaults, preview, and final confirmation.
 - Phase 10D completed: shared doctor app detection, actionable recommendations, consistent first-run guidance, and safer init defaults.
+- Phase 10 completed: developer diagnostics, safe app-aware init, opt-in guided init, and first-run recommendations are documented and backward-compatible.

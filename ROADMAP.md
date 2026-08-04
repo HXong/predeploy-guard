@@ -157,9 +157,11 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Keep the comparison lightweight and separate from Dockerized k6 load testing
 - Preserve existing report fields while extending structured gateway metrics additively
 
-## Current Phase
+## Completed Phase
 
-### Phase 10: Developer Onboarding & App Integration
+### Phase 10: Developer Onboarding & App Integration (Completed)
+
+Phase 10 completes the first-run onboarding loop with environment diagnostics, safe application-folder linking, opt-in guided configuration, and actionable recommendations. It does not modify application source, create Dockerfiles, read `.env` values, or install developer tools.
 
 #### Phase 10A: Developer Environment Doctor (Completed)
 
@@ -195,6 +197,7 @@ PreDeploy Guard remains a local pre-deployment sandbox and experiment runner. It
 - Derive interactive image defaults from the final selected service name
 - Add a safe alternative command when config output is rejected inside an app directory
 - Preserve application contents and core runtime behavior
+- Document the complete first-time flow, including port `80` and health path `/` for default nginx demos
 
 ## Future Enhancements
 

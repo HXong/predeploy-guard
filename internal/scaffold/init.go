@@ -128,7 +128,7 @@ func buildGuidedGenericConfig(
 	}
 	image := strings.TrimSpace(options.Image)
 	if image == "" {
-		image = "my-service:predeploy"
+		image = serviceName + ":predeploy"
 	}
 	port := options.Port
 	if port == 0 {

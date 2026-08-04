@@ -19,6 +19,8 @@ PreDeploy Guard also reduces YAML configuration friction through starter config 
 
 ## First-time setup
 
+Phase 10 is complete and provides the developer environment doctor, safe app-aware init, opt-in guided init, and actionable onboarding recommendations.
+
 For an existing backend application, use this onboarding flow:
 
 ```bash
@@ -29,9 +31,17 @@ predeploy validate predeploy.yaml
 predeploy run predeploy.yaml
 ```
 
-Doctor reports local readiness and prints actionable recommendations for the next command. Recommendations can guide initialization, validation, runtime checks, kubeconfig troubleshooting, ingress responsibility, or Dockerized k6 prerequisites, but they never install tools or include configured environment values.
+Doctor reports local readiness and prints actionable recommendations for the next command. Recommendations can guide initialization, validation, runtime checks, kubeconfig troubleshooting, ingress responsibility, or Dockerized k6 prerequisites, but they never execute commands, install tools, or include configured environment values.
 
-App-aware and guided init write only the selected configuration outside the application directory. They do not modify source files, create Dockerfiles, or read `.env` values.
+For an nginx or static demo app, use the endpoint the image actually serves. The default nginx image serves `/` on port `80`, so initialize it with:
+
+```bash
+predeploy init --interactive --app ./demo-app --port 80 --health-path /
+```
+
+Use `/health` only when the application actually exposes that endpoint.
+
+App-aware and guided init write only the selected configuration outside the application directory. PreDeploy Guard does not install Docker, kubectl, Minikube, ingress controllers, or any other tool. It does not modify app folders, create Dockerfiles, or read or print `.env` values. Guided prompts are opt-in through `--interactive` and never run by default.
 
 ---
 
@@ -408,6 +418,8 @@ predeploy init --interactive --output predeploy.yaml
 ```
 
 App-aware init detects only common top-level project files and links the application through `service.build.context` when a Dockerfile exists. The build context is relative to the generated config where possible. PreDeploy Guard does not modify the application folder, create a Dockerfile, parse `.env`, or overwrite an existing config unless `--force` is supplied.
+
+For the default nginx image or another static demo that serves `/` on port `80`, use `predeploy init --interactive --app ./demo-app --port 80 --health-path /`. The `/health` default is appropriate only when the application provides that route.
 
 Recommended onboarding flow:
 
@@ -791,6 +803,8 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
   - shared app detection and actionable doctor recommendations
   - consistent doctor, validate, explain, and run next steps
   - service-aware interactive image defaults and safer output guidance
+
+Phase 10 is complete. Its onboarding path remains read-only toward application folders: it diagnoses prerequisites, generates only the selected config, and never installs tools or creates application files.
 
 ### Future
 

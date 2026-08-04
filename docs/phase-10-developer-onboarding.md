@@ -1,4 +1,6 @@
-# Phase 10: Developer Onboarding & App Integration
+# Phase 10: Developer Onboarding & App Integration (Completed)
+
+Phase 10 is complete. It delivers the developer environment doctor, safe app-aware init, opt-in interactive guided init, and actionable first-run recommendations without changing application source or core runtime behavior.
 
 ## Problem
 
@@ -198,9 +200,20 @@ predeploy doctor --app ./my-app
 predeploy init --interactive --app ./my-app
 predeploy doctor --config predeploy.yaml --app ./my-app
 predeploy validate predeploy.yaml
-predeploy explain predeploy.yaml
 predeploy run predeploy.yaml
 ```
+
+Run `predeploy explain predeploy.yaml` before the final run when you want a readable preview of the resolved validation plan. Generated init next steps include this optional review command.
+
+### Nginx and static demo apps
+
+The generated `/health` path is a conservative default, not an inferred application route. The default nginx image serves `/` on port `80` and does not serve `/health`, so use:
+
+```bash
+predeploy init --interactive --app ./demo-app --port 80 --health-path /
+```
+
+Use `/health` only when the application actually exposes that endpoint. The same rule applies to any static or demo image: configure the port and health path it really serves.
 
 Doctor now reuses `internal/appdetect` and adds recommendations based on observed state:
 
@@ -227,6 +240,8 @@ When an output path points inside the app directory, init still refuses to write
 - Init continues to write only the selected config outside the app directory.
 - No application source, Dockerfile, dependency manifest, or `.env` file is read or modified.
 - Existing command flags and non-interactive behavior remain compatible.
+- `--interactive` is opt-in and never runs for ordinary `predeploy init` commands.
+- PreDeploy Guard does not install Docker, kubectl, Minikube, ingress controllers, or any other tool.
 
 ## Future Improvements
 
