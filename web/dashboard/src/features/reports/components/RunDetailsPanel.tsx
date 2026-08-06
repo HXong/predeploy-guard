@@ -10,15 +10,17 @@ import {
   shortId,
 } from "../../../shared/utils";
 import type { RunHistoryItem } from "../../runs";
-import { getReportPath } from "../utils";
+import type { RunReport, RuntimeEnvironmentReport } from "../types";
+import { formatReportDuration, formatReportValue, getReportPath } from "../utils";
 
 type RunDetailsPanelProps = {
   markdownPreview: Resource<string>;
   onPreviewMarkdown: () => void;
+  report: Resource<RunReport>;
   run: RunHistoryItem | null;
 };
 
-export function RunDetailsPanel({ markdownPreview, onPreviewMarkdown, run }: RunDetailsPanelProps) {
+export function RunDetailsPanel({ markdownPreview, onPreviewMarkdown, report, run }: RunDetailsPanelProps) {
   return (
     <Card title="Run Details">
       {!run ? (
@@ -54,11 +56,103 @@ export function RunDetailsPanel({ markdownPreview, onPreviewMarkdown, run }: Run
             </button>
           </div>
 
+          <StructuredReportDetails report={report} />
+
           {markdownPreview.error && <p className="error-text">{markdownPreview.error}</p>}
           {markdownPreview.data !== null && <pre className="markdown-preview">{markdownPreview.data}</pre>}
         </div>
       )}
     </Card>
+  );
+}
+
+type StructuredReportDetailsProps = {
+  report: Resource<RunReport>;
+};
+
+function StructuredReportDetails({ report }: StructuredReportDetailsProps) {
+  if (report.loading) {
+    return <p className="empty-state structured-report-state">Loading structured report details...</p>;
+  }
+
+  if (report.error) {
+    return (
+      <div className="structured-report-state">
+        <p className="empty-state">Structured report details are unavailable.</p>
+        <p className="error-text">{report.error}</p>
+      </div>
+    );
+  }
+
+  if (!report.data) {
+    return null;
+  }
+
+  return (
+    <div className="structured-report">
+      <RuntimeEnvironmentSection environment={report.data.runtimeEnvironment} />
+      <RunTimelineSection phases={report.data.runPhases} />
+    </div>
+  );
+}
+
+type RuntimeEnvironmentSectionProps = {
+  environment?: RuntimeEnvironmentReport;
+};
+
+function RuntimeEnvironmentSection({ environment }: RuntimeEnvironmentSectionProps) {
+  return (
+    <section className="report-section">
+      <h3>Runtime Environment</h3>
+      {!environment ? (
+        <p className="empty-state">Runtime environment details were not recorded for this run.</p>
+      ) : (
+        <div className="details-grid report-details-grid">
+          <Detail label="Runtime" value={formatReportValue(environment.runtime)} />
+          <Detail label="Environment" value={formatReportValue(environment.name)} />
+          <Detail label="Base URL" value={formatReportValue(environment.baseUrl)} />
+          <Detail label="Workload Base URL" value={formatReportValue(environment.workloadBaseUrl)} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+type RunTimelineSectionProps = {
+  phases?: RunReport["runPhases"];
+};
+
+function RunTimelineSection({ phases }: RunTimelineSectionProps) {
+  return (
+    <section className="report-section">
+      <h3>Run Timeline</h3>
+      {!phases?.length ? (
+        <p className="empty-state">Run phase timings were not recorded for this run.</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="run-timeline-table">
+            <thead>
+              <tr>
+                <th scope="col">Phase</th>
+                <th scope="col">Status</th>
+                <th scope="col">Duration</th>
+                <th scope="col">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {phases.map((phase, index) => (
+                <tr key={`${phase.name}-${index}`}>
+                  <td>{formatReportValue(phase.name)}</td>
+                  <td>{formatReportValue(phase.status)}</td>
+                  <td>{formatReportDuration(phase.duration)}</td>
+                  <td>{formatReportValue(phase.error)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 

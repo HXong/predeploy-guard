@@ -362,6 +362,35 @@ tbody tr.selected-row {
   gap: 16px;
 }
 
+.structured-report,
+.report-section {
+  display: grid;
+  gap: 12px;
+}
+
+.structured-report-state,
+.report-section {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.structured-report-state p,
+.report-section h3 {
+  margin: 0;
+}
+
+.report-section h3 {
+  font-size: 0.95rem;
+}
+
+.run-timeline-table {
+  min-width: 560px;
+}
+
+.run-timeline-table tbody tr {
+  cursor: default;
+}
+
 .details-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

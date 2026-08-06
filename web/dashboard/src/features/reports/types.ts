@@ -1,3 +1,9 @@
+/** A Go time.Duration encoded as its raw JSON nanosecond count. */
+export type GoDurationNanoseconds = number;
+
+/** A backend value explicitly normalized to milliseconds. */
+export type Milliseconds = number;
+
 export type RuntimeEnvironmentReport = {
   runtime?: string;
   name?: string;
@@ -10,7 +16,7 @@ export type RunPhaseReport = {
   status: string;
   startedAt?: string;
   finishedAt?: string;
-  duration?: number;
+  duration?: GoDurationNanoseconds;
   error?: string;
 };
 
@@ -39,8 +45,8 @@ export type SmokeResultReport = {
   actualStatus: number;
   passed: boolean;
   error?: string;
-  duration: number;
-  durationMs: number;
+  duration: GoDurationNanoseconds;
+  durationMs: Milliseconds;
 };
 
 export type WorkloadResultReport = {
@@ -71,20 +77,20 @@ export type GatewayResultReport = {
   expectedStatus: number;
   gatewayUrl: string;
   gatewayStatus: number;
-  gatewayDuration: number;
+  gatewayDuration: GoDurationNanoseconds;
   gatewayPassed: boolean;
   gatewayError?: string;
   compareDirect: boolean;
   directUrl?: string;
   directStatus?: number;
-  directDuration?: number;
+  directDuration?: GoDurationNanoseconds;
   directPassed: boolean;
   directError?: string;
   statusMatched: boolean;
-  gatewayLatencyMs: number;
-  directLatencyMs?: number;
+  gatewayLatencyMs: Milliseconds;
+  directLatencyMs?: Milliseconds;
   latencyCompared: boolean;
-  overheadMs?: number;
+  overheadMs?: Milliseconds;
   overheadRatio?: number;
   latencyPassed: boolean;
   latencyWarnings?: string[];
@@ -97,13 +103,13 @@ export type PerformanceResultReport = {
   passed: boolean;
   vus: number;
   duration: string;
-  avgLatencyMs: number;
-  minLatencyMs: number;
-  medianLatencyMs: number;
-  maxLatencyMs: number;
-  p90LatencyMs: number;
-  p95LatencyMs: number;
-  maxP95LatencyMs: number;
+  avgLatencyMs: Milliseconds;
+  minLatencyMs: Milliseconds;
+  medianLatencyMs: Milliseconds;
+  maxLatencyMs: Milliseconds;
+  p90LatencyMs: Milliseconds;
+  p95LatencyMs: Milliseconds;
+  maxP95LatencyMs: Milliseconds;
   errorRate: number;
   maxErrorRate: number;
   requestCount: number;

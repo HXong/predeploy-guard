@@ -63,6 +63,7 @@ export function DashboardPage() {
         <RunDetailsPanel
           markdownPreview={dashboard.markdownPreview.markdownPreview}
           onPreviewMarkdown={dashboard.markdownPreview.handlePreviewMarkdown}
+          report={dashboard.runReport}
           run={dashboard.selectedRun}
         />
       </section>
