@@ -1,2 +1,4 @@
 reports/
+!web/dashboard/src/features/reports/
+!web/dashboard/src/features/reports/**
 demo-app/
