@@ -16,4 +16,13 @@ export type {
   WorkloadResultReport,
 } from "./types";
 export type { ReportType } from "./utils";
-export { formatReportDuration, formatReportValue, getReportPath } from "./utils";
+export {
+  formatBooleanResult,
+  formatMilliseconds,
+  formatRatio,
+  formatReportDuration,
+  formatReportValue,
+  formatStatusCode,
+  formatWarningList,
+  getReportPath,
+} from "./utils";

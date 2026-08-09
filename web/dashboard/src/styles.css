@@ -387,8 +387,56 @@ tbody tr.selected-row {
   min-width: 560px;
 }
 
-.run-timeline-table tbody tr {
+.run-timeline-table tbody tr,
+.gateway-results-table tbody tr {
   cursor: default;
+}
+
+.gateway-results-table {
+  min-width: 1180px;
+}
+
+.report-cell-stack {
+  display: grid;
+  gap: 4px;
+}
+
+.route-result-cell {
+  min-width: 130px;
+}
+
+.report-cell-label,
+.report-muted-value {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.result-pass,
+.result-fail,
+.result-warn {
+  font-weight: 800;
+}
+
+.result-pass {
+  color: var(--ok);
+}
+
+.result-fail {
+  color: var(--danger);
+}
+
+.result-warn {
+  color: #8a570d;
+}
+
+.report-message-list {
+  min-width: 220px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.report-message-list li + li {
+  margin-top: 5px;
 }
 
 .details-grid {

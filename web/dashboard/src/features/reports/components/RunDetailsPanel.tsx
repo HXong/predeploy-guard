@@ -10,8 +10,17 @@ import {
   shortId,
 } from "../../../shared/utils";
 import type { RunHistoryItem } from "../../runs";
-import type { RunReport, RuntimeEnvironmentReport } from "../types";
-import { formatReportDuration, formatReportValue, getReportPath } from "../utils";
+import type { GatewayResultReport, RunReport, RuntimeEnvironmentReport } from "../types";
+import {
+  formatBooleanResult,
+  formatMilliseconds,
+  formatRatio,
+  formatReportDuration,
+  formatReportValue,
+  formatStatusCode,
+  formatWarningList,
+  getReportPath,
+} from "../utils";
 
 type RunDetailsPanelProps = {
   markdownPreview: Resource<string>;
@@ -92,6 +101,7 @@ function StructuredReportDetails({ report }: StructuredReportDetailsProps) {
     <div className="structured-report">
       <RuntimeEnvironmentSection environment={report.data.runtimeEnvironment} />
       <RunTimelineSection phases={report.data.runPhases} />
+      <GatewayResultsSection results={report.data.GatewayResults} />
     </div>
   );
 }
@@ -154,6 +164,198 @@ function RunTimelineSection({ phases }: RunTimelineSectionProps) {
       )}
     </section>
   );
+}
+
+type GatewayResultsSectionProps = {
+  results?: GatewayResultReport[];
+};
+
+function GatewayResultsSection({ results }: GatewayResultsSectionProps) {
+  return (
+    <section className="report-section">
+      <h3>Gateway Results</h3>
+      {!results?.length ? (
+        <p className="empty-state">Gateway results were not recorded for this run.</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="gateway-results-table">
+            <thead>
+              <tr>
+                <th scope="col">Route</th>
+                <th scope="col">Expected</th>
+                <th scope="col">Gateway</th>
+                <th scope="col">Direct</th>
+                <th scope="col">Match</th>
+                <th scope="col">Latency</th>
+                <th scope="col">Overhead</th>
+                <th scope="col">Result</th>
+                <th scope="col">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((result, index) => (
+                <GatewayResultRow key={`${result.name}-${result.method}-${result.path}-${index}`} result={result} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+type GatewayResultRowProps = {
+  result: GatewayResultReport;
+};
+
+function GatewayResultRow({ result }: GatewayResultRowProps) {
+  const details = gatewayResultDetails(result);
+  const latencyResult = gatewayLatencyResult(result);
+  const routeName = result.name?.trim();
+
+  return (
+    <tr>
+      <td>
+        <div className="report-cell-stack route-result-cell">
+          {routeName && <strong>{routeName}</strong>}
+          <span>{formatRoute(result.method, result.path)}</span>
+        </div>
+      </td>
+      <td>{formatStatusCode(result.expectedStatus)}</td>
+      <td>
+        <StatusResult status={result.gatewayStatus} passed={result.gatewayPassed} />
+      </td>
+      <td>
+        {result.compareDirect ? (
+          <StatusResult status={result.directStatus} passed={result.directPassed} />
+        ) : (
+          <span className="report-muted-value">Not compared</span>
+        )}
+      </td>
+      <td>
+        {result.compareDirect ? formatBooleanResult(result.statusMatched, "YES", "NO") : "-"}
+      </td>
+      <td>
+        <div className="report-cell-stack">
+          <ReportMetric label="Gateway latency" value={formatMilliseconds(result.gatewayLatencyMs)} />
+          {result.directLatencyMs !== undefined && (
+            <ReportMetric label="Direct latency" value={formatMilliseconds(result.directLatencyMs)} />
+          )}
+        </div>
+      </td>
+      <td>
+        {result.overheadMs === undefined && result.overheadRatio === undefined ? (
+          "-"
+        ) : (
+          <div className="report-cell-stack">
+            <ReportMetric label="Overhead" value={formatMilliseconds(result.overheadMs)} />
+            <ReportMetric label="Ratio" value={formatRatio(result.overheadRatio)} />
+          </div>
+        )}
+      </td>
+      <td>
+        <div className="report-cell-stack">
+          <ReportResult label="Latency" result={latencyResult.label} tone={latencyResult.tone} />
+          <ReportResult
+            label="Overall"
+            result={formatBooleanResult(result.passed)}
+            tone={result.passed ? "pass" : "fail"}
+          />
+        </div>
+      </td>
+      <td>
+        {details.length ? (
+          <ul className="report-message-list">
+            {details.map((detail, index) => (
+              <li key={`${detail}-${index}`}>{detail}</li>
+            ))}
+          </ul>
+        ) : (
+          "-"
+        )}
+      </td>
+    </tr>
+  );
+}
+
+type StatusResultProps = {
+  passed: boolean;
+  status?: number;
+};
+
+function StatusResult({ passed, status }: StatusResultProps) {
+  return (
+    <div className="report-cell-stack">
+      <span>{formatStatusCode(status)}</span>
+      <span className={passed ? "result-pass" : "result-fail"}>{formatBooleanResult(passed)}</span>
+    </div>
+  );
+}
+
+type ReportMetricProps = {
+  label: string;
+  value: string;
+};
+
+function ReportMetric({ label, value }: ReportMetricProps) {
+  return (
+    <span>
+      <span className="report-cell-label">{label}:</span> {value}
+    </span>
+  );
+}
+
+type ResultTone = "pass" | "fail" | "warn";
+
+type ReportResultProps = {
+  label: string;
+  result: string;
+  tone: ResultTone;
+};
+
+function ReportResult({ label, result, tone }: ReportResultProps) {
+  return (
+    <span>
+      <span className="report-cell-label">{label}:</span>{" "}
+      <span className={`result-${tone}`}>{result}</span>
+    </span>
+  );
+}
+
+function formatRoute(method: string | null | undefined, path: string | null | undefined): string {
+  const route = [method?.trim(), path?.trim()].filter((value): value is string => Boolean(value)).join(" ");
+  return route || "-";
+}
+
+function gatewayResultDetails(result: GatewayResultReport): string[] {
+  const details: string[] = [];
+  const gatewayError = result.gatewayError?.trim();
+  const directError = result.directError?.trim();
+
+  if (gatewayError) {
+    details.push(`Gateway: ${gatewayError}`);
+  }
+  if (result.compareDirect && directError) {
+    details.push(`Direct service: ${directError}`);
+  }
+
+  details.push(...formatWarningList(result.latencyWarnings).map((warning) => `Latency warning: ${warning}`));
+  details.push(...formatWarningList(result.latencyErrors).map((error) => `Latency error: ${error}`));
+  return details;
+}
+
+function gatewayLatencyResult(result: GatewayResultReport): { label: string; tone: ResultTone } {
+  if (formatWarningList(result.latencyErrors).length > 0) {
+    return { label: "FAIL", tone: "fail" };
+  }
+  if (formatWarningList(result.latencyWarnings).length > 0) {
+    return { label: "WARN", tone: "warn" };
+  }
+
+  return {
+    label: formatBooleanResult(result.latencyPassed),
+    tone: result.latencyPassed ? "pass" : "fail",
+  };
 }
 
 type DetailProps = {

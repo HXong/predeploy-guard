@@ -1,4 +1,4 @@
-import type { GoDurationNanoseconds } from "./types";
+import type { GoDurationNanoseconds, Milliseconds } from "./types";
 
 export type ReportType = "markdown" | "json";
 
@@ -39,6 +39,46 @@ export function formatReportDuration(value: GoDurationNanoseconds | null | undef
 export function formatReportValue(value: string | null | undefined): string {
   const normalizedValue = value?.trim();
   return normalizedValue || "-";
+}
+
+export function formatMilliseconds(value: Milliseconds | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "-";
+  }
+
+  return `${value.toFixed(2)} ms`;
+}
+
+export function formatRatio(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "-";
+  }
+
+  return `${value.toFixed(2)}x`;
+}
+
+export function formatStatusCode(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return "-";
+  }
+
+  return String(value);
+}
+
+export function formatBooleanResult(
+  value: boolean | null | undefined,
+  trueLabel = "PASS",
+  falseLabel = "FAIL",
+): string {
+  if (typeof value !== "boolean") {
+    return "-";
+  }
+
+  return value ? trueLabel : falseLabel;
+}
+
+export function formatWarningList(messages: Array<string | null | undefined> | null | undefined): string[] {
+  return messages?.map((message) => message?.trim()).filter((message): message is string => Boolean(message)) ?? [];
 }
 
 export function getReportPath(runId: string, reportType: ReportType): string {
