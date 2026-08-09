@@ -388,12 +388,17 @@ tbody tr.selected-row {
 }
 
 .run-timeline-table tbody tr,
-.gateway-results-table tbody tr {
+.gateway-results-table tbody tr,
+.workload-results-table tbody tr {
   cursor: default;
 }
 
 .gateway-results-table {
   min-width: 1180px;
+}
+
+.workload-results-table {
+  min-width: 1080px;
 }
 
 .report-cell-stack {
@@ -403,6 +408,16 @@ tbody tr.selected-row {
 
 .route-result-cell {
   min-width: 130px;
+}
+
+.workload-result-cell {
+  min-width: 120px;
+}
+
+.report-count-grid {
+  display: grid;
+  gap: 4px;
+  min-width: 120px;
 }
 
 .report-cell-label,

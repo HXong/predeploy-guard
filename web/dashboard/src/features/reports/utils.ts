@@ -81,10 +81,60 @@ export function formatWarningList(messages: Array<string | null | undefined> | n
   return messages?.map((message) => message?.trim()).filter((message): message is string => Boolean(message)) ?? [];
 }
 
+export function formatCount(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return "-";
+  }
+
+  return String(value);
+}
+
+export function formatRequestRate(value: number | null | undefined): string {
+  const formattedCount = formatCount(value);
+  return formattedCount === "-" ? "-" : `${formattedCount} req/s`;
+}
+
+export function formatStatusCounts(statusCounts: Record<string, number> | null | undefined): string {
+  const entries = Object.entries(statusCounts ?? {})
+    .map(([status, count]) => [status.trim(), count] as const)
+    .filter(([status, count]) => status !== "" && formatCount(count) !== "-")
+    .sort(([leftStatus], [rightStatus]) => compareStatusCodes(leftStatus, rightStatus));
+
+  if (entries.length === 0) {
+    return "-";
+  }
+
+  return entries.map(([status, count]) => `${status}: ${formatCount(count)}`).join(", ");
+}
+
+export function formatPolicy(value: string | null | undefined): string {
+  const policy = value?.trim().toLowerCase();
+  return policy || "-";
+}
+
+export function formatEnabledState(value: boolean | null | undefined): string {
+  if (typeof value !== "boolean") {
+    return "-";
+  }
+
+  return value ? "Enabled" : "Disabled";
+}
+
 export function getReportPath(runId: string, reportType: ReportType): string {
   return `/api/reports/${encodeURIComponent(runId)}/${reportType}`;
 }
 
 function compactDecimal(value: number): string {
   return Number(value.toFixed(1)).toString();
+}
+
+function compareStatusCodes(left: string, right: string): number {
+  const leftNumber = Number(left);
+  const rightNumber = Number(right);
+
+  if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+    return leftNumber - rightNumber;
+  }
+
+  return left.localeCompare(right);
 }

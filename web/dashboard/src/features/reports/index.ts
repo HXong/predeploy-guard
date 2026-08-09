@@ -18,11 +18,16 @@ export type {
 export type { ReportType } from "./utils";
 export {
   formatBooleanResult,
+  formatCount,
+  formatEnabledState,
   formatMilliseconds,
+  formatPolicy,
   formatRatio,
   formatReportDuration,
   formatReportValue,
+  formatRequestRate,
   formatStatusCode,
+  formatStatusCounts,
   formatWarningList,
   getReportPath,
 } from "./utils";

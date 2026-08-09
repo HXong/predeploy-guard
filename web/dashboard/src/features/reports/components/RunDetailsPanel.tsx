@@ -10,14 +10,19 @@ import {
   shortId,
 } from "../../../shared/utils";
 import type { RunHistoryItem } from "../../runs";
-import type { GatewayResultReport, RunReport, RuntimeEnvironmentReport } from "../types";
+import type { GatewayResultReport, RunReport, RuntimeEnvironmentReport, WorkloadResultReport } from "../types";
 import {
   formatBooleanResult,
+  formatCount,
+  formatEnabledState,
   formatMilliseconds,
+  formatPolicy,
   formatRatio,
   formatReportDuration,
   formatReportValue,
+  formatRequestRate,
   formatStatusCode,
+  formatStatusCounts,
   formatWarningList,
   getReportPath,
 } from "../utils";
@@ -102,6 +107,7 @@ function StructuredReportDetails({ report }: StructuredReportDetailsProps) {
       <RuntimeEnvironmentSection environment={report.data.runtimeEnvironment} />
       <RunTimelineSection phases={report.data.runPhases} />
       <GatewayResultsSection results={report.data.GatewayResults} />
+      <WorkloadResultsSection results={report.data.WorkloadResults} />
     </div>
   );
 }
@@ -361,6 +367,107 @@ function gatewayLatencyResult(result: GatewayResultReport): { label: string; ton
   return {
     label: formatBooleanResult(result.latencyPassed),
     tone: result.latencyPassed ? "pass" : "fail",
+  };
+}
+
+type WorkloadResultsSectionProps = {
+  results?: WorkloadResultReport[];
+};
+
+function WorkloadResultsSection({ results }: WorkloadResultsSectionProps) {
+  return (
+    <section className="report-section">
+      <h3>Workload Results</h3>
+      {!results?.length ? (
+        <p className="empty-state">Workload results were not recorded for this run.</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="workload-results-table">
+            <thead>
+              <tr>
+                <th scope="col">Workload</th>
+                <th scope="col">Request</th>
+                <th scope="col">Load</th>
+                <th scope="col">Counts</th>
+                <th scope="col">Statuses</th>
+                <th scope="col">Policy</th>
+                <th scope="col">Result</th>
+                <th scope="col">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((result, index) => (
+                <WorkloadResultRow key={`${result.Name}-${result.Type}-${index}`} result={result} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+type WorkloadResultRowProps = {
+  result: WorkloadResultReport;
+};
+
+function WorkloadResultRow({ result }: WorkloadResultRowProps) {
+  const name = result.Name?.trim();
+  const outcome = workloadOutcome(result);
+  const error = result.Error?.trim();
+
+  return (
+    <tr>
+      <td>
+        <div className="report-cell-stack workload-result-cell">
+          {name && <strong>{name}</strong>}
+          <ReportMetric label="Type" value={formatReportValue(result.Type)} />
+          <ReportMetric label="State" value={formatEnabledState(result.Enabled)} />
+        </div>
+      </td>
+      <td>
+        <div className="report-cell-stack">
+          <span>{formatRoute(result.Method, result.Path)}</span>
+          <ReportMetric label="Expected" value={formatStatusCode(result.ExpectedStatus)} />
+        </div>
+      </td>
+      <td>
+        <div className="report-cell-stack">
+          <ReportMetric label="Duration" value={formatReportValue(result.Duration)} />
+          <ReportMetric label="Rate" value={formatRequestRate(result.RatePerSecond)} />
+        </div>
+      </td>
+      <td>
+        <div className="report-count-grid">
+          <ReportMetric label="Request count" value={formatCount(result.RequestCount)} />
+          <ReportMetric label="Success" value={formatCount(result.SuccessCount)} />
+          <ReportMetric label="Failure" value={formatCount(result.FailureCount)} />
+        </div>
+      </td>
+      <td>{formatStatusCounts(result.StatusCounts)}</td>
+      <td>{formatPolicy(result.FailurePolicy)}</td>
+      <td>
+        <span className={`result-${outcome.tone}`}>{outcome.label}</span>
+      </td>
+      <td>{result.Enabled === false ? "Workload disabled" : error || "-"}</td>
+    </tr>
+  );
+}
+
+function workloadOutcome(result: WorkloadResultReport): { label: string; tone: ResultTone } {
+  if (result.Enabled === false) {
+    return { label: "SKIPPED", tone: "neutral" };
+  }
+  if (result.Enabled !== true) {
+    return { label: "-", tone: "neutral" };
+  }
+  if (typeof result.Passed !== "boolean") {
+    return { label: "-", tone: "neutral" };
+  }
+
+  return {
+    label: formatBooleanResult(result.Passed),
+    tone: result.Passed ? "pass" : "fail",
   };
 }
 
