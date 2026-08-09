@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Card } from "../../../shared/components";
 import type { Resource } from "../../../shared/utils";
 import {
@@ -10,12 +11,21 @@ import {
   shortId,
 } from "../../../shared/utils";
 import type { RunHistoryItem } from "../../runs";
-import type { GatewayResultReport, RunReport, RuntimeEnvironmentReport, WorkloadResultReport } from "../types";
+import type {
+  GatewayResultReport,
+  PerformanceResultReport,
+  RunReport,
+  RuntimeEnvironmentReport,
+  WorkloadResultReport,
+} from "../types";
 import {
   formatBooleanResult,
   formatCount,
+  formatDurationText,
   formatEnabledState,
+  formatLargeCount,
   formatMilliseconds,
+  formatPercentage,
   formatPolicy,
   formatRatio,
   formatReportDuration,
@@ -23,6 +33,7 @@ import {
   formatRequestRate,
   formatStatusCode,
   formatStatusCounts,
+  formatThreshold,
   formatWarningList,
   getReportPath,
 } from "../utils";
@@ -108,6 +119,7 @@ function StructuredReportDetails({ report }: StructuredReportDetailsProps) {
       <RunTimelineSection phases={report.data.runPhases} />
       <GatewayResultsSection results={report.data.GatewayResults} />
       <WorkloadResultsSection results={report.data.WorkloadResults} />
+      <PerformanceResultSection result={report.data.PerformanceResult} />
     </div>
   );
 }
@@ -468,6 +480,125 @@ function workloadOutcome(result: WorkloadResultReport): { label: string; tone: R
   return {
     label: formatBooleanResult(result.Passed),
     tone: result.Passed ? "pass" : "fail",
+  };
+}
+
+type PerformanceResultSectionProps = {
+  result?: PerformanceResultReport;
+};
+
+function PerformanceResultSection({ result }: PerformanceResultSectionProps) {
+  if (!result) {
+    return (
+      <section className="report-section">
+        <h3>Performance Result</h3>
+        <p className="empty-state">Performance results were not recorded for this run.</p>
+      </section>
+    );
+  }
+
+  if (result.enabled === false) {
+    return (
+      <section className="report-section">
+        <h3>Performance Result</h3>
+        <div className="performance-disabled-state">
+          <span className="result-neutral">SKIPPED</span>
+          <p className="empty-state">Performance checks were disabled for this run.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const outcome = performanceOutcome(result);
+  const error = result.error?.trim();
+  const rawOutputAvailable = Boolean(result.output?.trim());
+
+  return (
+    <section className="report-section">
+      <h3>Performance Result</h3>
+      <div className="performance-groups">
+        <PerformanceMetricGroup title="Summary">
+          <PerformanceMetric label="Result" value={outcome.label} valueClassName={`result-${outcome.tone}`} />
+          <PerformanceMetric label="State" value={formatEnabledState(result.enabled)} />
+          <PerformanceMetric label="Virtual users" value={formatLargeCount(result.vus)} />
+          <PerformanceMetric label="Duration" value={formatDurationText(result.duration)} />
+          <PerformanceMetric label="Request count" value={formatLargeCount(result.requestCount)} />
+          <PerformanceMetric label="Iterations" value={formatLargeCount(result.iterations)} />
+        </PerformanceMetricGroup>
+
+        <PerformanceMetricGroup title="Latency">
+          <PerformanceMetric label="Average" value={formatMilliseconds(result.avgLatencyMs)} />
+          <PerformanceMetric label="Minimum" value={formatMilliseconds(result.minLatencyMs)} />
+          <PerformanceMetric label="Median" value={formatMilliseconds(result.medianLatencyMs)} />
+          <PerformanceMetric label="p90" value={formatMilliseconds(result.p90LatencyMs)} />
+          <PerformanceMetric label="p95" value={formatMilliseconds(result.p95LatencyMs)} />
+          <PerformanceMetric label="Maximum" value={formatMilliseconds(result.maxLatencyMs)} />
+          <PerformanceMetric
+            label="Threshold"
+            value={formatThreshold("p95", formatMilliseconds(result.maxP95LatencyMs))}
+            valueClassName="threshold-text"
+          />
+        </PerformanceMetricGroup>
+
+        <PerformanceMetricGroup title="Reliability">
+          <PerformanceMetric label="Error rate" value={formatPercentage(result.errorRate)} />
+          <PerformanceMetric
+            label="Threshold"
+            value={formatThreshold("error rate", formatPercentage(result.maxErrorRate))}
+            valueClassName="threshold-text"
+          />
+          <PerformanceMetric label="Checks total" value={formatLargeCount(result.checksTotal)} />
+          <PerformanceMetric label="Check pass rate" value={formatPercentage(result.checkPassRate)} />
+        </PerformanceMetricGroup>
+      </div>
+
+      {(error || rawOutputAvailable) && (
+        <div className="performance-details">
+          {error && <p className="error-text">{error}</p>}
+          {rawOutputAvailable && <p className="report-muted-value">Raw output available in JSON report.</p>}
+        </div>
+      )}
+    </section>
+  );
+}
+
+type PerformanceMetricGroupProps = {
+  children: ReactNode;
+  title: string;
+};
+
+function PerformanceMetricGroup({ children, title }: PerformanceMetricGroupProps) {
+  return (
+    <div className="performance-group">
+      <h4>{title}</h4>
+      <dl className="performance-metric-grid">{children}</dl>
+    </div>
+  );
+}
+
+type PerformanceMetricProps = {
+  label: string;
+  value: string;
+  valueClassName?: string;
+};
+
+function PerformanceMetric({ label, value, valueClassName }: PerformanceMetricProps) {
+  return (
+    <div className="performance-metric">
+      <dt>{label}</dt>
+      <dd className={valueClassName}>{value}</dd>
+    </div>
+  );
+}
+
+function performanceOutcome(result: PerformanceResultReport): { label: string; tone: ResultTone } {
+  if (result.enabled !== true || typeof result.passed !== "boolean") {
+    return { label: "-", tone: "neutral" };
+  }
+
+  return {
+    label: formatBooleanResult(result.passed),
+    tone: result.passed ? "pass" : "fail",
   };
 }
 

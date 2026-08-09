@@ -5,6 +5,7 @@ export type ReportType = "markdown" | "json";
 const nanosecondsPerMillisecond = 1_000_000;
 const millisecondsPerSecond = 1_000;
 const secondsPerMinute = 60;
+const largeCountFormatter = new Intl.NumberFormat();
 
 export function formatReportDuration(value: GoDurationNanoseconds | null | undefined): string {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
@@ -118,6 +119,36 @@ export function formatEnabledState(value: boolean | null | undefined): string {
   }
 
   return value ? "Enabled" : "Disabled";
+}
+
+/** Formats a fractional rate where 1 represents 100%. */
+export function formatPercentage(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return "-";
+  }
+
+  return `${(value * 100).toFixed(2)}%`;
+}
+
+export function formatThreshold(label: string, formattedValue: string): string {
+  const normalizedLabel = label.trim();
+  if (!normalizedLabel || formattedValue === "-") {
+    return "-";
+  }
+
+  return `${normalizedLabel} <= ${formattedValue}`;
+}
+
+export function formatDurationText(value: string | null | undefined): string {
+  return formatReportValue(value);
+}
+
+export function formatLargeCount(value: number | null | undefined): string {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return "-";
+  }
+
+  return largeCountFormatter.format(value);
 }
 
 export function getReportPath(runId: string, reportType: ReportType): string {
