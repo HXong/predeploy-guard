@@ -305,7 +305,7 @@ function ReportMetric({ label, value }: ReportMetricProps) {
   );
 }
 
-type ResultTone = "pass" | "fail" | "warn";
+type ResultTone = "pass" | "fail" | "warn" | "neutral";
 
 type ReportResultProps = {
   label: string;
@@ -345,10 +345,16 @@ function gatewayResultDetails(result: GatewayResultReport): string[] {
 }
 
 function gatewayLatencyResult(result: GatewayResultReport): { label: string; tone: ResultTone } {
-  if (formatWarningList(result.latencyErrors).length > 0) {
+  const latencyErrors = formatWarningList(result.latencyErrors);
+  const latencyWarnings = formatWarningList(result.latencyWarnings);
+
+  if (!result.latencyCompared && latencyWarnings.length === 0 && latencyErrors.length === 0) {
+    return { label: "Not compared", tone: "neutral" };
+  }
+  if (latencyErrors.length > 0) {
     return { label: "FAIL", tone: "fail" };
   }
-  if (formatWarningList(result.latencyWarnings).length > 0) {
+  if (latencyWarnings.length > 0) {
     return { label: "WARN", tone: "warn" };
   }
 

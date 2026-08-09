@@ -413,7 +413,8 @@ tbody tr.selected-row {
 
 .result-pass,
 .result-fail,
-.result-warn {
+.result-warn,
+.result-neutral {
   font-weight: 800;
 }
 
@@ -427,6 +428,11 @@ tbody tr.selected-row {
 
 .result-warn {
   color: #8a570d;
+}
+
+.result-neutral {
+  color: var(--muted);
+  font-weight: 600;
 }
 
 .report-message-list {
