@@ -161,6 +161,23 @@ h2 {
   gap: 10px;
 }
 
+.config-summary-grid {
+  gap: 8px;
+}
+
+.config-summary-grid .metric {
+  padding: 9px 10px;
+}
+
+.config-summary-grid .metric span {
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+}
+
+.config-summary-grid .metric strong {
+  font-size: 0.9rem;
+}
+
 .metric {
   min-width: 0;
   border: 1px solid var(--border);
@@ -360,6 +377,169 @@ tbody tr.selected-row {
 .run-details {
   display: grid;
   gap: 16px;
+}
+
+.structured-report,
+.report-section {
+  display: grid;
+  gap: 12px;
+}
+
+.structured-report-state,
+.report-section {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.structured-report-state p,
+.report-section h3 {
+  margin: 0;
+}
+
+.report-section h3 {
+  font-size: 0.95rem;
+}
+
+.run-timeline-table {
+  min-width: 560px;
+}
+
+.run-timeline-table tbody tr,
+.gateway-results-table tbody tr,
+.workload-results-table tbody tr {
+  cursor: default;
+}
+
+.gateway-results-table {
+  min-width: 1180px;
+}
+
+.workload-results-table {
+  min-width: 1080px;
+}
+
+.report-cell-stack {
+  display: grid;
+  gap: 4px;
+}
+
+.route-result-cell {
+  min-width: 130px;
+}
+
+.workload-result-cell {
+  min-width: 120px;
+}
+
+.report-count-grid {
+  display: grid;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.performance-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.performance-group {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  background: #fbfcfd;
+}
+
+.performance-group h4 {
+  margin: 0 0 10px;
+  font-size: 0.86rem;
+}
+
+.performance-metric-grid,
+.performance-details {
+  display: grid;
+  gap: 8px;
+}
+
+.performance-metric-grid {
+  margin: 0;
+}
+
+.performance-metric {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+  gap: 10px;
+  align-items: baseline;
+}
+
+.performance-metric dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.performance-metric dd {
+  min-width: 0;
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.performance-disabled-state {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.performance-disabled-state p,
+.performance-details p {
+  margin: 0;
+}
+
+.threshold-text {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.report-cell-label,
+.report-muted-value {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.result-pass,
+.result-fail,
+.result-warn,
+.result-neutral {
+  font-weight: 800;
+}
+
+.result-pass {
+  color: var(--ok);
+}
+
+.result-fail {
+  color: var(--danger);
+}
+
+.result-warn {
+  color: #8a570d;
+}
+
+.result-neutral {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.report-message-list {
+  min-width: 220px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.report-message-list li + li {
+  margin-top: 5px;
 }
 
 .details-grid {

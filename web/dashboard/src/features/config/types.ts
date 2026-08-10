@@ -1,3 +1,47 @@
+export type GatewayIngressSummary = {
+  enabled: boolean;
+  host?: string;
+  className?: string;
+  pathType?: string;
+  annotationCount: number;
+};
+
+export type GatewayLatencySummary = {
+  enabled: boolean;
+  maxGatewayLatencyMs?: number;
+  maxOverheadMs?: number;
+  maxOverheadRatio?: number;
+  failurePolicy?: string;
+};
+
+export type GatewayRouteSummary = {
+  name: string;
+  method: string;
+  path: string;
+  expectedStatus: number;
+  compareDirect: boolean;
+};
+
+export type GatewaySummary = {
+  enabled: boolean;
+  baseUrl?: string;
+  ingress: GatewayIngressSummary;
+  latency: GatewayLatencySummary;
+  routes: GatewayRouteSummary[];
+};
+
+export type WorkloadSummary = {
+  name: string;
+  type: string;
+  enabled: boolean;
+  method: string;
+  path: string;
+  duration: string;
+  ratePerSecond: number;
+  expectedStatus: number;
+  failurePolicy: string;
+};
+
 export type ConfigSummary = {
   configPath: string;
   configDir: string;
@@ -26,12 +70,14 @@ export type ConfigSummary = {
     hasReadiness: boolean;
     readiness: string;
   }>;
+  gateway: GatewaySummary;
   smokeChecks: Array<{
     name: string;
     method: string;
     path: string;
     expectedStatus: number;
   }>;
+  workloads: WorkloadSummary[];
   performance: {
     enabled: boolean;
     vus?: number;
@@ -55,6 +101,8 @@ export type ConfigSummary = {
     dependencies: number;
     dependenciesWithReadiness: number;
     smokeChecks: number;
+    gatewayRoutes: number;
+    workloads: number;
     performanceEndpoints: number;
     profiles: number;
   };

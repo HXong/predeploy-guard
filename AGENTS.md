@@ -116,6 +116,9 @@ The next direction is richer, config-driven deployment experiments across Docker
 - Keep reusable HTTP, component, and utility code under `web/dashboard/src/shared/`.
 - Preserve strict TypeScript practices: do not use `React.FC` or `any`, and use explicit prop and event types.
 - Do not expose raw backend config through the API.
+- Keep structured report UI runtime-neutral and tolerant of older reports that omit newer fields.
+- Do not dump raw performance output or runtime diagnostics into the dashboard by default.
+- Dashboard config and report views must not expose environment values, secrets, cluster-wide data, or application file contents.
 - Prefer generated YAML preview, copy, and download over backend filesystem writes.
 - Any save-to-file flow must be explicit and safe.
 - Do not add a UI library unless explicitly requested.
@@ -150,6 +153,7 @@ The next direction is richer, config-driven deployment experiments across Docker
 
 - `web/dashboard/src/app`: thin application shell and top-level view selection.
 - `web/dashboard/src/features`: feature-owned dashboard, run, config, and config-builder code.
+- `web/dashboard/src/features/reports`: typed report fetching, backward-compatible report models, formatting, and structured report review UI.
 - `web/dashboard/src/shared`: reusable HTTP, component, and utility code.
 
 ## Local API Rules
@@ -262,3 +266,10 @@ Manual API/browser testing may be done by the developer instead of Codex if the 
 - Phase 10C completed: opt-in interactive guided init with validated prompts, app-aware defaults, preview, and final confirmation.
 - Phase 10D completed: shared doctor app detection, actionable recommendations, consistent first-run guidance, and safer init defaults.
 - Phase 10 completed: developer diagnostics, safe app-aware init, opt-in guided init, and first-run recommendations are documented and backward-compatible.
+- Phase 11A completed: dashboard API and type parity for newer config and report data.
+- Phase 11B completed: structured runtime environment and run timeline review.
+- Phase 11C completed: gateway, direct-service, latency, overhead, warning, and error review.
+- Phase 11D completed: workload configuration and result review with explicit skipped states.
+- Phase 11E completed: performance metrics, thresholds, reliability, and result review without raw output display.
+- Phase 11F completed: compact config summary polish, frontend verification, and Phase 11 documentation.
+- Phase 11 completed: the dashboard provides backward-compatible structured report review while remaining safe and runtime-neutral.

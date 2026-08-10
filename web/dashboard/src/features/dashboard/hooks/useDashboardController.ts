@@ -4,7 +4,7 @@ import { getConfigExplain, getConfigSummary } from "../../config";
 import type { ConfigExplanation, ConfigSummary } from "../../config";
 import { getHistory, useRunTasks, useTaskLogs } from "../../runs";
 import type { RunHistoryItem, RunTask } from "../../runs";
-import { useMarkdownPreview } from "../../reports";
+import { useMarkdownPreview, useRunReport } from "../../reports";
 import { errorMessage, initialResource } from "../../../shared/utils";
 import type { Resource } from "../../../shared/utils";
 import { getHealth } from "../api";
@@ -84,6 +84,7 @@ export function useDashboardController() {
     [history.data, selectedRunId],
   );
   const markdownPreview = useMarkdownPreview(selectedRun);
+  const runReport = useRunReport(selectedRun);
 
   const handleTriggerRun = useCallback(() => {
     void triggerRunTask({ onTaskStarted: setTriggeredTask });
@@ -107,6 +108,7 @@ export function useDashboardController() {
     latestHistory,
     markdownPreview,
     refreshAll,
+    runReport,
     runTasks,
     selectedRun,
     selectedRunId,
