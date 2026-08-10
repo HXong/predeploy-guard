@@ -233,6 +233,14 @@ Phase 11 aligns the React dashboard with the runtime-neutral configuration and r
 - Keep missing legacy report data safe and result wording consistent
 - Verify the complete dashboard through the existing TypeScript and Vite build
 
+### Phase 12A: Demo Polish and Portfolio Presentation (Completed)
+
+- Add a concise, copy-pasteable local demo flow for the CLI, API server, and dashboard
+- Refresh dashboard assets with generic sample data and structured report review
+- Add a runtime-neutral architecture summary and grounded project impact statement
+- Document safe demo data, screenshot capture, generated files, and cleanup
+- Keep runtime behavior and dashboard execution behavior unchanged
+
 ## Future Enhancements
 
 - Optional safe save-to-file flow through the local API

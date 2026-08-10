@@ -5,15 +5,20 @@
 ![React](https://img.shields.io/badge/React-Dashboard-61DAFB?logo=react&logoColor=black)
 ![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white)
 
-> Local-first pre-deployment validation and experiment sandbox for backend services.
+> Config-driven local deployment experiment sandbox for backend services.
 
-PreDeploy Guard helps backend developers catch deployment issues before release by spinning up temporary local sandboxes, validating dependencies, running smoke checks and experiment workloads, executing k6 performance tests, and generating Markdown/JSON safety reports.
+PreDeploy Guard helps developers:
 
-PreDeploy Guard supports config-driven local deployment experiments with Docker Compose as the default runtime and an early Kubernetes local-cluster runtime through existing kubeconfig contexts. The Kubernetes runtime is intended for developer-managed clusters, not production deployment.
+- validate service readiness;
+- check dependencies;
+- run smoke checks;
+- test gateway and direct-service behavior;
+- run workload experiments;
+- run performance checks;
+- review structured Markdown and JSON reports; and
+- inspect results through a local dashboard.
 
-It is designed for developers, small teams, and student teams that do not have a full multi-stage deployment setup. Instead of deploying directly after building a service, developers can run PreDeploy Guard locally to create a temporary sandbox, start the service with its dependencies, run readiness, smoke, and performance checks, then generate deployment safety reports.
-
-PreDeploy Guard also reduces YAML configuration friction through starter config generation, dependency presets, config validation, config explanation, validation profiles, run history, a local API layer, and a local dashboard UI.
+Docker Compose is the default runtime. An early Kubernetes local-cluster runtime works through existing kubeconfig contexts and developer-managed clusters. PreDeploy Guard is a local sandbox and experiment runner, not a production deployment platform.
 
 ---
 
@@ -45,15 +50,17 @@ App-aware and guided init write only the selected configuration outside the appl
 
 ---
 
-## Demo
+## Dashboard preview
 
-### Dashboard
+### Configuration overview
 
 ![PreDeploy Guard Dashboard](assets/dashboard.png)
 
-### Validation Report
+### Structured run review
 
-![Validation Report](assets/report.png)
+![Structured run timeline in the dashboard](assets/report.png)
+
+Both screenshots use generic sample data and omit raw logs, secrets, and local filesystem paths. See the [demo guide](docs/demo.md) for the capture checklist.
 
 ## Problem
 
@@ -75,46 +82,47 @@ PreDeploy Guard helps reduce this risk by providing a simple local validation la
 
 ---
 
-## Solution
+## Architecture
 
-PreDeploy Guard creates a temporary Docker Compose sandbox for the target service.
-
-The tool reads a `predeploy.yaml` file, builds the service image if needed, starts dependency containers, waits for dependency and service readiness, runs smoke checks, runs Dockerized k6 performance checks, captures logs on failure, writes Markdown and JSON reports, and records run history.
+PreDeploy Guard keeps configuration, runtime orchestration, validation, and presentation separated behind runtime-neutral boundaries:
 
 ```txt
-Developer Service Repo
-        |
-        | predeploy.yaml
-        v
-PreDeploy Guard CLI
-        |
-        | builds image if configured
-        v
-Temporary Docker Compose Sandbox
-        |
-        | starts service + dependencies
-        v
-Readiness + Smoke + Performance Checks
-        |
-        v
-Markdown + JSON Reports + Run History
+predeploy.yaml
+    |
+    v
+CLI / Local API
+    |
+    v
+Runtime Adapter
+    |
+    v
+Local Sandbox
+    |
+    v
+Checks + Workloads + Performance
+    |
+    v
+Markdown/JSON Reports + Run History
+    |
+    v
+React Dashboard
 ```
 
-PreDeploy Guard also includes a local API server and dashboard:
+Docker Compose remains the supported default. The Kubernetes local-cluster MVP uses `kubectl` and existing kubeconfig contexts; it does not install, start, or manage a cluster for the user.
 
-```txt
-Local Dashboard UI
-        |
-        | HTTP API
-        v
-PreDeploy Guard Local Server
-        |
-        | shared app services
-        v
-Config Summary + Run History + Reports + API-triggered Runs
-```
+---
 
-The long-term direction is to keep the CLI as the core engine and evolve the local sandbox toward richer deployment experiments. Docker Compose remains the supported default runtime. The Kubernetes local runtime MVP targets existing kubeconfig contexts, including local clusters such as Minikube, kind, k3s, and Docker Desktop Kubernetes.
+## Why this project matters
+
+PreDeploy Guard demonstrates backend and platform engineering concepts in a local-first workflow:
+
+- runtime sandbox orchestration;
+- readiness, dependency, and smoke validation;
+- gateway and direct-service comparison;
+- workload and performance experiments;
+- structured reporting and run history;
+- a local API and React dashboard; and
+- explicit safety boundaries for developer tooling.
 
 ---
 
@@ -341,32 +349,40 @@ No local k6 installation is required. PreDeploy Guard runs k6 through Docker usi
 
 ---
 
-## Quick Start
+## Quick Demo
 
-### CLI validation
+### 1. Validate and run the sample service
 
 ```bash
 git clone https://github.com/HXong/predeploy-guard.git
 cd predeploy-guard
 
+predeploy validate examples/predeploy.yaml
+predeploy run examples/predeploy.yaml
+```
+
+If the binary is not installed, use:
+
+```bash
 go run ./cmd/predeploy validate examples/predeploy.yaml
-go run ./cmd/predeploy explain examples/predeploy.yaml
 go run ./cmd/predeploy run examples/predeploy.yaml
 ```
 
-### Local API server
+Docker must be running for the sample validation. Generated reports are written under `examples/reports/` next to the config and are ignored by git.
+
+### 2. Start the local API server
 
 ```bash
-go run ./cmd/predeploy serve --config examples/predeploy.yaml
+predeploy serve --config examples/predeploy.yaml --addr localhost:7070
 ```
 
-Default address:
+Without an installed binary:
 
-```txt
-http://localhost:7070
+```bash
+go run ./cmd/predeploy serve --config examples/predeploy.yaml --addr localhost:7070
 ```
 
-### Dashboard
+### 3. Start the dashboard
 
 In another terminal:
 
@@ -382,7 +398,7 @@ Open:
 http://localhost:5173
 ```
 
-During development, the Vite dev server proxies `/api` requests to `http://localhost:7070`.
+The Vite development server proxies `/api` requests to the local API server on `localhost:7070`. For a short walkthrough of what to click and how to clean up, see [docs/demo.md](docs/demo.md).
 
 ---
 
@@ -748,6 +764,8 @@ reports/history.json
 
 Markdown reports are for humans. JSON reports and `history.json` are for automation, dashboards, and future GUI support.
 
+Generated reports are intentionally ignored by git. They may contain local paths, raw tool output, or environment-specific diagnostics. Commit sanitized screenshots or documentation instead of generated report artifacts.
+
 ---
 
 ## Current Limitations
@@ -811,10 +829,16 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
   - runtime environment and run timeline review
   - gateway, direct-service, latency, workload, and performance result review
   - compact config summary polish and frontend verification
+- Phase 12A: Demo polish and portfolio presentation
+  - concise quick demo and architecture guidance
+  - sanitized dashboard and structured report screenshots
+  - safe demo-data and screenshot capture guidance
 
 Phase 10 is complete. Its onboarding path remains read-only toward application folders: it diagnoses prerequisites, generates only the selected config, and never installs tools or creates application files.
 
 Phase 11 is complete. The dashboard now uses structured JSON reports while preserving Markdown preview and compatibility with older reports that omit newer sections.
+
+Phase 12A is complete. The repository now has a concise local demo flow, refreshed screenshots, and explicit guidance for keeping generated report data out of version control.
 
 ### Future
 
