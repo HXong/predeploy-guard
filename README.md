@@ -192,6 +192,8 @@ This project demonstrates backend engineering, developer tooling, Docker-based w
 - Dashboard cards for API health and config summary
 - Run history table
 - Run details panel
+- Structured JSON report review for runtime environment, run timeline, gateway results, workload results, and performance results
+- Markdown and JSON report links
 - Markdown report preview
 - Run task table
 - Task logs panel
@@ -554,8 +556,9 @@ Current dashboard capabilities:
 - View task logs
 - View run history
 - Select a run
-- View run details
-- Open Markdown/JSON report links
+- View structured runtime environment and run timeline details
+- Review gateway, direct-service, latency, workload, and performance results
+- Open Markdown and JSON report links
 - Preview raw Markdown report content
 - Switch between the dashboard and guided Config Builder
 
@@ -803,8 +806,15 @@ Markdown reports are for humans. JSON reports and `history.json` are for automat
   - shared app detection and actionable doctor recommendations
   - consistent doctor, validate, explain, and run next steps
   - service-aware interactive image defaults and safer output guidance
+- Phase 11: Dashboard structured report UX
+  - frontend API and report type parity
+  - runtime environment and run timeline review
+  - gateway, direct-service, latency, workload, and performance result review
+  - compact config summary polish and frontend verification
 
 Phase 10 is complete. Its onboarding path remains read-only toward application folders: it diagnoses prerequisites, generates only the selected config, and never installs tools or creates application files.
+
+Phase 11 is complete. The dashboard now uses structured JSON reports while preserving Markdown preview and compatibility with older reports that omit newer sections.
 
 ### Future
 

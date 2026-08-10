@@ -229,6 +229,7 @@ type GatewayResultRowProps = {
 function GatewayResultRow({ result }: GatewayResultRowProps) {
   const details = gatewayResultDetails(result);
   const latencyResult = gatewayLatencyResult(result);
+  const overallResult = booleanOutcome(result.passed);
   const routeName = result.name?.trim();
 
   return (
@@ -276,8 +277,8 @@ function GatewayResultRow({ result }: GatewayResultRowProps) {
           <ReportResult label="Latency" result={latencyResult.label} tone={latencyResult.tone} />
           <ReportResult
             label="Overall"
-            result={formatBooleanResult(result.passed)}
-            tone={result.passed ? "pass" : "fail"}
+            result={overallResult.label}
+            tone={overallResult.tone}
           />
         </div>
       </td>
@@ -297,15 +298,17 @@ function GatewayResultRow({ result }: GatewayResultRowProps) {
 }
 
 type StatusResultProps = {
-  passed: boolean;
+  passed?: boolean;
   status?: number;
 };
 
 function StatusResult({ passed, status }: StatusResultProps) {
+  const outcome = booleanOutcome(passed);
+
   return (
     <div className="report-cell-stack">
       <span>{formatStatusCode(status)}</span>
-      <span className={passed ? "result-pass" : "result-fail"}>{formatBooleanResult(passed)}</span>
+      <span className={`result-${outcome.tone}`}>{outcome.label}</span>
     </div>
   );
 }
@@ -376,10 +379,7 @@ function gatewayLatencyResult(result: GatewayResultReport): { label: string; ton
     return { label: "WARN", tone: "warn" };
   }
 
-  return {
-    label: formatBooleanResult(result.latencyPassed),
-    tone: result.latencyPassed ? "pass" : "fail",
-  };
+  return booleanOutcome(result.latencyPassed);
 }
 
 type WorkloadResultsSectionProps = {
@@ -473,14 +473,7 @@ function workloadOutcome(result: WorkloadResultReport): { label: string; tone: R
   if (result.Enabled !== true) {
     return { label: "-", tone: "neutral" };
   }
-  if (typeof result.Passed !== "boolean") {
-    return { label: "-", tone: "neutral" };
-  }
-
-  return {
-    label: formatBooleanResult(result.Passed),
-    tone: result.Passed ? "pass" : "fail",
-  };
+  return booleanOutcome(result.Passed);
 }
 
 type PerformanceResultSectionProps = {
@@ -592,13 +585,21 @@ function PerformanceMetric({ label, value, valueClassName }: PerformanceMetricPr
 }
 
 function performanceOutcome(result: PerformanceResultReport): { label: string; tone: ResultTone } {
-  if (result.enabled !== true || typeof result.passed !== "boolean") {
+  if (result.enabled !== true) {
+    return { label: "-", tone: "neutral" };
+  }
+
+  return booleanOutcome(result.passed);
+}
+
+function booleanOutcome(value: boolean | null | undefined): { label: string; tone: ResultTone } {
+  if (typeof value !== "boolean") {
     return { label: "-", tone: "neutral" };
   }
 
   return {
-    label: formatBooleanResult(result.passed),
-    tone: result.passed ? "pass" : "fail",
+    label: formatBooleanResult(value),
+    tone: value ? "pass" : "fail",
   };
 }
 

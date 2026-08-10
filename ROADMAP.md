@@ -199,6 +199,40 @@ Phase 10 completes the first-run onboarding loop with environment diagnostics, s
 - Preserve application contents and core runtime behavior
 - Document the complete first-time flow, including port `80` and health path `/` for default nginx demos
 
+### Phase 11: Dashboard Structured Report UX (Completed)
+
+Phase 11 aligns the React dashboard with the runtime-neutral configuration and report data added in Phases 8-10. It keeps structured report review additive to the existing run history, report links, and Markdown preview.
+
+#### Phase 11A: Frontend API and Type Parity (Completed)
+- Add typed gateway and workload config summaries and counts
+- Add backward-compatible structured JSON report types
+- Add a typed JSON report API helper
+
+#### Phase 11B: Runtime Environment and Run Timeline (Completed)
+- Load the selected run's JSON report
+- Show runtime environment details without runtime-specific assumptions
+- Show phase status, duration, and error or skip details
+
+#### Phase 11C: Gateway, Direct-Service, and Latency Results (Completed)
+- Show gateway and optional direct-service status results
+- Show status matching, latency, overhead, warnings, and errors
+- Render unavailable latency comparisons neutrally
+
+#### Phase 11D: Workload Results (Completed)
+- Show configured request/load details, counts, status distributions, and failure policy
+- Distinguish disabled workloads from successful workloads
+- Preserve the existing PascalCase workload report fields
+
+#### Phase 11E: Performance Results (Completed)
+- Show summary, latency, threshold, reliability, and check metrics
+- Distinguish disabled performance checks from passed checks
+- Keep raw performance output out of the default dashboard view
+
+#### Phase 11F: Config Summary Polish and Frontend Verification (Completed)
+- Add gateway, ingress, workload, and performance information to the compact config summary
+- Keep missing legacy report data safe and result wording consistent
+- Verify the complete dashboard through the existing TypeScript and Vite build
+
 ## Future Enhancements
 
 - Optional safe save-to-file flow through the local API
