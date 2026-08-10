@@ -1,0 +1,12 @@
+[
+  {
+    "runId": "2026-08-10-032212-booking-service",
+    "serviceName": "booking-service",
+    "passed": true,
+    "startedAt": "2026-08-10T03:22:12.496719+08:00",
+    "finishedAt": "2026-08-10T03:22:53.0689143+08:00",
+    "markdownPath": "C:/Users/ongho/predeploy-guard/examples/reports/predeploy-booking-service-2026-08-10-032212.md",
+    "jsonPath": "C:/Users/ongho/predeploy-guard/examples/reports/predeploy-booking-service-2026-08-10-032212.json",
+    "p95LatencyMs": 16.8720016
+  }
+]
