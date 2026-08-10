@@ -161,6 +161,23 @@ h2 {
   gap: 10px;
 }
 
+.config-summary-grid {
+  gap: 8px;
+}
+
+.config-summary-grid .metric {
+  padding: 9px 10px;
+}
+
+.config-summary-grid .metric span {
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+}
+
+.config-summary-grid .metric strong {
+  font-size: 0.9rem;
+}
+
 .metric {
   min-width: 0;
   border: 1px solid var(--border);
